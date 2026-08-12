@@ -102,7 +102,7 @@ Exit gate: foundational aggregates/value objects and repository boundaries compi
 
 Exit gate: workflow versioning/state storage, label assignment, Project State storage, Resource persistence, mutation provenance contracts, relation mutation, and lifecycle audit payloads have stable interfaces.
 
-- [ ] [#32](https://github.com/logact/becoming/issues/32) — Publish immutable workflow versions with explicit lineage (Feature #23)
+- [x] [#32](https://github.com/logact/becoming/issues/32) — Publish immutable workflow versions with explicit lineage (Feature #23)
 - [ ] [#35](https://github.com/logact/becoming/issues/35) — Manage temporal label assignments for every core entity type (Feature #24)
 - [ ] [#37](https://github.com/logact/becoming/issues/37) — Persist workflow state templates and machine-scoped queries (Feature #25)
 - [ ] [#46](https://github.com/logact/becoming/issues/46) — Implement independent Project State management (Feature #28)
