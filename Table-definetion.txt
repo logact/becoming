@@ -317,7 +317,20 @@ updated_at      DATETIME NOT NULL
 
 archived_at     DATETIME
                 // When the Workflow was archived.
+
+supersedes_id   UUID
+                // Logical reference (no foreign key) to the previous
+                // published version of this definition. NULL for the
+                // first version of a line.
+
+published_at    DATETIME
+                // When this version was published. Once set, the row's
+                // definition is immutable; the next version is a new row
+                // whose supersedes_id points here.
 ```
+
+Each `workflows` row is one version of a definition. Publishing freezes a
+version; successors form an explicit lineage chain through `supersedes_id`.
 
 A Workflow may itself have Labels and be managed through a State Machine.
 
