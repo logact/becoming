@@ -91,7 +91,7 @@ Exit gate: the chosen architecture is documented; local/CI checks, isolated migr
 
 Exit gate: foundational aggregates/value objects and repository boundaries compile and pass their first contract tests without framework coupling.
 
-- [ ] [#31](https://github.com/logact/becoming/issues/31) — Establish the workflow domain model and persistence boundary (Feature #23)
+- [x] [#31](https://github.com/logact/becoming/issues/31) — Establish the workflow domain model and persistence boundary (Feature #23)
 - [ ] [#34](https://github.com/logact/becoming/issues/34) — Implement label definitions and archive-safe lookup (Feature #24)
 - [ ] [#49](https://github.com/logact/becoming/issues/49) — Model resource quantities and catalog invariants (Feature #11)
 - [ ] [#53](https://github.com/logact/becoming/issues/53) — Establish the Record domain model and persistence (Feature #6)
