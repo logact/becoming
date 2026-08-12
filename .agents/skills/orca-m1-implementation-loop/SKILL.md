@@ -133,18 +133,18 @@ The worker owns the complete delivery lifecycle after implementation:
 2. Commit the checklist update separately with a message such as `docs(m1): mark task #<number> complete`. The implementation and checklist commits form the PR candidate.
 3. Confirm the candidate branch descends from the integration HEAD captured before dispatch and is clean. Push it to a new same-named remote branch without force.
 4. Create one PR targeting `main`. Build its title and body only from the local task description, diff summary, and exact validation outcomes. Do not use issue-closing keywords. Record its URL, number, and candidate head SHA.
-5. Request the repository's merge-commit strategy so the implementation and checklist commits retain their identities on `main`. If merge commits are unavailable, stop and escalate instead of silently switching to squash or rebase. If required checks are pending, enable merge-commit auto-merge when available or wait in bounded intervals and retry. Do not bypass protections. Inspect only this created PR's checks, mergeability, and state.
-6. Do not report success while the PR is merely open, approved, queued, or has passing checks. Wait until GitHub reports that exact PR, with the recorded candidate head SHA, as merged into `main` and provides its merge commit.
-7. Fetch `origin/main` and require the PR's reported merge commit to be its ancestor. Verify the task checkbox is `[x]` in `origin/main:m1-plan.md`.
-8. Send exactly one `worker_done` message to the coordinator only after successful remote merge verification. Include the implementation SHA, checklist SHA, files modified, exact tests and outcomes, PR URL/number, candidate head SHA, remote merge commit, and the verified checkbox state. If any delivery or merge step fails, send `escalation` instead and leave the worktree preserved.
+5. Request the repository's merge-commit strategy so the implementation and checklist commits retain their identities on `main` when the platform honors the request. If required checks are pending, enable merge-commit auto-merge when available or wait in bounded intervals and retry. Do not bypass protections. Inspect only this created PR's checks, mergeability, and state. If the PR is merged by an externally selected strategy such as squash or rebase, record the actual strategy and continue verification; do not rewrite remote history or treat the strategy mismatch alone as a blocker.
+6. Do not report success while the PR is merely open, approved, queued, or has passing checks. Wait until GitHub reports that exact PR as merged into `main` and provides its resulting merge commit. The resulting remote commit need not contain the candidate head SHA as an ancestor when squash or rebase was used.
+7. Fetch `origin/main`, verify the reported resulting merge commit is an ancestor of `origin/main`, verify the task checkbox is `[x]` in `origin/main:m1-plan.md`, and verify the merged diff contains the worker's implementation and checklist changes. Record whether the candidate head itself is an ancestor and the actual merge strategy.
+8. Send exactly one `worker_done` message to the coordinator only after successful remote merge verification. Include the implementation SHA, checklist SHA, files modified, exact tests and outcomes, PR URL/number, candidate head SHA, resulting merge commit, actual merge strategy, candidate-ancestor result, and the verified checkbox state. If delivery or remote integration fails, send `escalation` instead and leave the worktree preserved.
 
 After a successful `worker_done`, the coordinator:
 
-1. Requires the result to include all delivery evidence above.
+1. Requires the result to include all delivery evidence above, including the actual merge strategy and whether the candidate head remains an ancestor.
 2. Inspects the worker diff and commit locally, requiring the branch to descend from the captured integration HEAD, the worktree to be clean, and the changes to remain within local-plan scope.
 3. Reruns appropriate validation from the worker worktree when practical; at a wave boundary, also runs the broader checks necessary to demonstrate that wave's Exit gate.
-4. Fetches `origin/main`, verifies the reported merge commit is an ancestor, verifies the checkbox is `[x]`, runs `git merge --ff-only origin/main` in clean local `main`, and reruns the plan parser.
-5. Sets the worker worktree status to `completed` and includes the implementation SHA, checklist SHA, PR URL, and remote merge commit in its comment. Only then may the loop select and spawn the next Kimi worker. This worktree card status is informational and is not an Orca orchestration task status.
+4. Fetches `origin/main`, verifies the reported resulting merge commit is an ancestor, verifies the checkbox is `[x]`, verifies the merged diff contains the worker changes, runs `git merge --ff-only origin/main` in clean local `main`, and reruns the plan parser. A squash/rebase result is acceptable when these checks pass; do not require the candidate head to be an ancestor and do not rewrite remote history.
+5. Sets the worker worktree status to `completed` and includes the implementation SHA, checklist SHA, PR URL, resulting merge commit, actual merge strategy, and candidate-ancestor result in its comment. Only then may the loop select and spawn the next Kimi worker. This worktree card status is informational and is not an Orca orchestration task status.
 
 Do not force-push, close issues, delete worktrees or branches, bypass branch protection, modify unrelated GitHub state, or reset Orca orchestration state unless separately and explicitly authorized.
 
@@ -157,7 +157,7 @@ Stop and report instead of spawning another worker when:
 - the repository has no initial commit or the integration worktree is dirty;
 - Orca or Kimi is unavailable;
 - another M1 worker/loop already owns the next task;
-- the current worker escalates, fails, exits without valid `worker_done`, leaves uncommitted work, or fails verification;
+- the current worker fails, exits without a valid terminal outcome, leaves uncommitted work, or fails remote/content verification. A strategy mismatch alone is not a stop condition when the exact PR is merged and its changes and checkbox are verified on `origin/main`;
 - a branch cannot be pushed, a PR cannot be created or merged, remote integration cannot be proven, or local `main` cannot fast-forward to `origin/main`;
 - a wave Exit gate cannot be demonstrated.
 
