@@ -105,15 +105,23 @@ Use a fresh child worktree based on the integration branch. The work is stacked 
 
 ## Supervise to a terminal outcome
 
-Wait in rolling windows rather than sleep polling:
+Treat worker lifecycle mail as the primary progress channel. Workers must send
+heartbeats while active and exactly one terminal message (`worker_done` or
+`escalation`) when they reach an outcome. The coordinator is a listener, not a
+terminal-output poller: keep one blocking orchestration wait active and do not
+read the Kimi terminal during normal execution.
+
+Use a long bounded wait; the timeout is only a liveness checkpoint:
 
 ```text
-<orca> orchestration check --wait --types worker_done,escalation,decision_gate --timeout-ms 60000 --json
+<orca> orchestration check --wait --types worker_done,escalation,decision_gate --timeout-ms 300000 --json
 ```
 
 - Accept lifecycle mail only when both `taskId` and `dispatchId` match the sole active worker.
 - Answer a decision gate only when the local plan and repository instructions already determine the answer. Ask the user when ambiguity would materially change public contracts, architecture, or scope.
-- Treat a timeout as a checkpoint, not failure. Inspect only the active task, worktree, and Kimi terminal for liveness, then continue waiting while it is alive.
+- Treat a timeout as a checkpoint, not failure. Inspect only the active dispatch and worktree status; inspect the Kimi terminal only if the dispatch has no recent heartbeat, the terminal is disconnected/exited, or the worktree state is otherwise inconsistent. If the worker is alive, immediately resume the blocking wait.
+- Ignore transport keepalive/progress lines from the wait command; they are not worker events and must not be copied into coordinator context or reported to the user.
+- Never run a separate sleep loop, repeated `terminal read`, or broad `terminal list` while the worker is healthy. Do not use terminal previews to infer completion; completion comes only from matched lifecycle mail.
 - On escalation or failed validation, preserve the worktree, mark it blocked in its comment, report the blocker, and stop. Never create the next worker or a duplicate retry automatically.
 - A valid `worker_done` automatically completes only the worker's Orca orchestration task. It means the implementation is ready for coordinator verification; it does not complete the M1 plan task. Never manually mark the orchestration task completed.
 
