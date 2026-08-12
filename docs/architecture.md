@@ -19,13 +19,14 @@ without an explicit product decision).
 ```text
 src/domain/        Framework-independent domain layer. No React Native, Expo,
                    or Node imports. Owns entity types, identifiers, exact
-                   decimals, core aggregates (currently `workflow.ts`), and
-                   their invariants and validation.
+                   decimals and quantities, core aggregates (`workflow.ts`,
+                   `label.ts`, `resource.ts`), and their invariants and
+                   validation.
 src/persistence/   Persistence port and migrations, also framework-
                    independent. Defines the SqliteDatabase interface, the
                    transaction helper, the migration runner, and one
-                   repository boundary per aggregate (currently
-                   `workflowRepository.ts`).
+                   repository boundary per aggregate (`workflowRepository.ts`,
+                   `labelRepository.ts`, `resourceRepository.ts`).
 src/persistence/sqlite/
                    Adapter implementations of the port:
                    appDatabase.ts        production adapter over expo-sqlite
@@ -62,7 +63,9 @@ import it.
 - Exact quantities (resource capacity, budgets, allocations, consumption) are
   `Decimal` values (`src/domain/decimal.ts`): a bigint-mantissa exact decimal
   persisted as its canonical `TEXT` form. Quantities never pass through binary
-  floating point.
+  floating point. A `Quantity` (`src/domain/quantity.ts`) pairs a `Decimal`
+  amount with a unit; combining quantities with different units is a domain
+  error, never an implicit conversion.
 - Planned budgets/allocations and actual consumption stay distinguishable:
   planned amounts live on relations/metadata, actual usage in append-oriented
   `records`.
@@ -96,3 +99,6 @@ Executable wave-1 gate checks live in `__tests__/`:
   verified against the live schema.
 - `isolation.test.ts` — test databases never share state.
 - `decimal.test.ts` — exact decimal arithmetic and canonicalization.
+- `quantity.test.ts` — exact unit-safe quantity arithmetic.
+- `workflow.test.ts`, `label.test.ts`, `resource.test.ts` — aggregate
+  invariants and repository contracts per core concept.
