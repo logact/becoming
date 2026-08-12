@@ -19,10 +19,13 @@ without an explicit product decision).
 ```text
 src/domain/        Framework-independent domain layer. No React Native, Expo,
                    or Node imports. Owns entity types, identifiers, exact
-                   decimals, and (in later tasks) domain rules and validation.
+                   decimals, core aggregates (currently `workflow.ts`), and
+                   their invariants and validation.
 src/persistence/   Persistence port and migrations, also framework-
                    independent. Defines the SqliteDatabase interface, the
-                   transaction helper, and the migration runner.
+                   transaction helper, the migration runner, and one
+                   repository boundary per aggregate (currently
+                   `workflowRepository.ts`).
 src/persistence/sqlite/
                    Adapter implementations of the port:
                    appDatabase.ts        production adapter over expo-sqlite
@@ -50,6 +53,12 @@ import it.
 - Column encodings: UUID ids as `TEXT` primary keys; datetimes as ISO 8601
   UTC `TEXT`; JSON payloads/metadata as `TEXT`; booleans as `INTEGER` 0/1 with
   CHECK constraints.
+- Each aggregate is persisted through a repository boundary in
+  `src/persistence/` (interface plus a `Sqlite*` implementation over the
+  `SqliteDatabase` port, e.g. `SqliteWorkflowRepository`). Repositories map
+  rows to domain aggregates (snake_case columns to camelCase fields, NULL to
+  `null` fields) and validate aggregate invariants on every write; they never
+  import Expo, React Native, or Node.
 - Exact quantities (resource capacity, budgets, allocations, consumption) are
   `Decimal` values (`src/domain/decimal.ts`): a bigint-mantissa exact decimal
   persisted as its canonical `TEXT` form. Quantities never pass through binary
