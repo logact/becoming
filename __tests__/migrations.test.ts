@@ -26,7 +26,7 @@ describe('migrations', () => {
     const db = new NodeSqliteDatabase(':memory:');
     const applied = await migrate(db);
 
-    expect(applied).toEqual([1]);
+    expect(applied).toEqual([1, 2]);
     expect(await listTables(db)).toEqual(
       [...CORE_TABLES, 'schema_migrations'].sort(),
     );
@@ -56,7 +56,10 @@ describe('migrations', () => {
     const rows = await db.getAllAsync<{ version: number; name: string }>(
       'SELECT version, name FROM schema_migrations ORDER BY version',
     );
-    expect(rows).toEqual([{ version: 1, name: 'initial_schema' }]);
+    expect(rows).toEqual([
+      { version: 1, name: 'initial_schema' },
+      { version: 2, name: 'workflow_version_lineage' },
+    ]);
     await db.closeAsync();
   });
 
@@ -78,6 +81,25 @@ describe('migrations', () => {
       'created_at',
       'updated_at',
       'archived_at',
+    ]);
+
+    const workflowColumns = (
+      await db.getAllAsync<{ name: string }>(`PRAGMA table_info(workflows)`)
+    ).map((c) => c.name);
+    expect(workflowColumns).toEqual([
+      'id',
+      'title',
+      'description',
+      'workflow_type',
+      'purpose',
+      'version',
+      'entry_criteria',
+      'exit_criteria',
+      'created_at',
+      'updated_at',
+      'archived_at',
+      'supersedes_id',
+      'published_at',
     ]);
 
     const stateColumns = (
