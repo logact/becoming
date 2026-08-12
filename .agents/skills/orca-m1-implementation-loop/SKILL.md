@@ -43,11 +43,11 @@ Use `m1-plan.md` as the sole scheduling and task-description source. Spawn exact
    Require exactly 13 ordered waves, unique task numbers, and at least one parsed implementation task. Validate the plan here, but defer task selection until local `main` is synchronized with `origin/main`.
 3. Confirm `kimi` is on `PATH` and `kimi --help` exposes both `--model` and `--yolo`.
 4. Run `git rev-parse --verify HEAD`. Stop if the repository has no initial commit; a Git worktree cannot be created before one exists. Never create the initial commit implicitly.
-5. Require the coordinator's current worktree to be the clean integration worktree. Stop on staged, modified, or untracked files; never hide or absorb unrelated changes.
+5. Require the coordinator's current worktree to be the clean integration worktree. A pre-existing modification limited to this loop skill file (`.agents/skills/orca-m1-implementation-loop/SKILL.md`) is coordinator-owned configuration and may be preserved while continuing; do not stage, commit, stash, reset, or otherwise absorb it. Stop on any other staged, modified, or untracked files, and never hide or absorb unrelated changes. The integration branch must still remain clean for all task delivery operations.
 6. Record the current integration branch and its HEAD. Require that branch to be the named local `main`, not detached HEAD.
 7. Fetch `origin/main` without changing files. Require local `main` to equal `origin/main` before selecting a task. The worker owns both implementation and checklist commits, so an ahead local `main` is not an expected recovery state; stop on any divergence or ambiguous unpublished commits.
-8. Inspect `<orca> orchestration task-list --brief --json`, `<orca> worktree list --repo path:<repo-root> --json`, and `<orca> terminal list --json`. Do not reset or mutate unrelated runtime-global state.
-9. Ensure this invocation has no existing active worker and no competing M1 loop. Never claim the same local plan task twice.
+8. Inspect only `<orca> worktree list --repo path:<repo-root> --json`, `<orca> terminal list --json`, and matching dispatch records needed to identify an active worker. Do not inspect or mutate Orca orchestration task status; do not run `task-list` or `task-update`. Do not reset or mutate unrelated runtime-global state.
+9. Ensure this invocation has no existing active worker and no competing M1 loop using worktree, terminal, and dispatch identity—not orchestration task status. Never claim the same local plan task twice.
 
 ## Select the next task
 
@@ -100,7 +100,7 @@ Use a fresh child worktree based on the integration branch. The work is stacked 
    ```
 
    Send the exact returned preamble once. Never invent a lifecycle preamble, create a second dispatch, or separately resend the task spec.
-7. Verify the dispatch with `<orca> orchestration dispatch-show --task <task-id> --json`. Record its task ID, dispatch ID, worktree ID, branch, and terminal handle as this invocation's sole active worker.
+7. Verify the dispatch identity with `<orca> orchestration dispatch-show --task <task-id> --json`. Record its task ID, dispatch ID, worktree ID, branch, and terminal handle as this invocation's sole active worker. Use this only to bind lifecycle messages to the worker; never use an Orca task status as a completion signal.
 8. Set the worker worktree comment to `M1 Wave <wave> task #<number> in progress` and workspace status to `in-progress`.
 
 ## Supervise to a terminal outcome
@@ -123,7 +123,7 @@ Use a long bounded wait; the timeout is only a liveness checkpoint:
 - Ignore transport keepalive/progress lines from the wait command; they are not worker events and must not be copied into coordinator context or reported to the user.
 - Never run a separate sleep loop, repeated `terminal read`, or broad `terminal list` while the worker is healthy. Do not use terminal previews to infer completion; completion comes only from matched lifecycle mail.
 - On escalation or failed validation, preserve the worktree, mark it blocked in its comment, report the blocker, and stop. Never create the next worker or a duplicate retry automatically.
-- A valid `worker_done` automatically completes only the worker's Orca orchestration task. It means the worker claims implementation, checklist, PR, and remote merge success; the coordinator must still verify the reported evidence against the worker worktree and remote `main` before selecting the next task. Never manually mark the orchestration task completed.
+- A valid `worker_done` is the worker's terminal lifecycle signal. It means the worker claims implementation, checklist, PR, and remote merge success; the coordinator must still verify the reported evidence against the worker worktree and remote `main` before selecting the next task. Completion is determined only by the lifecycle message plus repository/remote verification, never by an Orca task status.
 
 ## Worker delivery and coordinator verification
 
@@ -144,7 +144,7 @@ After a successful `worker_done`, the coordinator:
 2. Inspects the worker diff and commit locally, requiring the branch to descend from the captured integration HEAD, the worktree to be clean, and the changes to remain within local-plan scope.
 3. Reruns appropriate validation from the worker worktree when practical; at a wave boundary, also runs the broader checks necessary to demonstrate that wave's Exit gate.
 4. Fetches `origin/main`, verifies the reported merge commit is an ancestor, verifies the checkbox is `[x]`, runs `git merge --ff-only origin/main` in clean local `main`, and reruns the plan parser.
-5. Sets the worker worktree status to `completed` and includes the implementation SHA, checklist SHA, PR URL, and remote merge commit in its comment. Only then may the loop select and spawn the next Kimi worker.
+5. Sets the worker worktree status to `completed` and includes the implementation SHA, checklist SHA, PR URL, and remote merge commit in its comment. Only then may the loop select and spawn the next Kimi worker. This worktree card status is informational and is not an Orca orchestration task status.
 
 Do not force-push, close issues, delete worktrees or branches, bypass branch protection, modify unrelated GitHub state, or reset Orca orchestration state unless separately and explicitly authorized.
 
