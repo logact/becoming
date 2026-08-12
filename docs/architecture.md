@@ -20,13 +20,19 @@ without an explicit product decision).
 src/domain/        Framework-independent domain layer. No React Native, Expo,
                    or Node imports. Owns entity types, identifiers, exact
                    decimals and quantities, core aggregates (`workflow.ts`,
-                   `label.ts`, `resource.ts`), and their invariants and
-                   validation.
+                   `label.ts`, `resource.ts`, `record.ts`), and their
+                   invariants and validation.
+src/application/   Framework-independent application services
+                   (`recordService.ts`). Services compose domain aggregates
+                   through injected `Clock`, `IdGenerator`, and repository
+                   ports, so create/read behavior is usable without selecting
+                   an HTTP, UI, or serialization framework.
 src/persistence/   Persistence port and migrations, also framework-
                    independent. Defines the SqliteDatabase interface, the
                    transaction helper, the migration runner, and one
                    repository boundary per aggregate (`workflowRepository.ts`,
-                   `labelRepository.ts`, `resourceRepository.ts`).
+                   `labelRepository.ts`, `resourceRepository.ts`,
+                   `recordRepository.ts`).
 src/persistence/sqlite/
                    Adapter implementations of the port:
                    appDatabase.ts        production adapter over expo-sqlite
@@ -100,5 +106,5 @@ Executable wave-1 gate checks live in `__tests__/`:
 - `isolation.test.ts` — test databases never share state.
 - `decimal.test.ts` — exact decimal arithmetic and canonicalization.
 - `quantity.test.ts` — exact unit-safe quantity arithmetic.
-- `workflow.test.ts`, `label.test.ts`, `resource.test.ts` — aggregate
-  invariants and repository contracts per core concept.
+- `workflow.test.ts`, `label.test.ts`, `resource.test.ts`, `record.test.ts` —
+  aggregate invariants and repository contracts per core concept.
