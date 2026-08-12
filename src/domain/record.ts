@@ -1,5 +1,12 @@
 import { newId, nowIso } from './ids';
 import type { EntityId, IsoTimestamp } from './ids';
+import { assertJsonValue } from './json';
+import type { JsonValue } from './json';
+
+// The structured-JSON contract is shared with other aggregates (e.g. Relation
+// metadata); it lives in ./json and is re-exported here for convenience.
+export { assertJsonValue } from './json';
+export type { JsonValue } from './json';
 
 /**
  * The Record aggregate: something that actually happened.
@@ -48,15 +55,6 @@ export type RecordType = (typeof RECORD_TYPES)[number];
 export function isRecordType(value: string): value is RecordType {
   return (RECORD_TYPES as readonly string[]).includes(value);
 }
-
-/** A JSON value that survives a JSON.stringify/JSON.parse round trip. */
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
 
 export interface Record {
   id: EntityId;
@@ -121,58 +119,6 @@ function requireSupportedRecordType(
     );
   }
   return recordType;
-}
-
-/**
- * Validate that a value is a structured JSON value that serializes without
- * loss. Rejects functions, undefined, symbols, BigInt, non-finite numbers,
- * class instances, and circular structures.
- */
-export function assertJsonValue(
-  value: unknown,
-  path = 'payload',
-  seen: ReadonlySet<object> = new Set(),
-): JsonValue {
-  if (value === null) {
-    return null;
-  }
-  switch (typeof value) {
-    case 'string':
-    case 'boolean':
-      return value;
-    case 'number':
-      if (!Number.isFinite(value)) {
-        throw new Error(`Record ${path} must be a finite number`);
-      }
-      return value;
-    case 'object': {
-      if (seen.has(value)) {
-        throw new Error(`Record ${path} must not contain circular references`);
-      }
-      const seenWithValue = new Set(seen).add(value);
-      if (Array.isArray(value)) {
-        return value.map((item, index) =>
-          assertJsonValue(item, `${path}[${index}]`, seenWithValue),
-        );
-      }
-      if (Object.getPrototypeOf(value) !== Object.prototype) {
-        throw new Error(
-          `Record ${path} must be a plain JSON object, array, or primitive`,
-        );
-      }
-      const entries = Object.entries(value as { [key: string]: unknown }).map(
-        ([key, item]) => [
-          key,
-          assertJsonValue(item, `${path}.${key}`, seenWithValue),
-        ],
-      );
-      return Object.fromEntries(entries);
-    }
-    default:
-      throw new Error(
-        `Record ${path} must be JSON-serializable, got ${typeof value}`,
-      );
-  }
 }
 
 /**
