@@ -13,7 +13,7 @@ Use `m1-plan.md` as the sole scheduling and task-description source. Spawn exact
 - Treat issue numbers as local identifiers only.
 - Never fetch issue bodies or comments, browse issue URLs, query issue endpoints, or consult remote labels, blockers, milestones, or issue state.
 - Never use the plan's links as permission to open GitHub.
-- Use GitHub only for the coordinator-owned delivery lifecycle of the task produced from the local plan: push its candidate branch, create its PR, inspect that PR's checks, mergeability, and state, merge it into `main`, and verify the resulting remote `main`. Do not read unrelated PRs or use PR content as task scope.
+- Use GitHub only for the delivery lifecycle of the task produced from the local plan: the task worker pushes its candidate branch, creates its PR, inspects that PR's checks and mergeability, requests/executes the permitted merge, and verifies the resulting remote `main`; the coordinator may inspect only that task PR and remote `main` to validate the worker's success. Do not read unrelated PRs or use PR content as task scope.
 - Compose PR titles and bodies only from the local task description, local diff, and validation evidence. Do not use issue-closing keywords or close issues.
 - Use `AGENTS.md`, `Table-definetion.txt`, the current local code, tests, and migrations as implementation context.
 - Let the local checklist override the plan's prose that says GitHub is authoritative. The user explicitly selected local-plan-only execution for this skill.
@@ -45,7 +45,7 @@ Use `m1-plan.md` as the sole scheduling and task-description source. Spawn exact
 4. Run `git rev-parse --verify HEAD`. Stop if the repository has no initial commit; a Git worktree cannot be created before one exists. Never create the initial commit implicitly.
 5. Require the coordinator's current worktree to be the clean integration worktree. Stop on staged, modified, or untracked files; never hide or absorb unrelated changes.
 6. Record the current integration branch and its HEAD. Require that branch to be the named local `main`, not detached HEAD.
-7. Fetch `origin/main` without changing files. Normally require local `main` to equal `origin/main` before selecting a task. If local `main` is ahead only because a prior loop already committed one verified task plus its checklist update but did not publish them, enter publication recovery: publish those exact commits through a task PR, merge it, and synchronize `main` before dispatching anything. Stop on any other divergence or ambiguous unpublished commits.
+7. Fetch `origin/main` without changing files. Require local `main` to equal `origin/main` before selecting a task. The worker owns both implementation and checklist commits, so an ahead local `main` is not an expected recovery state; stop on any divergence or ambiguous unpublished commits.
 8. Inspect `<orca> orchestration task-list --brief --json`, `<orca> worktree list --repo path:<repo-root> --json`, and `<orca> terminal list --json`. Do not reset or mutate unrelated runtime-global state.
 9. Ensure this invocation has no existing active worker and no competing M1 loop. Never claim the same local plan task twice.
 
@@ -123,25 +123,28 @@ Use a long bounded wait; the timeout is only a liveness checkpoint:
 - Ignore transport keepalive/progress lines from the wait command; they are not worker events and must not be copied into coordinator context or reported to the user.
 - Never run a separate sleep loop, repeated `terminal read`, or broad `terminal list` while the worker is healthy. Do not use terminal previews to infer completion; completion comes only from matched lifecycle mail.
 - On escalation or failed validation, preserve the worktree, mark it blocked in its comment, report the blocker, and stop. Never create the next worker or a duplicate retry automatically.
-- A valid `worker_done` automatically completes only the worker's Orca orchestration task. It means the implementation is ready for coordinator verification; it does not complete the M1 plan task. Never manually mark the orchestration task completed.
+- A valid `worker_done` automatically completes only the worker's Orca orchestration task. It means the worker claims implementation, checklist, PR, and remote merge success; the coordinator must still verify the reported evidence against the worker worktree and remote `main` before selecting the next task. Never manually mark the orchestration task completed.
 
-## Verify, publish, and merge before continuing
+## Worker delivery and coordinator verification
 
-After a successful `worker_done`:
+The worker owns the complete delivery lifecycle after implementation:
 
-1. Require the worker result to include its commit SHA, files modified, and exact tests run with outcomes.
-2. Inspect the worker diff and commit locally. Require the worker branch to descend from the integration HEAD captured before dispatch. Reject unrelated changes, GitHub-derived scope, missing tests, or an uncommitted worktree.
-3. Run appropriate validation from the worker worktree. At minimum, rerun the relevant tests; at a wave boundary, also run the broader checks necessary to demonstrate that wave's Exit gate.
-4. Keep local `main` unchanged. In the clean worker worktree, mark only this task's checklist item `[x]` inside the `m1-plan.md` Implementation waves. Match its unique task number and do not alter Milestone closeout boxes or unrelated prose.
-5. Commit the checklist update separately with a message such as `docs(m1): mark task #<number> complete`. The worker implementation commit and this coordinator-owned checklist commit form the PR candidate.
-6. Confirm the candidate branch still descends from the captured integration HEAD and is clean. Push it to a new same-named remote branch without force.
-7. Create one PR targeting `main`. Build its title and body only from the local task description, diff summary, and exact validation outcomes. Do not use issue-closing keywords. Record its URL, number, and candidate head SHA.
-8. Request the repository's merge-commit strategy so the implementation and checklist commits retain their identities on `main`. If merge commits are unavailable, stop instead of silently switching to squash or rebase. If required checks are pending, enable merge-commit auto-merge when available or wait in bounded intervals and retry. Do not bypass protections. Inspect only this created PR's checks, mergeability, and state.
-9. Do not mark the task complete when the PR is merely open, approved, queued, or has passing checks. Wait until GitHub reports that exact PR, with the recorded candidate head SHA, as merged into `main` and provides its merge commit.
-10. Fetch `origin/main` and require the PR's reported merge commit to be its ancestor. Verify the task checkbox is `[x]` in `origin/main:m1-plan.md`.
-11. In the clean integration worktree, run `git merge --ff-only origin/main`. Stop on failure; never auto-rebase, force-update, or resolve conflicts by guessing.
-12. Re-run the plan parser from synchronized local `main`, then set the worker worktree status to `completed` and include the implementation SHA, PR URL, and remote merge commit in its comment.
-13. Only now may the loop select and spawn the next Kimi worker.
+1. In the clean worker worktree, mark only this task's checklist item `[x]` inside the `m1-plan.md` Implementation waves. Match its unique task number and do not alter Milestone closeout boxes or unrelated prose.
+2. Commit the checklist update separately with a message such as `docs(m1): mark task #<number> complete`. The implementation and checklist commits form the PR candidate.
+3. Confirm the candidate branch descends from the integration HEAD captured before dispatch and is clean. Push it to a new same-named remote branch without force.
+4. Create one PR targeting `main`. Build its title and body only from the local task description, diff summary, and exact validation outcomes. Do not use issue-closing keywords. Record its URL, number, and candidate head SHA.
+5. Request the repository's merge-commit strategy so the implementation and checklist commits retain their identities on `main`. If merge commits are unavailable, stop and escalate instead of silently switching to squash or rebase. If required checks are pending, enable merge-commit auto-merge when available or wait in bounded intervals and retry. Do not bypass protections. Inspect only this created PR's checks, mergeability, and state.
+6. Do not report success while the PR is merely open, approved, queued, or has passing checks. Wait until GitHub reports that exact PR, with the recorded candidate head SHA, as merged into `main` and provides its merge commit.
+7. Fetch `origin/main` and require the PR's reported merge commit to be its ancestor. Verify the task checkbox is `[x]` in `origin/main:m1-plan.md`.
+8. Send exactly one `worker_done` message to the coordinator only after successful remote merge verification. Include the implementation SHA, checklist SHA, files modified, exact tests and outcomes, PR URL/number, candidate head SHA, remote merge commit, and the verified checkbox state. If any delivery or merge step fails, send `escalation` instead and leave the worktree preserved.
+
+After a successful `worker_done`, the coordinator:
+
+1. Requires the result to include all delivery evidence above.
+2. Inspects the worker diff and commit locally, requiring the branch to descend from the captured integration HEAD, the worktree to be clean, and the changes to remain within local-plan scope.
+3. Reruns appropriate validation from the worker worktree when practical; at a wave boundary, also runs the broader checks necessary to demonstrate that wave's Exit gate.
+4. Fetches `origin/main`, verifies the reported merge commit is an ancestor, verifies the checkbox is `[x]`, runs `git merge --ff-only origin/main` in clean local `main`, and reruns the plan parser.
+5. Sets the worker worktree status to `completed` and includes the implementation SHA, checklist SHA, PR URL, and remote merge commit in its comment. Only then may the loop select and spawn the next Kimi worker.
 
 Do not force-push, close issues, delete worktrees or branches, bypass branch protection, modify unrelated GitHub state, or reset Orca orchestration state unless separately and explicitly authorized.
 
