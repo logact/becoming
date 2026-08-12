@@ -39,6 +39,7 @@ The initial scope is not intended to become a general accounting, billing, or re
 Becoming is a native iOS app built with TypeScript, React Native, and Expo, persisting on-device in SQLite via `expo-sqlite` (see `docs/architecture.md`).
 
 - `src/domain/` — framework-independent domain layer (entity types, ids, exact `Decimal`, core aggregates such as `workflow.ts` with their invariants); no Expo/React Native/Node imports.
+- `src/application/` — framework-independent application services (e.g. `recordService.ts`) that compose domain aggregates through `Clock`, `IdGenerator`, and repository ports; no Expo/React Native/Node imports.
 - `src/persistence/` — framework-independent persistence port (`SqliteDatabase`), `withTransaction` unit-of-work helper, the append-only migration runner, and per-aggregate repository boundaries (e.g. `workflowRepository.ts`).
 - `src/persistence/sqlite/` — port adapters: `appDatabase.ts` (production, expo-sqlite) and `nodeSqliteDatabase.ts` (tests/CI, `node:sqlite`).
 - `__tests__/` — Jest (jest-expo preset, Node environment) suites plus the shared harness `__tests__/helpers/testDatabase.ts`, which builds a fresh migrated in-memory database per test.
