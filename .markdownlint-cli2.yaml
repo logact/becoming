@@ -8,3 +8,4 @@ config:
 ignores:
   - ".agents/**"
   - ".git/**"
+  - "node_modules/**"

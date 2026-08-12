@@ -36,7 +36,15 @@ The initial scope is not intended to become a general accounting, billing, or re
 
 ## Project Structure &amp; Module Organization
 
-This repository is currently an empty scaffold: it contains Git metadata but no source code, tests, assets, or build configuration. As the project grows, keep production code under a clearly named source directory (for example, `src/`), tests in `test/` or alongside the code, and static assets in `assets/` or `public/`. Update this guide when the chosen layout is established.
+Becoming is a native iOS app built with TypeScript, React Native, and Expo, persisting on-device in SQLite via `expo-sqlite` (see `docs/architecture.md`).
+
+- `src/domain/` — framework-independent domain layer (entity types, ids, exact `Decimal`); no Expo/React Native/Node imports.
+- `src/persistence/` — framework-independent persistence port (`SqliteDatabase`), `withTransaction` unit-of-work helper, and the append-only migration runner.
+- `src/persistence/sqlite/` — port adapters: `appDatabase.ts` (production, expo-sqlite) and `nodeSqliteDatabase.ts` (tests/CI, `node:sqlite`).
+- `__tests__/` — Jest (jest-expo preset, Node environment) suites plus the shared harness `__tests__/helpers/testDatabase.ts`, which builds a fresh migrated in-memory database per test.
+- `docs/` — architecture and CI/CD documentation.
+
+Checks: `npm run typecheck` and `npm test`. Hard rules: no database foreign keys, no shared `entities` table, exact decimals as TEXT, logical references validated in the domain layer. Update this guide when the layout changes.
 
 ## Table definetions
 

@@ -10,9 +10,16 @@ tags, and manual dispatches. It checks that required project documents exist,
 detects unresolved merge-conflict markers, lints Markdown, and validates GitHub
 Actions workflow files.
 
-Configure the `main` branch ruleset to require the **Validate repository** check
-before merging. The repository ruleset is managed in GitHub settings and is not
-stored in this repository.
+A second job, **Domain and persistence checks**, sets up Node.js 22, installs
+dependencies with `npm ci`, and runs `npm run typecheck` (TypeScript) and
+`npm test` (Jest with jest-expo). The Jest suites execute the real SQLite
+engine through the `node:sqlite` test adapter and cover migrations from an
+empty database, migration idempotency, transaction rollback, exact decimal
+round-trips, and the no-foreign-key / no-`entities`-table schema rules.
+
+Configure the `main` branch ruleset to require the **Validate repository** and
+**Domain and persistence checks** checks before merging. The repository ruleset
+is managed in GitHub settings and is not stored in this repository.
 
 ## Continuous delivery
 
