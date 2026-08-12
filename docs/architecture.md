@@ -66,6 +66,11 @@ import it.
   rows to domain aggregates (snake_case columns to camelCase fields, NULL to
   `null` fields) and validate aggregate invariants on every write; they never
   import Expo, React Native, or Node.
+- Workflow definitions are versioned: each `workflows` row is one version.
+  Publishing (`publishWorkflow`) freezes the row's definition — the
+  repository rejects any later change to it — and the next version is a new
+  row from `createWorkflowVersion` linked by `supersedes_id`, so execution
+  history pinned to a published version is never silently rewritten.
 - Exact quantities (resource capacity, budgets, allocations, consumption) are
   `Decimal` values (`src/domain/decimal.ts`): a bigint-mantissa exact decimal
   persisted as its canonical `TEXT` form. Quantities never pass through binary

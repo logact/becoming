@@ -14,7 +14,14 @@ import type { SqliteDatabase } from './database';
  * The `workflows` table has no foreign keys; the repository validates the
  * aggregate's own invariants on every write. References *to* a Workflow
  * (from workflow-state templates, relations, etc.) are validated by the
- * services that own those tables, against this boundary.
+ * services that own those tables, against this boundary. `supersedes_id` is
+ * likewise a logical lineage reference; chain integrity is established by the
+ * domain's `createWorkflowVersion` and the services composing it.
+ *
+ * The repository also protects published-version immutability on `save`:
+ * version, lineage, and creation identity never change, a published row's
+ * definition fields are frozen (only `updated_at`/`archived_at` may move),
+ * and `published_at` can only transition from null to set.
  */
 export interface WorkflowRepository {
   /** Insert a new Workflow. Throws if the id already exists. */
@@ -36,10 +43,16 @@ interface WorkflowRow {
   version: number;
   entry_criteria: string | null;
   exit_criteria: string | null;
+  supersedes_id: string | null;
+  published_at: string | null;
   created_at: string;
   updated_at: string;
   archived_at: string | null;
 }
+
+const COLUMNS = `id, title, description, workflow_type, purpose, version,
+       entry_criteria, exit_criteria, supersedes_id, published_at,
+       created_at, updated_at, archived_at`;
 
 function toRow(workflow: Workflow): WorkflowRow {
   return {
@@ -51,6 +64,8 @@ function toRow(workflow: Workflow): WorkflowRow {
     version: workflow.version,
     entry_criteria: workflow.entryCriteria,
     exit_criteria: workflow.exitCriteria,
+    supersedes_id: workflow.supersedesId,
+    published_at: workflow.publishedAt,
     created_at: workflow.createdAt,
     updated_at: workflow.updatedAt,
     archived_at: workflow.archivedAt,
@@ -67,10 +82,51 @@ function toDomain(row: WorkflowRow): Workflow {
     version: row.version,
     entryCriteria: row.entry_criteria,
     exitCriteria: row.exit_criteria,
+    supersedesId: row.supersedes_id,
+    publishedAt: row.published_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     archivedAt: row.archived_at,
   };
+}
+
+/**
+ * Guard the write rules a `save` must enforce given the stored row:
+ * identity/version/lineage never change, a published definition is frozen,
+ * and `published_at` only transitions from null to set.
+ */
+function assertWorkflowUpdateAllowed(
+  stored: Workflow,
+  next: Workflow,
+): void {
+  if (
+    next.version !== stored.version ||
+    next.supersedesId !== stored.supersedesId ||
+    next.createdAt !== stored.createdAt
+  ) {
+    throw new Error(
+      `Workflow ${stored.id} version, lineage, and creation identity are immutable`,
+    );
+  }
+  if (stored.publishedAt !== null) {
+    const frozen =
+      next.title !== stored.title ||
+      next.description !== stored.description ||
+      next.workflowType !== stored.workflowType ||
+      next.purpose !== stored.purpose ||
+      next.entryCriteria !== stored.entryCriteria ||
+      next.exitCriteria !== stored.exitCriteria ||
+      next.publishedAt !== stored.publishedAt;
+    if (frozen) {
+      throw new Error(
+        `Workflow ${stored.id} is published and its definition is immutable`,
+      );
+    }
+  } else if (next.publishedAt !== null && next.archivedAt !== null) {
+    throw new Error(
+      `Workflow ${stored.id} cannot be published and archived in one update`,
+    );
+  }
 }
 
 /** WorkflowRepository over the SqliteDatabase port. */
@@ -81,10 +137,8 @@ export class SqliteWorkflowRepository implements WorkflowRepository {
     validateWorkflow(workflow);
     const row = toRow(workflow);
     await this.db.runAsync(
-      `INSERT INTO workflows (
-         id, title, description, workflow_type, purpose, version,
-         entry_criteria, exit_criteria, created_at, updated_at, archived_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO workflows (${COLUMNS})
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         row.id,
         row.title,
@@ -94,6 +148,8 @@ export class SqliteWorkflowRepository implements WorkflowRepository {
         row.version,
         row.entry_criteria,
         row.exit_criteria,
+        row.supersedes_id,
+        row.published_at,
         row.created_at,
         row.updated_at,
         row.archived_at,
@@ -103,9 +159,7 @@ export class SqliteWorkflowRepository implements WorkflowRepository {
 
   async getById(id: EntityId): Promise<Workflow | null> {
     const row = await this.db.getFirstAsync<WorkflowRow>(
-      `SELECT id, title, description, workflow_type, purpose, version,
-              entry_criteria, exit_criteria, created_at, updated_at, archived_at
-       FROM workflows WHERE id = ?`,
+      `SELECT ${COLUMNS} FROM workflows WHERE id = ?`,
       [id],
     );
     return row === null ? null : toDomain(row);
@@ -113,11 +167,17 @@ export class SqliteWorkflowRepository implements WorkflowRepository {
 
   async save(workflow: Workflow): Promise<void> {
     validateWorkflow(workflow);
+    const stored = await this.getById(workflow.id);
+    if (stored === null) {
+      throw new Error(`Cannot save unknown Workflow ${workflow.id}`);
+    }
+    assertWorkflowUpdateAllowed(stored, workflow);
     const row = toRow(workflow);
-    const result = await this.db.runAsync(
+    await this.db.runAsync(
       `UPDATE workflows SET
          title = ?, description = ?, workflow_type = ?, purpose = ?,
          version = ?, entry_criteria = ?, exit_criteria = ?,
+         supersedes_id = ?, published_at = ?,
          created_at = ?, updated_at = ?, archived_at = ?
        WHERE id = ?`,
       [
@@ -128,14 +188,13 @@ export class SqliteWorkflowRepository implements WorkflowRepository {
         row.version,
         row.entry_criteria,
         row.exit_criteria,
+        row.supersedes_id,
+        row.published_at,
         row.created_at,
         row.updated_at,
         row.archived_at,
         row.id,
       ],
     );
-    if (result.changes === 0) {
-      throw new Error(`Cannot save unknown Workflow ${workflow.id}`);
-    }
   }
 }
