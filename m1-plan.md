@@ -85,7 +85,7 @@ Protect this path from avoidable delays, but do not allow it to bypass test and 
 
 Exit gate: the chosen architecture is documented; local/CI checks, isolated migrations, transaction rollback, exact decimal round-trips, and the no-foreign-key rule are executable.
 
-- [ ] [#106](https://github.com/logact/becoming/issues/106) — Bootstrap the V1 domain and persistence test architecture (Feature #6)
+- [x] [#106](https://github.com/logact/becoming/issues/106) — Bootstrap the V1 domain and persistence test architecture (Feature #6)
 
 ### Wave 2 — Independent domain foundations
 
