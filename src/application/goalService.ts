@@ -5,7 +5,7 @@ import { MutationProvenanceService } from './mutationProvenanceService';
 import { systemClock, uuidGenerator } from './recordService';
 import type { Clock, IdGenerator } from './recordService';
 import type { UnitOfWork } from './unitOfWork';
-import type { GoalRepository } from '../persistence/goalRepository';
+import type { GoalListOptions, GoalRepository } from '../persistence/goalRepository';
 import type { RecordRepository } from '../persistence/recordRepository';
 
 /** Thrown when an intrinsic Goal command names no stored Goal. */
@@ -111,8 +111,30 @@ export class GoalService<TContext> {
     });
   }
 
+  /**
+   * Resolve a Goal by id regardless of archival state. `null` means no row
+   * exists; an archived Goal is returned with its `archivedAt` intact, never
+   * presented as missing.
+   */
   async getGoal(id: EntityId): Promise<Goal | null> {
     return this.readGoals.getById(id);
+  }
+
+  /** Active Goals by default; use a named status to inspect history. */
+  async listGoals(options?: GoalListOptions): Promise<Goal[]> {
+    return this.readGoals.list(options);
+  }
+
+  async listActiveGoals(options?: Omit<GoalListOptions, 'status'>): Promise<Goal[]> {
+    return this.readGoals.list({ ...options, status: 'active' });
+  }
+
+  async listArchivedGoals(options?: Omit<GoalListOptions, 'status'>): Promise<Goal[]> {
+    return this.readGoals.list({ ...options, status: 'archived' });
+  }
+
+  async listGoalHistory(options?: Omit<GoalListOptions, 'status'>): Promise<Goal[]> {
+    return this.readGoals.list({ ...options, status: 'all' });
   }
 
   private async requireGoal(id: EntityId): Promise<Goal> {

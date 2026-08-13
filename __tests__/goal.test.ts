@@ -94,6 +94,58 @@ describe('goal domain model', () => {
 });
 
 describe('GoalRepository contract', () => {
+  it('projects all intrinsic fields while separating active, archived, and all Goal views', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteGoalRepository(db);
+    const minimal = {
+      ...createGoal({ title: 'Active', targetState: 'Current result' }),
+      id: 'goal-active', createdAt: '2026-08-13T07:00:00.000Z', updatedAt: '2026-08-13T07:00:00.000Z',
+    };
+    const full = {
+      ...createGoal({
+        title: 'Archived', targetState: 'Historical result', description: 'Context',
+        successCriteria: 'Evidence retained',
+      }),
+      id: 'goal-archived', createdAt: '2026-08-13T07:00:00.000Z', updatedAt: '2026-08-13T07:00:00.000Z',
+    };
+    await repository.add(minimal);
+    await repository.add(full);
+    const archived = archiveGoal(full, '2026-08-13T08:00:00.000Z');
+    await repository.save(archived);
+
+    expect(await repository.getById(archived.id)).toEqual(archived);
+    expect(await repository.getById('missing-goal')).toBeNull();
+    expect(await repository.list()).toEqual([minimal]);
+    expect(await repository.list({ status: 'archived' })).toEqual([archived]);
+    expect(await repository.list({ status: 'all' })).toEqual([archived, minimal]);
+    expect(Object.keys(archived).sort()).toEqual([
+      'archivedAt', 'createdAt', 'description', 'id', 'successCriteria',
+      'targetState', 'title', 'updatedAt',
+    ]);
+    await closeQuietly(db);
+  });
+
+  it('uses a total ordering and stable offset pagination when timestamps tie', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteGoalRepository(db);
+    const timestamp = '2026-08-13T07:00:00.000Z';
+    const first = { ...createGoal({ title: 'First', targetState: 'Result' }), id: 'goal-a', createdAt: timestamp, updatedAt: timestamp };
+    const second = { ...createGoal({ title: 'Second', targetState: 'Result' }), id: 'goal-b', createdAt: timestamp, updatedAt: timestamp };
+    const third = { ...createGoal({ title: 'Third', targetState: 'Result' }), id: 'goal-c', createdAt: timestamp, updatedAt: timestamp };
+    await repository.add(first);
+    await repository.add(second);
+    await repository.add(third);
+    await repository.save(archiveGoal(second, '2026-08-13T08:00:00.000Z'));
+
+    expect((await repository.list({ status: 'all' })).map((goal) => goal.id))
+      .toEqual(['goal-b', 'goal-a', 'goal-c']);
+    expect((await repository.list({ status: 'all', limit: 1, offset: 1 })).map((goal) => goal.id))
+      .toEqual(['goal-a']);
+    await expect(repository.list({ limit: 0 })).rejects.toThrow(/limit/);
+    await expect(repository.list({ offset: -1 })).rejects.toThrow(/offset/);
+    await closeQuietly(db);
+  });
+
   it('round-trips a Goal with every field preserved', async () => {
     const db = await createTestDatabase();
     const repository = new SqliteGoalRepository(db);
@@ -258,6 +310,18 @@ describe('GoalService', () => {
       after: { title: 'Launch M1', description: null, successCriteria: null },
     });
     expect(audit[2].payload).toMatchObject({ after: { archivedAt: LATER } });
+  });
+
+  it('makes archived visibility explicit in listings while get remains archive-safe', async () => {
+    const active = await service.createGoal({ actor: 'user', title: 'Current', targetState: 'Done' });
+    const archived = await service.createGoal({ actor: 'user', title: 'Historical', targetState: 'Done' });
+    await service.archiveGoal(archived.id, 'user');
+
+    expect(await service.getGoal(archived.id)).toMatchObject({ id: archived.id, archivedAt: LATER });
+    expect(await service.getGoal('missing')).toBeNull();
+    expect((await service.listActiveGoals()).map((goal) => goal.id)).toEqual([active.id]);
+    expect((await service.listArchivedGoals()).map((goal) => goal.id)).toEqual([archived.id]);
+    expect((await service.listGoalHistory()).map((goal) => goal.id)).toEqual([archived.id, active.id]);
   });
 
   it('rejects invalid or missing mutations without writing a Goal or provenance', async () => {

@@ -26,8 +26,30 @@ export interface GoalRepository {
   /** Return the Goal with this id (active or archived), or null. */
   getById(id: EntityId): Promise<Goal | null>;
 
+  /**
+   * List intrinsic Goal projections in a total, stable order. The default
+   * scope is active Goals only; callers must name `archived` or `all` to
+   * inspect historical rows. Offset pagination is safe for a fixed result
+   * set because `createdAt`, archive state, `updatedAt`, and `id` make every
+   * row's position deterministic.
+   */
+  list(options?: GoalListOptions): Promise<Goal[]>;
+
   /** Persist changes to an existing Goal. Throws if the id is unknown. */
   save(goal: Goal): Promise<void>;
+}
+
+/** Explicit visibility scope for Goal listings. */
+export type GoalStatusFilter = 'active' | 'archived' | 'all';
+
+/** Framework-neutral Goal query options. */
+export interface GoalListOptions {
+  /** Active Goals are the default; history requires an explicit status. */
+  status?: GoalStatusFilter;
+  /** Maximum number of rows, defaulting to 100. */
+  limit?: number;
+  /** Zero-based offset into the deterministic result order. */
+  offset?: number;
 }
 
 interface GoalRow {
@@ -102,6 +124,27 @@ export class SqliteGoalRepository implements GoalRepository {
     return row === null ? null : toDomain(row);
   }
 
+  async list(options: GoalListOptions = {}): Promise<Goal[]> {
+    const status = options.status ?? 'active';
+    const limit = options.limit ?? 100;
+    const offset = options.offset ?? 0;
+    assertPagination(limit, offset);
+    const where = status === 'active'
+      ? 'WHERE archived_at IS NULL'
+      : status === 'archived'
+        ? 'WHERE archived_at IS NOT NULL'
+        : '';
+    const rows = await this.db.getAllAsync<GoalRow>(
+      `SELECT id, title, description, target_state, success_criteria,
+              created_at, updated_at, archived_at
+       FROM goals ${where}
+       ORDER BY created_at, archived_at IS NULL, updated_at, id
+       LIMIT ? OFFSET ?`,
+      [limit, offset],
+    );
+    return rows.map(toDomain);
+  }
+
   async save(goal: Goal): Promise<void> {
     validateGoal(goal);
     const row = toRow(goal);
@@ -124,5 +167,14 @@ export class SqliteGoalRepository implements GoalRepository {
     if (result.changes === 0) {
       throw new Error(`Cannot save unknown Goal ${goal.id}`);
     }
+  }
+}
+
+function assertPagination(limit: number, offset: number): void {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error('Goal list limit must be a positive integer');
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new Error('Goal list offset must be a non-negative integer');
   }
 }
