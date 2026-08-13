@@ -147,7 +147,6 @@ export function calculateTaskResourceBalances(input: {
 }): TaskResourceBalance[] {
   const keys = new Set<string>();
   for (const item of input.allocations) keys.add(projectResourceKey(item.taskId, item.resourceId));
-  for (const item of input.usage) if (item.taskId !== null) keys.add(projectResourceKey(item.taskId, item.resourceId));
   return [...keys].sort().map((key) => {
     const [taskId, resourceId] = splitKey(key);
     const allocations = input.allocations.filter((item) => item.taskId === taskId && item.resourceId === resourceId);
