@@ -10,6 +10,7 @@ import { SqliteProjectStateTransitionRepository } from '../src/persistence/proje
 import { sqliteUnitOfWork } from '../src/persistence/transactions';
 import { SqliteWorkflowStateRepository } from '../src/persistence/workflowStateRepository';
 import { SqliteWorkflowStateTransitionRepository } from '../src/persistence/workflowStateTransitionRepository';
+import { SqliteRecordRepository } from '../src/persistence/recordRepository';
 import type { SqliteDatabase } from '../src/persistence/database';
 import { createTestDatabase } from './helpers/testDatabase';
 
@@ -32,7 +33,7 @@ describe('ProjectMachineInitializationService', () => {
   });
   afterEach(async () => { await db.closeAsync(); });
 
-  function service(hooks: { afterStateCopy?: () => void; afterTransitionCopy?: () => void } = {}) {
+  function service(hooks: { afterStateCopy?: () => void; afterTransitionCopy?: () => void; afterProvenanceAppend?: () => void } = {}) {
     return new ProjectMachineInitializationService({
       applicability: { resolve: async () => ({ relation: {} as never, workflowId, version: 1 }) },
       projects: new SqliteProjectRepository(db), labels: new SqliteLabelRepository(db),
@@ -41,9 +42,11 @@ describe('ProjectMachineInitializationService', () => {
       unitOfWork: sqliteUnitOfWork(db),
       states: (context) => new SqliteProjectStateRepository(context),
       transitions: (context) => new SqliteProjectStateTransitionRepository(context),
+      records: (context) => new SqliteRecordRepository(context),
       clock: { now: () => NOW }, ids: { newId: () => `copy-${++ids}` },
       afterStateCopy: hooks.afterStateCopy,
       afterTransitionCopy: hooks.afterTransitionCopy,
+      afterProvenanceAppend: hooks.afterProvenanceAppend,
     });
   }
 
@@ -62,7 +65,7 @@ describe('ProjectMachineInitializationService', () => {
     const projectTemplate = await templateMachine('project', labels[0], 'project');
     const taskTemplate = await templateMachine('task', labels[1], 'task');
 
-    const result = await service().initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver' });
+    const result = await service().initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' });
 
     expect(result).toMatchObject({ workflowId, workflowVersion: 1, idempotent: false });
     expect(result.machines).toHaveLength(2);
@@ -87,7 +90,7 @@ describe('ProjectMachineInitializationService', () => {
   ])('rolls back every machine when the %s copy stage fails', async (_stage, hooks) => {
     await templateMachine('project', labels[0], 'project');
     await templateMachine('task', labels[1], 'task');
-    await expect(service(hooks).initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver' })).rejects.toThrow(/copy-fault/);
+    await expect(service(hooks).initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' })).rejects.toThrow(/copy-fault/);
     expect(await db.getAllAsync('SELECT id FROM project_states')).toEqual([]);
     expect(await db.getAllAsync('SELECT id FROM project_state_transitions')).toEqual([]);
   });
@@ -95,22 +98,46 @@ describe('ProjectMachineInitializationService', () => {
   it('uses complete source-provenance identity for retry idempotency and rejects partial target machines', async () => {
     const source = await templateMachine('task', labels[1], 'task');
     const initializer = service();
-    const first = await initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver' });
-    const retry = await initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver' });
+    const first = await initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' });
+    const retry = await initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' });
     expect(retry).toMatchObject({ idempotent: true, machines: [{ states: first.machines[0].states, transitions: first.machines[0].transitions }] });
 
     await new SqliteProjectStateTransitionRepository(db).save({
       ...first.machines[0].transitions[0], archivedAt: NOW, updatedAt: NOW,
     });
-    await expect(initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver' })).rejects.toBeInstanceOf(ProjectMachineInitializationConflictError);
+    await expect(initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' })).rejects.toBeInstanceOf(ProjectMachineInitializationConflictError);
     expect(source.ready.title).toBe('Ready task');
   });
 
   it('leaves copies untouched when source templates are later edited', async () => {
     const source = await templateMachine('task', labels[1], 'task');
-    const result = await service().initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver' });
+    const result = await service().initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' });
     const copied = result.machines[0].states.find((state) => state.sourceWorkflowStateId === source.ready.id)!;
     await new SqliteWorkflowStateRepository(db).save({ ...source.ready, title: 'Changed later', updatedAt: '2026-08-13T01:00:00.000Z' });
     expect((await new SqliteProjectStateRepository(db).getById(copied.id))?.title).toBe('Ready task');
+  });
+
+  it('records atomic, archive-safe initialization evidence and does not duplicate it on retry', async () => {
+    await templateMachine('task', labels[1], 'task');
+    const initializer = service();
+    const first = await initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' });
+    const records = await new SqliteRecordRepository(db).list({ recordType: 'mutation' });
+    expect(records).toHaveLength(1);
+    expect(records[0].payload).toMatchObject({
+      event: 'project_machine_initialized', projectId, workflowId, workflowVersion: 1,
+      machines: [expect.objectContaining({ copiedStateIds: first.machines[0].states.map((state) => state.id) })],
+    });
+    const origin = await initializer.getMachineOrigin(first.machines[0].machine);
+    expect(origin).toMatchObject({ workflowId, workflowVersion: 1, copiedStateIds: first.machines[0].states.map((state) => state.id) });
+    await initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' });
+    expect(await new SqliteRecordRepository(db).list({ recordType: 'mutation' })).toHaveLength(1);
+  });
+
+  it('rolls back all copies when initialization evidence cannot be appended', async () => {
+    await templateMachine('task', labels[1], 'task');
+    const initializer = service({ afterProvenanceAppend: () => { throw new Error('provenance-fault'); } });
+    await expect(initializer.initialize({ projectId, entityType: 'task', labelId: labels[1], purpose: 'deliver', actor: 'planner' })).rejects.toThrow('provenance-fault');
+    expect(await db.getAllAsync('SELECT id FROM project_states')).toEqual([]);
+    expect(await new SqliteRecordRepository(db).list({ recordType: 'mutation' })).toEqual([]);
   });
 });

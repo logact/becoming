@@ -11,10 +11,12 @@ import type { ProjectStateRepository } from '../persistence/projectStateReposito
 import type { ProjectStateTransitionRepository } from '../persistence/projectStateTransitionRepository';
 import type { WorkflowStateRepository } from '../persistence/workflowStateRepository';
 import type { WorkflowStateTransitionRepository } from '../persistence/workflowStateTransitionRepository';
+import type { RecordHistoryRepository } from '../persistence/recordRepository';
 import type { SqliteDatabase } from '../persistence/database';
 import type { UnitOfWork } from './unitOfWork';
 import type { Clock, IdGenerator } from './recordService';
 import { systemClock, uuidGenerator } from './recordService';
+import { createRecord } from '../domain/record';
 import type { ProjectLookup } from './projectStateService';
 import type { ResolveWorkflowApplicabilityQuery, ResolvedWorkflowApplicability } from './workflowApplicabilityService';
 
@@ -24,6 +26,8 @@ export interface WorkflowApplicabilityResolver {
 }
 
 export interface InitializeProjectMachinesCommand extends ResolveWorkflowApplicabilityQuery {
+  /** Actor recorded with the immutable initialization evidence. */
+  actor?: string;
   initializedAt?: IsoTimestamp;
 }
 
@@ -49,12 +53,43 @@ export class ProjectMachineInitializationConflictError extends Error {
   }
 }
 
+/** The Project exists for applicability but cannot own a new machine. */
+export class ProjectMachineInitializationProjectArchivedError extends Error {
+  constructor(readonly projectId: EntityId) {
+    super(`Project ${projectId} is archived and cannot initialize machines`);
+    this.name = 'ProjectMachineInitializationProjectArchivedError';
+  }
+}
+
+/** A source workflow machine has no active state templates to materialize. */
+export class WorkflowMachineInitializationInvalidTemplateError extends Error {
+  constructor(readonly workflowId: EntityId, reason: string) {
+    super(`Workflow ${workflowId} cannot initialize Project machines: ${reason}`);
+    this.name = 'WorkflowMachineInitializationInvalidTemplateError';
+  }
+}
+
 /** A template transition cannot be copied unless both endpoints are in its machine snapshot. */
 export class WorkflowMachineInitializationTopologyError extends Error {
   constructor(readonly transition: WorkflowStateTransition) {
     super(`Workflow transition ${transition.id} has endpoints outside its active machine snapshot`);
     this.name = 'WorkflowMachineInitializationTopologyError';
   }
+}
+
+/** The durable occurrence type for one non-idempotent machine initialization. */
+export const PROJECT_MACHINE_INITIALIZATION_RECORD_TYPE = 'mutation';
+
+export interface ProjectMachineOrigin {
+  machine: ProjectStateMachine;
+  workflowId: EntityId;
+  workflowVersion: number;
+  relationId: EntityId;
+  initializedAt: IsoTimestamp;
+  stateSourceIds: EntityId[];
+  transitionSourceIds: EntityId[];
+  copiedStateIds: EntityId[];
+  copiedTransitionIds: EntityId[];
 }
 
 export interface ProjectMachineInitializationServicePorts {
@@ -66,12 +101,16 @@ export interface ProjectMachineInitializationServicePorts {
   unitOfWork: UnitOfWork<SqliteDatabase>;
   states: (context: SqliteDatabase) => ProjectStateRepository;
   transitions: (context: SqliteDatabase) => ProjectStateTransitionRepository;
+  /** Append-only evidence of a completed initialization, in the copy transaction. */
+  records: (context: SqliteDatabase) => RecordHistoryRepository;
   clock?: Clock;
   ids?: IdGenerator;
   /** Test-only fault hook; any error triggers complete transaction rollback. */
   afterStateCopy?: (state: ProjectState) => Promise<void> | void;
   /** Test-only fault hook; any error triggers complete transaction rollback. */
   afterTransitionCopy?: (transition: ProjectStateTransition) => Promise<void> | void;
+  /** Test-only fault hook; proves provenance and copies share one rollback boundary. */
+  afterProvenanceAppend?: () => Promise<void> | void;
 }
 
 /**
@@ -99,11 +138,14 @@ export class ProjectMachineInitializationService {
     const selected = await this.ports.applicability.resolve(command);
     const project = await this.ports.projects.getById(command.projectId);
     if (project === null) throw new Error(`Project ${command.projectId} not found`);
-    if (project.archivedAt !== null) throw new Error(`Project ${command.projectId} is archived and cannot initialize machines`);
+    if (project.archivedAt !== null) throw new ProjectMachineInitializationProjectArchivedError(command.projectId);
 
     return this.ports.unitOfWork.run(async (context) => {
       const templates = await this.ports.workflowStates.listActiveForWorkflow(selected.workflowId);
       const grouped = groupByMachine(templates);
+      if (grouped.size === 0) {
+        throw new WorkflowMachineInitializationInvalidTemplateError(selected.workflowId, 'it has no active state-machine templates');
+      }
       const states = this.ports.states(context);
       const transitions = this.ports.transitions(context);
       const at = command.initializedAt ?? this.clock.now();
@@ -160,7 +202,14 @@ export class ProjectMachineInitializationService {
         }
         machines.push({ machine, states: [...copiedBySource.values()], transitions: copiedTransitions });
       }
-      return { workflowId: selected.workflowId, workflowVersion: selected.version, idempotent, machines };
+      const result = { workflowId: selected.workflowId, workflowVersion: selected.version, idempotent, machines };
+      if (!idempotent) {
+        await this.ports.records(context).add(createInitializationRecord({
+          id: this.ids.newId(), at, actor: command.actor ?? 'system', selected, result,
+        }));
+        await this.ports.afterProvenanceAppend?.();
+      }
+      return result;
     });
   }
 
@@ -169,7 +218,74 @@ export class ProjectMachineInitializationService {
     if (label === null) throw new Error(`Label ${machine.labelId} not found`);
     if (label.archivedAt !== null) throw new Error(`Label ${machine.labelId} is archived and cannot initialize a Project machine`);
   }
+
+  /**
+   * Reads copy-origin evidence from the independent Project machine. It never
+   * resolves or writes a live template and therefore remains useful after the
+   * source Workflow is archived.
+   */
+  async getMachineOrigin(machine: ProjectStateMachine): Promise<ProjectMachineOrigin | null> {
+    const stateRepository = this.ports.states as unknown as (context: SqliteDatabase) => ProjectStateRepository;
+    // The service's repositories are transaction factories; use a short read
+    // transaction so this works for both SQLite adapters without a second port.
+    return this.ports.unitOfWork.run(async (context) => {
+      const states = await stateRepository(context).listForMachine(machine);
+      const transitions = await this.ports.transitions(context).listForMachine(machine);
+      const sourcedStates = states.filter((state) => state.sourceWorkflowStateId !== null);
+      if (sourcedStates.length === 0) return null;
+      const event = (await this.ports.records(context).list({ status: 'all', recordType: PROJECT_MACHINE_INITIALIZATION_RECORD_TYPE }))
+        .reverse()
+        .find((record) => {
+          if (record.payload === null || Array.isArray(record.payload) || typeof record.payload !== 'object') return false;
+          return record.payload.event === 'project_machine_initialized' && record.payload.projectId === machine.projectId;
+        });
+      if (event === undefined || event.payload === null) return null;
+      const payload = event.payload as {
+        workflowId?: unknown; workflowVersion?: unknown; applicabilityRelationId?: unknown;
+        machines?: Array<{ machine?: ProjectStateMachine }>;
+      };
+      const evidence = payload.machines?.find((entry) => entry.machine?.entityType === machine.entityType && entry.machine?.labelId === machine.labelId);
+      if (typeof payload.workflowId !== 'string' || !Number.isInteger(payload.workflowVersion) || evidence === undefined) return null;
+      return {
+        machine, workflowId: payload.workflowId, workflowVersion: payload.workflowVersion as number,
+        relationId: typeof payload.applicabilityRelationId === 'string' ? payload.applicabilityRelationId : '',
+        initializedAt: event.occurredAt,
+        stateSourceIds: sourcedStates.map((state) => state.sourceWorkflowStateId!),
+        transitionSourceIds: transitions.flatMap((transition) => transition.sourceWorkflowTransitionId === null ? [] : [transition.sourceWorkflowTransitionId]),
+        copiedStateIds: sourcedStates.map((state) => state.id),
+        copiedTransitionIds: transitions.filter((transition) => transition.sourceWorkflowTransitionId !== null).map((transition) => transition.id),
+      };
+    });
+  }
 }
+
+function createInitializationRecord(input: {
+  id: EntityId;
+  at: IsoTimestamp;
+  actor: string;
+  selected: ResolvedWorkflowApplicability;
+  result: InitializeProjectMachinesResult;
+}) {
+  return createRecord({
+    title: 'Project workflow machines initialized',
+    description: `Initialized Project machines from Workflow ${input.selected.workflowId} version ${input.selected.version}`,
+    recordType: PROJECT_MACHINE_INITIALIZATION_RECORD_TYPE,
+    occurredAt: input.at,
+    recordedAt: input.at,
+    actor: input.actor,
+    payload: {
+      event: 'project_machine_initialized', projectId: input.result.machines[0]?.machine.projectId ?? '',
+      workflowId: input.selected.workflowId, workflowVersion: input.selected.version,
+      applicabilityRelationId: input.selected.relation.id ?? null,
+      machines: input.result.machines.map(({ machine, states, transitions }) => ({
+        machine, sourceWorkflowStateIds: states.map((state) => state.sourceWorkflowStateId),
+        sourceWorkflowTransitionIds: transitions.map((transition) => transition.sourceWorkflowTransitionId),
+        copiedStateIds: states.map((state) => state.id), copiedTransitionIds: transitions.map((transition) => transition.id),
+      })),
+    },
+  }, { id: input.id, now: input.at });
+}
+
 
 type SourceMachine = { entityType: CoreEntityType; labelId: EntityId };
 
