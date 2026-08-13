@@ -220,7 +220,7 @@ Exit gate: as-of balances, resource exceptions, and lifecycle-enriched Project s
 Exit gate: users can query active/resolved resource exceptions and inspect explainable Project progress; all milestone acceptance scenarios pass.
 
 - [x] [#99](https://github.com/logact/becoming/issues/99) — Query active and resolved resource exceptions (Feature #16) **(done)**
-- [ ] [#105](https://github.com/logact/becoming/issues/105) — Derive and explain Project progress (Feature #22) **(processing)**
+- [x] [#105](https://github.com/logact/becoming/issues/105) — Derive and explain Project progress (Feature #22) **(done)**
 
 ## Milestone closeout
 
