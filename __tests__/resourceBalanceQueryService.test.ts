@@ -11,6 +11,7 @@ function balances(input: {
   taskAllocations?: unknown[];
   projectUsage?: unknown[];
   taskUsage?: unknown[];
+  now?: string;
 }) {
   const listHistory = jest.fn(async (query: { projectId?: string; taskId?: string }) =>
     query.taskId === undefined ? input.projectUsage ?? [] : input.taskUsage ?? []);
@@ -25,18 +26,23 @@ function balances(input: {
     resourceUsage: {
       listHistory,
     } as never,
+    clock: { now: () => input.now ?? '2026-08-13T03:00:00.000Z' },
   });
   return { query, listHistory };
 }
 
-function usage(id: string, amount: Quantity, options: { projectId?: string; resourceId?: string; taskId?: string | null; corrections?: { id: string; amount: Quantity }[] } = {}) {
+function usage(id: string, amount: Quantity, options: {
+  projectId?: string; resourceId?: string; taskId?: string | null;
+  occurredAt?: string; corrections?: { id: string; amount: Quantity; occurredAt?: string }[];
+} = {}) {
   const projectId = options.projectId ?? 'project';
   const resourceId = options.resourceId ?? 'hours';
   const taskId = options.taskId ?? null;
   return {
-    original: { recordId: id, projectId, resourceId, taskId, amount },
+    original: { recordId: id, projectId, resourceId, taskId, amount, record: { occurredAt: options.occurredAt ?? '2026-08-13T01:00:00.000Z' } },
     corrections: (options.corrections ?? []).map((correction) => ({
       recordId: correction.id, projectId, resourceId, taskId, amount: correction.amount,
+      record: { occurredAt: correction.occurredAt ?? '2026-08-13T01:00:00.000Z' },
     })),
     effectiveAmount: amount,
   };
@@ -114,5 +120,64 @@ describe('ResourceBalanceQueryService (#83)', () => {
     await expect(mismatch.listCurrentProjectBalances('project')).rejects.toEqual(expect.objectContaining({
       name: ResourceBalanceUnitMismatchError.name, contributorIds: ['bad-allocation'],
     }));
+  });
+
+  it('selects ended planning histories at a UTC as-of instant and preserves a contributor trace', async () => {
+    const { query } = balances({
+      budgets: [{ relationId: 'old-budget', projectId: 'project', resourceId: 'hours', amount: hour('4') }],
+      projectAllocations: [{ relationId: 'old-allocation', taskId: 'task', fundingProjectId: 'project', resourceId: 'hours', amount: hour('2') }],
+      projectUsage: [usage('usage-before', hour('1'), { occurredAt: '2026-08-13T01:00:00.000Z' })],
+    });
+    const [result] = await query.listProjectBalances('project', { asOf: '2026-08-13T01:00:00.000Z' });
+    expect(result).toMatchObject({
+      budgetRelationIds: ['old-budget'], allocationRelationIds: ['old-allocation'], usageRecordIds: ['usage-before'],
+    });
+    expect(result.remaining.toString()).toBe('3 hour');
+  });
+
+  it('uses inclusive occurrence windows for originals and corrections independently, bounded by as-of', async () => {
+    const { query } = balances({
+      budgets: [{ relationId: 'budget', projectId: 'project', resourceId: 'hours', amount: hour('10') }],
+      projectUsage: [usage('original', hour('5'), {
+        occurredAt: '2026-08-13T01:00:00.000Z',
+        corrections: [{ id: 'correction', amount: hour('2'), occurredAt: '2026-08-13T02:00:00.000Z' }],
+      })],
+    });
+    const beforeCorrection = await query.listProjectBalances('project', { asOf: '2026-08-13T01:30:00.000Z' });
+    expect(beforeCorrection[0].consumed.toString()).toBe('5 hour');
+    const atCorrection = await query.listProjectBalances('project', { asOf: '2026-08-13T02:00:00.000Z' });
+    expect(atCorrection[0]).toMatchObject({ usageRecordIds: ['correction', 'original'] });
+    expect(atCorrection[0].consumed.toString()).toBe('3 hour');
+    const correctionOnly = await query.listProjectBalances('project', {
+      asOf: '2026-08-13T03:00:00.000Z', occurredAt: { start: '2026-08-13T02:00:00.000Z', end: '2026-08-13T02:00:00.000Z' },
+    });
+    expect(correctionOnly[0]).toMatchObject({ usageRecordIds: ['correction'] });
+    expect(correctionOnly[0].consumed.toString()).toBe('-2 hour');
+  });
+
+  it('makes the current projection exactly equivalent to an as-of projection from the same clock snapshot', async () => {
+    const { query } = balances({
+      now: '2026-08-13T02:00:00.000Z',
+      budgets: [{ relationId: 'budget', projectId: 'project', resourceId: 'hours', amount: hour('4') }],
+      projectAllocations: [{ relationId: 'allocation', taskId: 'task', fundingProjectId: 'project', resourceId: 'hours', amount: hour('1') }],
+      projectUsage: [usage('usage', hour('2'), { occurredAt: '2026-08-13T02:00:00.000Z' })],
+    });
+    await expect(query.listCurrentProjectBalances('project')).resolves.toEqual(
+      await query.listProjectBalances('project', { asOf: '2026-08-13T02:00:00.000Z' }),
+    );
+  });
+
+  it('keeps resource ordering and aggregate arithmetic stable under optional resource filtering', async () => {
+    const { query } = balances({
+      budgets: [
+        { relationId: 'z', projectId: 'project', resourceId: 'z-hours', amount: hour('2') },
+        { relationId: 'a', projectId: 'project', resourceId: 'a-hours', amount: hour('3') },
+      ],
+      projectUsage: [usage('z-use', hour('1'), { resourceId: 'z-hours' }), usage('a-use', hour('2'), { resourceId: 'a-hours' })],
+    });
+    const all = await query.listProjectBalances('project');
+    const filtered = await query.listProjectBalances('project', { resourceId: 'z-hours' });
+    expect(all.map((row) => row.resourceId)).toEqual(['a-hours', 'z-hours']);
+    expect(filtered).toEqual([all[1]]);
   });
 });
