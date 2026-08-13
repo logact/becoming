@@ -18,11 +18,26 @@ import type { SqliteDatabase } from './database';
  * likewise a logical lineage reference; chain integrity is established by the
  * domain's `createWorkflowVersion` and the services composing it.
  *
+ * Discovery queries are scoped by workflow type with an optional exact-match
+ * purpose filter and are deterministically ordered: descending `version`,
+ * ties broken by `created_at` then `id`. Unless `includeArchived` is set,
+ * queries return only active versions (`archived_at IS NULL`); setting it
+ * returns the full definition history — active and archived — so archived
+ * versions stay resolvable in historical lookups.
+ *
  * The repository also protects published-version immutability on `save`:
  * version, lineage, and creation identity never change, a published row's
  * definition fields are frozen (only `updated_at`/`archived_at` may move),
  * and `published_at` can only transition from null to set.
  */
+export interface WorkflowQuery {
+  workflowType: string;
+  /** Exact-match filter on the purpose field; omitted means any purpose. */
+  purpose?: string;
+  /** When true, archived versions are included (historical lookups). */
+  includeArchived?: boolean;
+}
+
 export interface WorkflowRepository {
   /** Insert a new Workflow. Throws if the id already exists. */
   add(workflow: Workflow): Promise<void>;
@@ -32,6 +47,13 @@ export interface WorkflowRepository {
 
   /** Persist changes to an existing Workflow. Throws if the id is unknown. */
   save(workflow: Workflow): Promise<void>;
+
+  /**
+   * Return matching Workflow versions in deterministic order — descending
+   * `version`, ties broken by `created_at` then `id`. Active versions only
+   * unless the query sets `includeArchived`.
+   */
+  list(query: WorkflowQuery): Promise<Workflow[]>;
 }
 
 interface WorkflowRow {
@@ -53,6 +75,9 @@ interface WorkflowRow {
 const COLUMNS = `id, title, description, workflow_type, purpose, version,
        entry_criteria, exit_criteria, supersedes_id, published_at,
        created_at, updated_at, archived_at`;
+
+/** Deterministic discovery ordering: highest version first, then created_at, then id. */
+const DISCOVERY_ORDER = `ORDER BY version DESC, created_at, id`;
 
 function toRow(workflow: Workflow): WorkflowRow {
   return {
@@ -196,5 +221,24 @@ export class SqliteWorkflowRepository implements WorkflowRepository {
         row.id,
       ],
     );
+  }
+
+  async list(query: WorkflowQuery): Promise<Workflow[]> {
+    const conditions = ['workflow_type = ?'];
+    const params: (string | number | null)[] = [query.workflowType];
+    if (query.purpose !== undefined) {
+      conditions.push('purpose = ?');
+      params.push(query.purpose);
+    }
+    if (query.includeArchived !== true) {
+      conditions.push('archived_at IS NULL');
+    }
+    const rows = await this.db.getAllAsync<WorkflowRow>(
+      `SELECT ${COLUMNS} FROM workflows
+       WHERE ${conditions.join(' AND ')}
+       ${DISCOVERY_ORDER}`,
+      params,
+    );
+    return rows.map(toDomain);
   }
 }
