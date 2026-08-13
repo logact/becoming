@@ -3,6 +3,10 @@ import {
   RecordService,
 } from '../src/application/recordService';
 import {
+  MutationPersistenceError,
+  ProvenancePersistenceError,
+} from '../src/application/mutationProvenanceService';
+import {
   RecordCorrectionPersistenceError,
   RecordHistoryService,
 } from '../src/application/recordHistoryService';
@@ -13,6 +17,7 @@ import {
   createRecord,
   validateRecord,
 } from '../src/domain/record';
+import { PROVENANCE_RECORD_TYPE } from '../src/domain/mutationProvenance';
 import { buildRecordCorrectionPayload } from '../src/domain/recordCorrection';
 import { SqliteRecordRepository } from '../src/persistence/recordRepository';
 import { SqliteRelationRepository } from '../src/persistence/relationRepository';
@@ -273,7 +278,13 @@ describe('RecordService application boundary', () => {
     let nextId = 0;
     const ids = { newId: () => `record-${++nextId}` };
     const repository = new SqliteRecordRepository(db);
-    return new RecordService({ repository, clock, ids });
+    return new RecordService({
+      repository,
+      unitOfWork: sqliteUnitOfWork(db),
+      records: (context) => new SqliteRecordRepository(context),
+      clock,
+      ids,
+    });
   }
 
   it('creates and reads a Record through framework-neutral ports', async () => {
@@ -292,6 +303,23 @@ describe('RecordService application boundary', () => {
     expect(created.recordedAt).toBe(RECORDED_AT);
     expect(created.createdAt).toBe(RECORDED_AT);
 
+    const audit = await new SqliteRecordRepository(db).list({
+      recordType: PROVENANCE_RECORD_TYPE,
+    });
+    expect(audit).toHaveLength(1);
+    expect(audit[0].payload).toMatchObject({
+      entityType: 'record',
+      entityId: created.id,
+      action: 'create',
+      actor: 'ci',
+      occurredAt: OCCURRED_AT,
+      after: {
+        description: 'Observed a failing migration',
+        recordType: 'observation',
+        actor: 'ci',
+      },
+    });
+
     const loaded = await service.getRecord(created.id);
     expect(loaded).toEqual(created);
     await closeQuietly(db);
@@ -306,6 +334,7 @@ describe('RecordService application boundary', () => {
       recordType: 'external_event',
       occurredAt: OCCURRED_AT,
       recordedAt: '2026-08-11T08:00:00.000Z',
+      actor: 'user',
     });
 
     expect(created.recordedAt).toBe('2026-08-11T08:00:00.000Z');
@@ -332,6 +361,7 @@ describe('RecordService application boundary', () => {
         description: 'Bad type',
         recordType: 'vibe',
         occurredAt: OCCURRED_AT,
+        actor: 'user',
       }),
     ).rejects.toThrow(/Unsupported record type/);
     await expect(
@@ -339,12 +369,59 @@ describe('RecordService application boundary', () => {
         description: 'Bad payload',
         recordType: 'action',
         occurredAt: OCCURRED_AT,
+        actor: 'user',
         payload: { fn: () => 1 },
       }),
     ).rejects.toThrow(/JSON/);
 
     const repository = new SqliteRecordRepository(db);
     expect(await repository.getById('record-1')).toBeNull();
+    await closeQuietly(db);
+  });
+
+  it('rolls back Record creation for both core and provenance persistence failures', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteRecordRepository(db);
+    const command = {
+      description: 'Atomic user-facing occurrence',
+      recordType: 'action',
+      occurredAt: OCCURRED_AT,
+      actor: 'user',
+    };
+
+    const coreFailure = new RecordService({
+      repository,
+      unitOfWork: sqliteUnitOfWork(db),
+      records: () => ({
+        add: async () => { throw new Error('core record write failed'); },
+        getById: async () => null,
+      }),
+      clock: { now: () => RECORDED_AT },
+      ids: { newId: () => 'record-core-failure' },
+    });
+    await expect(coreFailure.createRecord(command)).rejects.toBeInstanceOf(
+      MutationPersistenceError,
+    );
+
+    let writes = 0;
+    const provenanceFailure = new RecordService({
+      repository,
+      unitOfWork: sqliteUnitOfWork(db),
+      records: (context) => ({
+        add: async (record) => {
+          writes += 1;
+          if (writes === 2) throw new Error('provenance record write failed');
+          await new SqliteRecordRepository(context).add(record);
+        },
+        getById: async (id) => new SqliteRecordRepository(context).getById(id),
+      }),
+      clock: { now: () => RECORDED_AT },
+      ids: { newId: () => `record-provenance-failure-${writes}` },
+    });
+    await expect(provenanceFailure.createRecord(command)).rejects.toBeInstanceOf(
+      ProvenancePersistenceError,
+    );
+    expect(await repository.list({ status: 'all' })).toEqual([]);
     await closeQuietly(db);
   });
 });

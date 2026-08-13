@@ -68,7 +68,13 @@ describe('Record query, classification, and semantic linking (#57)', () => {
     expect((await repository.list({ status: 'archived' })).map((value) => value.id)).toEqual(['c']);
     expect((await repository.list({ occurredAt: { start: T1 }, recordedAt: { end: T2 }, recordType: 'observation', actor: 'agent-a' })).map((value) => value.id)).toEqual(['b']);
 
-    const service = new RecordService({ repository, clock: { now: () => T3 }, ids: { newId: () => 'unused' } });
+    const service = new RecordService({
+      repository,
+      unitOfWork: sqliteUnitOfWork(db),
+      records: (context) => new SqliteRecordRepository(context),
+      clock: { now: () => T3 },
+      ids: { newId: () => 'unused' },
+    });
     expect((await service.listRecordHistory({ recordType: 'action' })).map((value) => value.id)).toEqual(['c']);
     await closeQuietly(db);
   });

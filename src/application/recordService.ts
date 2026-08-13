@@ -2,10 +2,13 @@ import { newId, nowIso } from '../domain/ids';
 import type { EntityId, IsoTimestamp } from '../domain/ids';
 import { createRecord } from '../domain/record';
 import type { Record } from '../domain/record';
+import { MutationProvenanceService } from './mutationProvenanceService';
 import type {
   RecordHistoryRepository,
   RecordListOptions,
+  RecordRepository,
 } from '../persistence/recordRepository';
+import type { UnitOfWork } from './unitOfWork';
 
 /**
  * Application boundary for creating and retrieving Records.
@@ -50,29 +53,44 @@ export interface CreateRecordCommand {
   occurredAt: IsoTimestamp;
   recordedAt?: IsoTimestamp;
   title?: string;
-  actor?: string;
+  /** Identifies the actor who created this user-facing Record and its audit. */
+  actor: string;
   payload?: unknown;
 }
 
-export interface RecordServicePorts {
+export interface RecordServicePorts<TContext> {
+  /** Read path used by record queries. */
   repository: RecordHistoryRepository;
+  /** Atomic boundary shared by the user Record and its creation provenance. */
+  unitOfWork: UnitOfWork<TContext>;
+  /** Bind the Record repository to the transaction context. */
+  records: (context: TContext) => RecordRepository;
   clock?: Clock;
   ids?: IdGenerator;
   /** Extends or replaces the default record-type policy. */
   supportedRecordTypes?: readonly string[];
 }
 
-export class RecordService {
+export class RecordService<TContext> {
   private readonly repository: RecordHistoryRepository;
+  private readonly records: (context: TContext) => RecordRepository;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
   private readonly supportedRecordTypes?: readonly string[];
+  private readonly provenance: MutationProvenanceService<TContext>;
 
-  constructor(ports: RecordServicePorts) {
+  constructor(ports: RecordServicePorts<TContext>) {
     this.repository = ports.repository;
+    this.records = ports.records;
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
     this.supportedRecordTypes = ports.supportedRecordTypes;
+    this.provenance = new MutationProvenanceService({
+      unitOfWork: ports.unitOfWork,
+      records: ports.records,
+      clock: this.clock,
+      ids: this.ids,
+    });
   }
 
   /** Validate and persist a new Record, returning the stored aggregate. */
@@ -93,8 +111,20 @@ export class RecordService {
         supportedRecordTypes: this.supportedRecordTypes,
       },
     );
-    await this.repository.add(record);
-    return record;
+    return this.provenance.mutateWithProvenance({
+      entityType: 'record',
+      entityId: record.id,
+      action: 'create',
+      actor: command.actor,
+      occurredAt: command.occurredAt,
+      after: { ...record },
+      // The provenance transport writes directly through the repository,
+      // never through RecordService, so a Record's one audit cannot recurse.
+      mutate: async (context) => {
+        await this.records(context).add(record);
+        return record;
+      },
+    });
   }
 
   /** Return the Record with this id, or throw `RecordNotFoundError`. */
