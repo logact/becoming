@@ -43,6 +43,7 @@ jobs:
         env:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
           APPLE_TEAM_TYPE: ${{ vars.APPLE_TEAM_TYPE }}
+          ASC_APP_ID: ${{ vars.ASC_APP_ID }}
           ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
         shell: bash
         run: |
@@ -50,12 +51,22 @@ jobs:
           : "${ASC_API_KEY_P8:?Set the ASC_API_KEY_P8 repository secret}"
           : "${APPLE_TEAM_ID:?Set the APPLE_TEAM_ID repository variable}"
           : "${APPLE_TEAM_TYPE:?Set the APPLE_TEAM_TYPE repository variable}"
+          : "${ASC_APP_ID:?Set the ASC_APP_ID repository variable to the app's numeric Apple ID from App Store Connect}"
           case "$APPLE_TEAM_TYPE" in
             INDIVIDUAL|COMPANY_OR_ORGANIZATION|IN_HOUSE) ;;
             *) echo "::error::APPLE_TEAM_TYPE must be INDIVIDUAL, COMPANY_OR_ORGANIZATION, or IN_HOUSE"; exit 1 ;;
           esac
+          if [[ ! "$ASC_APP_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::ASC_APP_ID must be the numeric Apple ID shown under App Store Connect > App Information"
+            exit 1
+          fi
           jq -er '.submit.production.ios.ascApiKeyIssuerId | select(length > 0)' eas.json > /dev/null
           jq -er '.submit.production.ios.ascApiKeyId | select(length > 0)' eas.json > /dev/null
+          configured_eas_json="$(mktemp)"
+          jq --arg asc_app_id "$ASC_APP_ID" \
+            '.submit.production.ios.ascAppId = $asc_app_id' \
+            eas.json > "$configured_eas_json"
+          mv "$configured_eas_json" eas.json
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
