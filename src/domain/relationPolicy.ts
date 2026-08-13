@@ -126,6 +126,22 @@ export const PROJECT_GOAL_PURSUIT_POLICY: RelationPolicy = Object.freeze({
   validateMetadata: () => undefined,
 });
 
+/**
+ * Canonical membership of executable work in a Project context.  A Task is
+ * deliberately the source: `Task -> belongs_to -> Project`.  Membership is
+ * many-to-many — a Task may be active in several Projects and a Project may
+ * contain several Tasks — while the same active Task/Project pair is unique.
+ */
+export const TASK_PROJECT_MEMBERSHIP_RELATION_TYPE = 'belongs_to' as const;
+
+export const TASK_PROJECT_MEMBERSHIP_POLICY: RelationPolicy = Object.freeze({
+  relationType: TASK_PROJECT_MEMBERSHIP_RELATION_TYPE,
+  allowsMultipleActive: false,
+  allowsDirection: (sourceType, targetType) =>
+    sourceType === 'task' && targetType === 'project',
+  validateMetadata: () => undefined,
+});
+
 function requireNonBlankMetadataString(field: string, value: unknown): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new RelationMetadataPolicyError('lineage', `${field} must be a non-blank string`);
