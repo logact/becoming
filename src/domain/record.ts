@@ -29,8 +29,10 @@ export type { JsonValue } from './json';
  *   without loss (no functions, undefined, BigInt, non-finite numbers, or
  *   circular references).
  *
- * Record corrections and archival are out of scope for this aggregate's
- * creation contract and are added by later tasks.
+ * Corrections are separate, appended Records. Archiving retains this row and
+ * is deliberately idempotent: retrying an archive returns the first archived
+ * version unchanged, so a transient caller can safely retry without moving
+ * the historical archive time.
  */
 
 /**
@@ -179,4 +181,27 @@ export function createRecord(
   };
   validateRecord(record, supportedRecordTypes);
   return record;
+}
+
+/**
+ * Archive a Record without erasing the occurrence it captured.
+ *
+ * This is an idempotent operation. The first archive timestamp wins and a
+ * repeated request returns the same archived aggregate unchanged.
+ */
+export function archiveRecord(
+  record: Record,
+  archivedAt: IsoTimestamp = nowIso(),
+): Record {
+  if (record.archivedAt !== null) {
+    return record;
+  }
+  requireTimestamp('archivedAt', archivedAt);
+  const archived: Record = {
+    ...record,
+    archivedAt,
+    updatedAt: archivedAt,
+  };
+  validateRecord(archived);
+  return archived;
 }

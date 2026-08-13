@@ -28,6 +28,15 @@ export interface RecordRepository {
 
   /** Return the Record with this id (active or archived), or null. */
   getById(id: EntityId): Promise<Record | null>;
+
+}
+
+/** Extended Record boundary consumed only by the correction/archive feature. */
+export interface RecordHistoryRepository extends RecordRepository {
+  /** `all` is intended for authorized history readers; ordinary views use active. */
+  list(options?: { status?: 'active' | 'archived' | 'all' }): Promise<Record[]>;
+  /** Persists archival only; occurrence facts are immutable and there is no delete. */
+  save(record: Record): Promise<void>;
 }
 
 interface RecordRow {
@@ -77,7 +86,7 @@ function toDomain(row: RecordRow): Record {
 }
 
 /** RecordRepository over the SqliteDatabase port. */
-export class SqliteRecordRepository implements RecordRepository {
+export class SqliteRecordRepository implements RecordHistoryRepository {
   constructor(private readonly db: SqliteDatabase) {}
 
   async add(record: Record): Promise<void> {
@@ -112,5 +121,60 @@ export class SqliteRecordRepository implements RecordRepository {
       [id],
     );
     return row === null ? null : toDomain(row);
+  }
+
+  async list(
+    options: { status?: 'active' | 'archived' | 'all' } = {},
+  ): Promise<Record[]> {
+    const status = options.status ?? 'active';
+    const where =
+      status === 'active'
+        ? 'WHERE archived_at IS NULL'
+        : status === 'archived'
+          ? 'WHERE archived_at IS NOT NULL'
+          : '';
+    const rows = await this.db.getAllAsync<RecordRow>(
+      `SELECT id, title, description, record_type, occurred_at, recorded_at,
+              actor, payload, created_at, updated_at, archived_at
+       FROM records ${where} ORDER BY recorded_at ASC, id ASC`,
+    );
+    return rows.map(toDomain);
+  }
+
+  async save(record: Record): Promise<void> {
+    validateRecord(record);
+    const stored = await this.getById(record.id);
+    if (stored === null) {
+      throw new Error(`Cannot save unknown Record ${record.id}`);
+    }
+    // A Record is an occurrence, so no application path may rewrite its
+    // captured facts. The only permitted update is active -> archived; a
+    // repeated save of the first archived value is harmless for idempotency.
+    const occurrenceChanged =
+      stored.title !== record.title ||
+      stored.description !== record.description ||
+      stored.recordType !== record.recordType ||
+      stored.occurredAt !== record.occurredAt ||
+      stored.recordedAt !== record.recordedAt ||
+      stored.actor !== record.actor ||
+      JSON.stringify(stored.payload) !== JSON.stringify(record.payload) ||
+      stored.createdAt !== record.createdAt;
+    if (occurrenceChanged) {
+      throw new Error(`Record ${record.id} occurrence facts are immutable`);
+    }
+    if (stored.archivedAt !== null && record.archivedAt !== stored.archivedAt) {
+      throw new Error(`Record ${record.id} archive timestamp is immutable`);
+    }
+    if (stored.archivedAt === null && record.archivedAt === null) {
+      throw new Error(`Record ${record.id} may only be saved to archive it`);
+    }
+    const row = toRow(record);
+    const result = await this.db.runAsync(
+      'UPDATE records SET updated_at = ?, archived_at = ? WHERE id = ?',
+      [row.updated_at, row.archived_at, row.id],
+    );
+    if (result.changes === 0) {
+      throw new Error(`Cannot save unknown Record ${record.id}`);
+    }
   }
 }

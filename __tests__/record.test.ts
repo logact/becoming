@@ -3,12 +3,20 @@ import {
   RecordService,
 } from '../src/application/recordService';
 import {
+  RecordCorrectionPersistenceError,
+  RecordHistoryService,
+} from '../src/application/recordHistoryService';
+import {
   RECORD_TYPES,
+  archiveRecord,
   assertJsonValue,
   createRecord,
   validateRecord,
 } from '../src/domain/record';
+import { buildRecordCorrectionPayload } from '../src/domain/recordCorrection';
 import { SqliteRecordRepository } from '../src/persistence/recordRepository';
+import { SqliteRelationRepository } from '../src/persistence/relationRepository';
+import { sqliteUnitOfWork } from '../src/persistence/transactions';
 import { closeQuietly, createTestDatabase } from './helpers/testDatabase';
 
 const OCCURRED_AT = '2026-08-10T09:30:00.000Z';
@@ -371,6 +379,145 @@ describe('records schema shape', () => {
     );
     expect(ddl?.sql.toUpperCase()).not.toMatch(/FOREIGN\s+KEY/);
     expect(ddl?.sql.toUpperCase()).not.toMatch(/REFERENCES/);
+    await closeQuietly(db);
+  });
+});
+
+describe('Record correction and archive history (#56)', () => {
+  const ARCHIVED_AT = '2026-08-13T10:00:00.000Z';
+
+  function historyService(
+    db: Awaited<ReturnType<typeof createTestDatabase>>,
+    overrides: Partial<{
+      records: () => SqliteRecordRepository;
+      relations: () => SqliteRelationRepository;
+    }> = {},
+  ) {
+    let nextId = 0;
+    return new RecordHistoryService({
+      unitOfWork: sqliteUnitOfWork(db),
+      records: () => overrides.records?.() ?? new SqliteRecordRepository(db),
+      relations: () => overrides.relations?.() ?? new SqliteRelationRepository(db),
+      clock: { now: () => RECORDED_AT },
+      ids: { newId: () => `history-${++nextId}` },
+    });
+  }
+
+  it('builds a correction with only allowed changed values and filters sensitive payload data', () => {
+    const target = createRecord({
+      ...validInput(),
+      title: 'Private note',
+      payload: { public: 'before', apiKey: 'do-not-copy', nested: { token: 'hide', safe: 1 } },
+    });
+
+    const payload = buildRecordCorrectionPayload(target, {
+      description: 'Corrected occurrence description',
+      payload: { public: 'after', password: 'do-not-copy', nested: { secret: 'hide', safe: 2 } },
+    });
+
+    expect(payload).toEqual({
+      targetRecordId: target.id,
+      changes: {
+        description: { before: target.description, after: 'Corrected occurrence description' },
+        payload: {
+          before: { public: 'before', nested: { safe: 1 } },
+          after: { public: 'after', nested: { safe: 2 } },
+        },
+      },
+    });
+    expect(() => buildRecordCorrectionPayload(target, { actor: 'other' } as never)).toThrow(/unsupported fields/);
+    expect(() => buildRecordCorrectionPayload(target, {})).toThrow(/at least one/);
+  });
+
+  it('appends an independent correction and its semantic link atomically without changing the original', async () => {
+    const db = await createTestDatabase();
+    const records = new SqliteRecordRepository(db);
+    const original = createRecord({ ...validInput(), actor: 'reporter', payload: { value: 'old' } }, { id: 'original', now: RECORDED_AT });
+    await records.add(original);
+    const service = historyService(db);
+
+    const result = await service.correct({
+      targetRecordId: original.id,
+      actor: 'editor',
+      occurredAt: ARCHIVED_AT,
+      changes: { description: 'Corrected description', payload: { value: 'new' } },
+    });
+
+    expect(await records.getById(original.id)).toEqual(original);
+    expect(result.correction).toMatchObject({
+      id: 'history-1', recordType: 'correction', actor: 'editor', occurredAt: ARCHIVED_AT,
+      payload: {
+        targetRecordId: original.id,
+        changes: {
+          description: { before: original.description, after: 'Corrected description' },
+          payload: { before: { value: 'old' }, after: { value: 'new' } },
+        },
+      },
+    });
+    expect(result.relation).toMatchObject({
+      id: 'history-2', sourceType: 'record', sourceId: result.correction.id,
+      relationType: 'related_to', targetType: 'record', targetId: original.id,
+      metadata: { semantic: 'record_correction' },
+    });
+    await closeQuietly(db);
+  });
+
+  it('rolls back the correction when the semantic relation write fails', async () => {
+    const db = await createTestDatabase();
+    const records = new SqliteRecordRepository(db);
+    const original = createRecord(validInput(), { id: 'original', now: RECORDED_AT });
+    await records.add(original);
+    const service = historyService(db, {
+      relations: () => ({ add: async () => { throw new Error('relation unavailable'); } } as unknown as SqliteRelationRepository),
+    });
+
+    await expect(service.correct({ targetRecordId: original.id, actor: 'editor', changes: { description: 'Corrected' } }))
+      .rejects.toBeInstanceOf(RecordCorrectionPersistenceError);
+    expect(await records.list({ status: 'all' })).toEqual([original]);
+    await closeQuietly(db);
+  });
+
+  it('rolls back without a relation when the correction Record write fails', async () => {
+    const db = await createTestDatabase();
+    const records = new SqliteRecordRepository(db);
+    const original = createRecord(validInput(), { id: 'original', now: RECORDED_AT });
+    await records.add(original);
+    const service = historyService(db, {
+      records: () => ({
+        getById: records.getById.bind(records),
+        list: records.list.bind(records),
+        save: records.save.bind(records),
+        add: async () => { throw new Error('record unavailable'); },
+      } as unknown as SqliteRecordRepository),
+    });
+
+    await expect(service.correct({ targetRecordId: original.id, actor: 'editor', changes: { description: 'Corrected' } }))
+      .rejects.toBeInstanceOf(RecordCorrectionPersistenceError);
+    expect(await new SqliteRelationRepository(db).listByTarget('record', original.id)).toEqual([]);
+    await closeQuietly(db);
+  });
+
+  it('archives by retention, is idempotent, and exposes active/archive/history visibility', async () => {
+    const db = await createTestDatabase();
+    const records = new SqliteRecordRepository(db);
+    const original = createRecord(validInput(), { id: 'original', now: RECORDED_AT });
+    await records.add(original);
+    const service = historyService(db);
+    await service.correct({ targetRecordId: original.id, actor: 'editor', changes: { title: 'Correct title' } });
+
+    const archived = await service.archive({ recordId: original.id, archivedAt: ARCHIVED_AT });
+    const retried = await service.archive({ recordId: original.id, archivedAt: '2026-08-14T10:00:00.000Z' });
+    expect(archived.archivedAt).toBe(ARCHIVED_AT);
+    expect(retried).toEqual(archived);
+    expect(await records.list()).toHaveLength(1);
+    expect(await records.list({ status: 'archived' })).toEqual([archived]);
+    expect(await service.getHistory(original.id, { includeArchived: false })).toHaveLength(1);
+    expect(await service.getHistory(original.id, { includeArchived: true })).toEqual([
+      archived,
+      expect.objectContaining({ recordType: 'correction' }),
+    ]);
+    expect('delete' in records).toBe(false);
+    expect(archiveRecord(archived, '2026-08-14T10:00:00.000Z')).toBe(archived);
     await closeQuietly(db);
   });
 });

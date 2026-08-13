@@ -52,6 +52,12 @@ export interface RelationRepository {
     targetId: EntityId,
   ): Promise<Relation | null>;
 
+  /** Return all relation history directed at one endpoint, including ended rows. */
+  listByTarget(
+    targetType: CoreEntityType,
+    targetId: EntityId,
+  ): Promise<Relation[]>;
+
   /**
    * End an existing Relation: persists only `ended_at`. Throws if the id is
    * unknown. Every other column is immutable through this boundary.
@@ -153,6 +159,21 @@ export class SqliteRelationRepository implements RelationRepository {
       [sourceType, sourceId, relationType, targetType, targetId],
     );
     return row === null ? null : toDomain(row);
+  }
+
+  async listByTarget(
+    targetType: CoreEntityType,
+    targetId: EntityId,
+  ): Promise<Relation[]> {
+    const rows = await this.db.getAllAsync<RelationRow>(
+      `SELECT id, source_type, source_id, relation_type, target_type, target_id,
+              metadata, created_at, ended_at
+       FROM relations
+       WHERE target_type = ? AND target_id = ?
+       ORDER BY created_at ASC, id ASC`,
+      [targetType, targetId],
+    );
+    return rows.map(toDomain);
   }
 
   async save(relation: Relation): Promise<void> {
