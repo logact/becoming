@@ -14,11 +14,13 @@ import {
   WorkflowApplicabilityService,
 } from '../src/application/workflowApplicabilityService';
 import { RelationService } from '../src/application/relationService';
+import { RecordRelationProvenancePort } from '../src/application/relationProvenanceService';
 import { SqliteCoreEntityLookup } from '../src/persistence/sqlite/coreEntityLookup';
 import { SqliteEntityLabelRepository } from '../src/persistence/entityLabelRepository';
 import { SqliteLabelRepository } from '../src/persistence/labelRepository';
 import { SqliteProjectRepository } from '../src/persistence/projectRepository';
 import { SqliteRelationRepository } from '../src/persistence/relationRepository';
+import { SqliteRecordRepository } from '../src/persistence/recordRepository';
 import { sqliteUnitOfWork } from '../src/persistence/transactions';
 import { SqliteWorkflowRepository } from '../src/persistence/workflowRepository';
 import { SqliteWorkflowStateRepository } from '../src/persistence/workflowStateRepository';
@@ -45,6 +47,11 @@ describe('WorkflowApplicabilityService', () => {
       unitOfWork: sqliteUnitOfWork(db),
       relations: (context) => new SqliteRelationRepository(context),
       endpoints: (context) => new SqliteCoreEntityLookup(context),
+      provenance: new RecordRelationProvenancePort({
+        records: (context) => new SqliteRecordRepository(context),
+        clock: { now: () => NOW },
+        ids: { newId: () => `relation-audit-${++relationNumber}` },
+      }),
       clock: { now: () => NOW },
       ids: { newId: () => `relation-${++relationNumber}` },
     });

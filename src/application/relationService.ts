@@ -39,13 +39,12 @@ import type { CoreEntityLookup } from './coreEntityLookup';
  * Hard deletion is forbidden — no delete operation exists on this service or
  * on the repository; replacing a relationship is end-old/create-new.
  *
- * Provenance integration: when a `provenance` port is supplied, the Relation
- * write and the provenance append share one unit of work — either both commit
- * or neither does. The notice handed to the port identifies both endpoints,
- * the relation type, the metadata, the actor, and the event time. The
- * concrete relation-change provenance Record contract lands with its owning
- * Feature (#5); this service defines the atomic seam it plugs into. Without
- * the port, creates and ends still run atomically on their own.
+ * Provenance integration: every Relation create and end requires a
+ * `provenance` port. The Relation write and the provenance append share one
+ * unit of work — either both commit or neither does. The notice handed to the
+ * port identifies both endpoints, the relation type, the metadata, the
+ * actor, and the event time. `RecordRelationProvenancePort` is the canonical
+ * Record-backed implementation of this required boundary.
  *
  * The service depends only on framework-neutral ports — a `Clock`, an
  * `IdGenerator`, a `UnitOfWork`, and repository/lookup factories bound to the
@@ -185,7 +184,7 @@ export interface RelationMutationNotice {
 }
 
 /**
- * Optional provenance port. `append` runs inside the same unit of work as the
+ * Required provenance port. `append` runs inside the same unit of work as the
  * Relation write; throwing rolls both back.
  */
 export interface RelationProvenancePort<TContext> {
@@ -241,8 +240,8 @@ export interface RelationServicePorts<TContext> {
   relations: (context: TContext) => RelationRepository;
   /** Bind the typed-endpoint lookup to the unit-of-work context. */
   endpoints: (context: TContext) => RelationEndpointLookup;
-  /** Optional provenance appender, executed in the same unit of work. */
-  provenance?: RelationProvenancePort<TContext>;
+  /** Required provenance appender, executed in the same unit of work. */
+  provenance: RelationProvenancePort<TContext>;
   /** Per-relation-type policy overrides (see `resolveRelationPolicy`). */
   policies?: Readonly<Record<string, RelationPolicy>>;
   /** Extends or replaces the default relation-type policy. */
@@ -262,7 +261,7 @@ export class RelationService<TContext> {
   private readonly unitOfWork: UnitOfWork<TContext>;
   private readonly relations: (context: TContext) => RelationRepository;
   private readonly endpoints: (context: TContext) => RelationEndpointLookup;
-  private readonly provenance?: RelationProvenancePort<TContext>;
+  private readonly provenance: RelationProvenancePort<TContext>;
   private readonly policies?: Readonly<Record<string, RelationPolicy>>;
   private readonly supportedRelationTypes?: readonly string[];
   private readonly clock: Clock;
@@ -507,8 +506,8 @@ export class RelationService<TContext> {
   }
 
   /**
-   * Append provenance inside the current unit of work when the port is
-   * configured; a failure rolls the Relation write back with it.
+   * Append provenance inside the current unit of work; a failure rolls the
+   * Relation write back with it.
    */
   private async appendProvenance(
     context: TContext,
@@ -516,9 +515,6 @@ export class RelationService<TContext> {
     relation: Relation,
     actor: string,
   ): Promise<void> {
-    if (this.provenance === undefined) {
-      return;
-    }
     try {
       await this.provenance.append(context, {
         kind,

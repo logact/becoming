@@ -4,12 +4,14 @@ import {
   LabelNotFoundError,
 } from '../src/application/labelAssignmentService';
 import { RelationEndpointNotFoundError, RelationService } from '../src/application/relationService';
+import { RecordRelationProvenancePort } from '../src/application/relationProvenanceService';
 import { RecordService } from '../src/application/recordService';
 import { SqliteCoreEntityLookup } from '../src/persistence/sqlite/coreEntityLookup';
 import { SqliteEntityLabelRepository } from '../src/persistence/entityLabelRepository';
 import { SqliteLabelRepository } from '../src/persistence/labelRepository';
 import { SqliteRecordRepository } from '../src/persistence/recordRepository';
 import { SqliteRelationRepository } from '../src/persistence/relationRepository';
+import type { SqliteDatabase } from '../src/persistence/database';
 import { sqliteUnitOfWork } from '../src/persistence/transactions';
 import { archiveRecord, createRecord } from '../src/domain/record';
 import { createLabel } from '../src/domain/label';
@@ -112,10 +114,15 @@ describe('Record query, classification, and semantic linking (#57)', () => {
     const ids = await insertCoreEndpoints(db, source.id);
     let sequence = 0;
     const relations = new SqliteRelationRepository(db);
-    const service = new RelationService({
+    const service = new RelationService<SqliteDatabase>({
       unitOfWork: sqliteUnitOfWork(db),
       relations: (context) => new SqliteRelationRepository(context),
       endpoints: (context) => new SqliteCoreEntityLookup(context),
+      provenance: new RecordRelationProvenancePort({
+        records: (context) => new SqliteRecordRepository(context),
+        clock: { now: () => T2 },
+        ids: { newId: () => `relation-audit-${++sequence}` },
+      }),
       clock: { now: () => T2 }, ids: { newId: () => `relation-${++sequence}` },
     });
 

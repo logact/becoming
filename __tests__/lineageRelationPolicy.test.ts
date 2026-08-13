@@ -15,8 +15,10 @@ import {
   RelationTargetCardinalityError,
   RelationService,
 } from '../src/application/relationService';
+import { RecordRelationProvenancePort } from '../src/application/relationProvenanceService';
 import { LineageQueryService } from '../src/application/lineageQueryService';
 import { SqliteRelationRepository } from '../src/persistence/relationRepository';
+import { SqliteRecordRepository } from '../src/persistence/recordRepository';
 import { sqliteUnitOfWork } from '../src/persistence/transactions';
 import { closeQuietly, createTestDatabase } from './helpers/testDatabase';
 import type { SqliteDatabase } from '../src/persistence/database';
@@ -83,11 +85,16 @@ describe('lineage application policy', () => {
   afterEach(async () => { await closeQuietly(db); });
 
   function service() {
-    return new RelationService({
+    return new RelationService<SqliteDatabase>({
       unitOfWork: sqliteUnitOfWork(db),
       relations: (context) => new SqliteRelationRepository(context),
       endpoints: () => ({
         exists: async (type, entityId) => endpoints.has(`${type}:${entityId}`),
+      }),
+      provenance: new RecordRelationProvenancePort({
+        records: (context) => new SqliteRecordRepository(context),
+        clock: { now: () => NOW },
+        ids: { newId: () => `lineage-audit-${++id}` },
       }),
       clock: { now: () => NOW },
       ids: { newId: () => `lineage-${++id}` },

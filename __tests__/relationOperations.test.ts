@@ -160,7 +160,11 @@ function makeService(
     unitOfWork: sqliteUnitOfWork(db),
     relations: (context) => new SqliteRelationRepository(context),
     endpoints: (context) => endpointLookup(context, extraEndpoints),
-    provenance: options.provenance,
+    provenance: options.provenance ?? new RecordRelationProvenancePort({
+      records: (context) => new SqliteRecordRepository(context),
+      clock: fixedClock,
+      ids: { newId: () => `default-audit-${++idCounter}` },
+    }),
     policies: options.policies,
     supportedRelationTypes: options.supportedRelationTypes,
     clock: fixedClock,
@@ -325,13 +329,13 @@ describe('RelationService create', () => {
     });
   });
 
-  it('creates a relation atomically when no provenance port is configured', async () => {
+  it('creates a relation with the required default Record-backed provenance port', async () => {
     const service = makeService(db);
 
     const relation = await service.createRelation(createCommand());
 
     expect(await relationCount(db)).toBe(1);
-    expect(await recordCount(db)).toBe(0);
+    expect(await recordCount(db)).toBe(1);
     expect(
       await new SqliteRelationRepository(db).getById(relation.id),
     ).toEqual(relation);
@@ -856,7 +860,9 @@ describe('RelationService transactions', () => {
     // is untouched and no provenance was appended.
     expect(events).toHaveLength(0);
     expect(await relationCount(db)).toBe(1);
-    expect(await recordCount(db)).toBe(0);
+    // The initial successful create has its required creation audit; the
+    // colliding write adds no second Record.
+    expect(await recordCount(db)).toBe(1);
     const original = await new SqliteRelationRepository(db).getById(
       'rel-collision',
     );
@@ -878,7 +884,9 @@ describe('RelationService transactions', () => {
     const stored = await new SqliteRelationRepository(db).getById(relation.id);
     expect(stored?.endedAt).toBeNull();
     expect(await activeRelationCount(db)).toBe(1);
-    expect(await recordCount(db)).toBe(0);
+    // The initial successful create has its required creation audit; the
+    // failed end contributes no misleading end Record.
+    expect(await recordCount(db)).toBe(1);
   });
 
   it('rolls back both relation changes when replacement provenance fails', async () => {
@@ -901,7 +909,9 @@ describe('RelationService transactions', () => {
     expect(await activeRelationCount(db)).toBe(1);
     expect((await new SqliteRelationRepository(db).getById(relation.id))?.endedAt)
       .toBeNull();
-    expect(await recordCount(db)).toBe(0);
+    // The initial successful create has its required creation audit; neither
+    // half of the failed replacement adds a Record.
+    expect(await recordCount(db)).toBe(1);
   });
 });
 
