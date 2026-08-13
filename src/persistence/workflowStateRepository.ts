@@ -86,6 +86,14 @@ export interface WorkflowStateRepository {
   listActiveForMachine(machine: WorkflowStateMachine): Promise<WorkflowState[]>;
 
   /**
+   * Return every active template state belonging to a Workflow. The result is
+   * grouped deterministically by machine identity and then by state order so
+   * callers can take one coherent snapshot before initializing Project
+   * machines.
+   */
+  listActiveForWorkflow(workflowId: EntityId): Promise<WorkflowState[]>;
+
+  /**
    * Return the full template history of exactly one machine — active and
    * archived — with the same deterministic ordering as
    * `listActiveForMachine`.
@@ -388,6 +396,16 @@ export class SqliteWorkflowStateRepository implements WorkflowStateRepository {
          AND archived_at IS NULL
        ${MACHINE_ORDER}`,
       [machine.workflowId, machine.entityType, machine.labelId],
+    );
+    return rows.map(toDomain);
+  }
+
+  async listActiveForWorkflow(workflowId: EntityId): Promise<WorkflowState[]> {
+    const rows = await this.db.getAllAsync<WorkflowStateRow>(
+      `SELECT ${COLUMNS} FROM workflow_states
+       WHERE workflow_id = ? AND archived_at IS NULL
+       ORDER BY entity_type, label_id, sort_order IS NULL, sort_order, created_at, id`,
+      [workflowId],
     );
     return rows.map(toDomain);
   }
