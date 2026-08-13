@@ -124,7 +124,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [x] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11) **(done)**
 - [x] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6) **(done)**
 - [ ] [#59](https://github.com/logact/becoming/issues/59) — Capture creation provenance for all core concepts (Feature #30)
-- [ ] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5) **(processing)**
+- [x] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5) **(done)**
 - [ ] [#75](https://github.com/logact/becoming/issues/75) — Query current and historical semantic relations (Feature #19) **(processing)**
 - [x] [#89](https://github.com/logact/becoming/issues/89) — Implement Goal mutation commands with provenance (Feature #17) **(done)**
 - [x] [#91](https://github.com/logact/becoming/issues/91) — Implement Project domain, persistence, and mutations (Feature #20) **(done)**
@@ -134,7 +134,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 
 Exit gate: topology, transition validation, Record queries, mutation history, initial budget contracts, relation audit, lineage policies, and Goal querying pass integration tests.
 
-- [ ] [#39](https://github.com/logact/becoming/issues/39) — Complete workflow state history and provenance coverage (Feature #25)
+- [ ] [#39](https://github.com/logact/becoming/issues/39) — Complete workflow state history and provenance coverage (Feature #25) **(processing)**
 - [ ] [#41](https://github.com/logact/becoming/issues/41) — Enforce workflow transition topology and duplicate policies (Feature #26)
 - [ ] [#52](https://github.com/logact/becoming/issues/52) — Build the Project transition validation engine (Feature #29)
 - [ ] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6)
@@ -250,6 +250,7 @@ Before closing M1:
 | [#94](https://github.com/logact/becoming/issues/94) | ~2026-08-13T06:12Z | 2026-08-13T06:22:15Z | ~10m total (including 1m 20s integration fix) | Unavailable (worker runtime did not expose it) | [`888193e`](https://github.com/logact/becoming/commit/888193e673eaf371983a5b74b9ec09b9c53068a1), [`92929ba`](https://github.com/logact/becoming/commit/92929ba4123389ef44c1d69ea586010af246658b) |
 | [#89](https://github.com/logact/becoming/issues/89) | ~2026-08-13T06:18Z | 2026-08-13T06:26:28Z | ~8m | Unavailable (worker runtime did not expose it) | [`457d9e0`](https://github.com/logact/becoming/commit/457d9e033d43c2ee730c9c2cb41bdc09b323d65d) |
 | [#91](https://github.com/logact/becoming/issues/91) | ~2026-08-13T06:27Z | ~2026-08-13T06:35Z | ~8m | Unavailable (worker runtime did not expose it) | [`140d714`](https://github.com/logact/becoming/commit/140d714) |
+| [#64](https://github.com/logact/becoming/issues/64) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`c1ae076`](https://github.com/logact/becoming/commit/c1ae076e8d8461f3a9a7608bc363e5cc5398e5f4) |
 
 ## Maintaining the plan
 
