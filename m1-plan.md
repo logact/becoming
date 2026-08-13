@@ -175,7 +175,7 @@ Exit gate: Project machines initialize atomically; resource allocation/usage con
 
 - [x] [#44](https://github.com/logact/becoming/issues/44) — Atomically initialize independent Project machines from templates (Feature #27) **(done)**
 - [x] [#67](https://github.com/logact/becoming/issues/67) — Define project-funded task allocation contracts (Feature #13) **(done)**
-- [ ] [#76](https://github.com/logact/becoming/issues/76) — Define append-oriented resource usage records (Feature #14)
+- [ ] [#76](https://github.com/logact/becoming/issues/76) — Define append-oriented resource usage records (Feature #14) **(processing)**
 - [x] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9) **(done)**
 - [ ] [#100](https://github.com/logact/becoming/issues/100) — Define project-scoped decomposition policies (Feature #21)
 
@@ -187,16 +187,16 @@ Exit gate: applied Workflow behavior, temporal allocation/consumption, unified t
 - [x] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13) **(done)**
 - [ ] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14)
 - [ ] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15)
-- [ ] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10) **(processing)**
+- [x] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10) **(done)**
 - [ ] [#101](https://github.com/logact/becoming/issues/101) — Implement cycle-safe decomposition mutations (Feature #21)
 
 ### Wave 10 — Historical planning and exception contracts
 
 Exit gate: allocation/usage histories reconcile, timeline pagination is stable, planned-versus-actual policy is explicit, and hierarchy traversal is bounded and deterministic.
 
-- [ ] [#69](https://github.com/logact/becoming/issues/69) — Query allocation totals, history, and policy status (Feature #13) **(processing)**
+- [x] [#69](https://github.com/logact/becoming/issues/69) — Query allocation totals, history, and policy status (Feature #13) **(done)**
 - [ ] [#80](https://github.com/logact/becoming/issues/80) — Query and reconcile resource usage history (Feature #14)
-- [ ] [#87](https://github.com/logact/becoming/issues/87) — Add stable cursor pagination to entity timelines (Feature #10)
+- [ ] [#87](https://github.com/logact/becoming/issues/87) — Add stable cursor pagination to entity timelines (Feature #10) **(processing)**
 - [ ] [#97](https://github.com/logact/becoming/issues/97) — Define planned-versus-actual exception semantics (Feature #16)
 - [ ] [#102](https://github.com/logact/becoming/issues/102) — Query bounded Goal and Task hierarchies (Feature #21)
 
@@ -278,6 +278,8 @@ Before closing M1:
 | [#72](https://github.com/logact/becoming/issues/72) | Approximate (worker did not capture boundaries) | Approximate | ~7m | Unavailable (worker runtime did not expose it) | [`ea8bdb3`](https://github.com/logact/becoming/commit/ea8bdb3d9631a9917eb44b69b4d4f0de5178767a) |
 | [#68](https://github.com/logact/becoming/issues/68) | Approximate (worker did not capture boundaries) | Approximate | ~17m | Unavailable (worker runtime did not expose it) | [`22f1e47`](https://github.com/logact/becoming/commit/22f1e47) |
 | [#85](https://github.com/logact/becoming/issues/85) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`62a9ea3`](https://github.com/logact/becoming/commit/62a9ea3) |
+| [#69](https://github.com/logact/becoming/issues/69) | Approximate (worker did not capture boundaries) | Approximate | ~14m | Unavailable (worker runtime did not expose it) | [`768f196`](https://github.com/logact/becoming/commit/768f196) |
+| [#86](https://github.com/logact/becoming/issues/86) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`c97e638`](https://github.com/logact/becoming/commit/c97e638) |
 
 ## Maintaining the plan
 
