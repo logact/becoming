@@ -196,7 +196,7 @@ Exit gate: allocation/usage histories reconcile, timeline pagination is stable, 
 
 - [x] [#69](https://github.com/logact/becoming/issues/69) — Query allocation totals, history, and policy status (Feature #13) **(done)**
 - [ ] [#80](https://github.com/logact/becoming/issues/80) — Query and reconcile resource usage history (Feature #14)
-- [ ] [#87](https://github.com/logact/becoming/issues/87) — Add stable cursor pagination to entity timelines (Feature #10) **(processing)**
+- [x] [#87](https://github.com/logact/becoming/issues/87) — Add stable cursor pagination to entity timelines (Feature #10) **(done)**
 - [ ] [#97](https://github.com/logact/becoming/issues/97) — Define planned-versus-actual exception semantics (Feature #16)
 - [ ] [#102](https://github.com/logact/becoming/issues/102) — Query bounded Goal and Task hierarchies (Feature #21)
 
@@ -280,6 +280,7 @@ Before closing M1:
 | [#85](https://github.com/logact/becoming/issues/85) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`62a9ea3`](https://github.com/logact/becoming/commit/62a9ea3) |
 | [#69](https://github.com/logact/becoming/issues/69) | Approximate (worker did not capture boundaries) | Approximate | ~14m | Unavailable (worker runtime did not expose it) | [`768f196`](https://github.com/logact/becoming/commit/768f196) |
 | [#86](https://github.com/logact/becoming/issues/86) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`c97e638`](https://github.com/logact/becoming/commit/c97e638) |
+| [#87](https://github.com/logact/becoming/issues/87) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`917d2b1`](https://github.com/logact/becoming/commit/917d2b1) |
 
 ## Maintaining the plan
 
