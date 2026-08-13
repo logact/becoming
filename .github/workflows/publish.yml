@@ -1,0 +1,114 @@
+name: Publish iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      destination:
+        description: Publish destination
+        required: true
+        type: choice
+        options:
+          - testflight
+          - appstore
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-ios
+  cancel-in-progress: false
+
+env:
+  EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+jobs:
+  build-and-submit:
+    name: Build and submit to App Store Connect
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Restrict publishing to main
+        if: github.ref_name != 'main'
+        run: |
+          echo "::error::iOS publishing is only allowed from the main branch."
+          exit 1
+
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run domain and persistence tests
+        run: npm test -- --ci
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .asc
+          printf '%s' "$ASC_API_KEY_P8" | base64 --decode > .asc/app-store-connect.p8
+
+      - name: Build iOS app with EAS
+        run: npx --yes eas-cli@21.8.0 build --platform ios --profile production --non-interactive --wait
+
+      - name: Submit build to App Store Connect
+        run: npx --yes eas-cli@21.8.0 submit --platform ios --profile production --latest --non-interactive
+
+  appstore-review:
+    name: Submit for App Store review
+    if: inputs.destination == 'appstore'
+    needs:
+      - build-and-submit
+    runs-on: macos-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Write App Store Connect API key
+        env:
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .asc
+          printf '%s' "$ASC_API_KEY_P8" | base64 --decode > .asc/app-store-connect.p8
+          jq -n \
+            --arg key_id "$(jq -r .submit.production.ios.ascApiKeyId eas.json)" \
+            --arg issuer_id "$(jq -r .submit.production.ios.ascApiKeyIssuerId eas.json)" \
+            --rawfile key .asc/app-store-connect.p8 \
+            '{key_id: $key_id, issuer_id: $issuer_id, key: $key, in_house: false}' \
+            > .asc/api-key.json
+
+      - name: Submit build for App Store review
+        shell: bash
+        run: |
+          set -euo pipefail
+          fastlane deliver submit_build \
+            --app_identifier com.logact.becoming \
+            --api_key_path .asc/api-key.json \
+            --app_version "$(jq -r .expo.version app.json)" \
+            --build_number latest \
+            --skip_binary_upload true \
+            --skip_metadata true \
+            --skip_screenshots true \
+            --automatic_release false \
+            --force true
