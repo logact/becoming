@@ -118,7 +118,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [x] [#33](https://github.com/logact/becoming/issues/33) — Expose workflow discovery and provenance-aware mutation services (Feature #23)
 - [x] [#36](https://github.com/logact/becoming/issues/36) — Add label queries, lifecycle boundaries, and provenance (Feature #24) **(done)**
 - [x] [#38](https://github.com/logact/becoming/issues/38) — Enforce workflow state machine integrity and mutation rules (Feature #25) **(done)**
-- [ ] [#40](https://github.com/logact/becoming/issues/40) — Persist workflow transition templates and machine queries (Feature #26) **(processing)**
+- [x] [#40](https://github.com/logact/becoming/issues/40) — Persist workflow transition templates and machine queries (Feature #26) **(done)**
 - [ ] [#47](https://github.com/logact/becoming/issues/47) — Implement Project transition management and independence (Feature #28)
 - [ ] [#50](https://github.com/logact/becoming/issues/50) — Persist entity state history and initialize current state safely (Feature #29)
 - [ ] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11)
