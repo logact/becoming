@@ -582,11 +582,17 @@ describe('Record correction and archive history (#56)', () => {
     const service = historyService(db);
     await service.correct({ targetRecordId: original.id, actor: 'editor', changes: { title: 'Correct title' } });
 
-    const archived = await service.archive({ recordId: original.id, archivedAt: ARCHIVED_AT });
-    const retried = await service.archive({ recordId: original.id, archivedAt: '2026-08-14T10:00:00.000Z' });
+    const archived = await service.archive({ recordId: original.id, actor: 'archivist', archivedAt: ARCHIVED_AT });
+    const retried = await service.archive({ recordId: original.id, actor: 'archivist', archivedAt: '2026-08-14T10:00:00.000Z' });
     expect(archived.archivedAt).toBe(ARCHIVED_AT);
     expect(retried).toEqual(archived);
-    expect(await records.list()).toHaveLength(1);
+    const provenance = await records.list({ status: 'all', recordType: PROVENANCE_RECORD_TYPE });
+    expect(provenance).toHaveLength(1);
+    expect(provenance[0].payload).toMatchObject({
+      entityType: 'record', entityId: original.id, action: 'archive', actor: 'archivist',
+      before: { archivedAt: null }, after: { archivedAt: ARCHIVED_AT },
+    });
+    expect(await records.list()).toHaveLength(2);
     expect(await records.list({ status: 'archived' })).toEqual([archived]);
     expect(await service.getHistory(original.id, { includeArchived: false })).toHaveLength(1);
     expect(await service.getHistory(original.id, { includeArchived: true })).toEqual([

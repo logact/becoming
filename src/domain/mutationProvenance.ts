@@ -275,6 +275,26 @@ export function diffFieldMaps(
 }
 
 /**
+ * Whether an update changes a provenance-visible, material field. Audit
+ * timestamps are intentionally not considered on their own: an empty or
+ * equivalent update must not persist a timestamp-only write or a misleading
+ * success Record.
+ */
+export function hasMaterialUpdate(
+  before: EntitySnapshot,
+  after: EntitySnapshot,
+  policy: FieldSelectionPolicy,
+): boolean {
+  const diff = diffFieldMaps(
+    applyFieldPolicy(before, policy),
+    applyFieldPolicy(after, policy),
+  );
+  return Object.keys(diff.before).some(
+    (field) => field !== 'createdAt' && field !== 'updatedAt' && field !== 'archivedAt',
+  );
+}
+
+/**
  * The validated provenance payload for one core-entity mutation. `before`
  * and `after` hold policy-filtered change data: full filtered snapshots for
  * `create` (after) and `delete` (before), changed fields only for `update`,

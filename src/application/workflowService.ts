@@ -7,6 +7,10 @@ import {
   updateWorkflowDraft,
 } from '../domain/workflow';
 import type { Workflow, WorkflowDraftChanges } from '../domain/workflow';
+import {
+  hasMaterialUpdate,
+  resolveFieldPolicy,
+} from '../domain/mutationProvenance';
 import type { EntitySnapshot } from '../domain/mutationProvenance';
 import type { RecordRepository } from '../persistence/recordRepository';
 import type { WorkflowRepository } from '../persistence/workflowRepository';
@@ -210,6 +214,9 @@ export class WorkflowService<TContext> {
   ): Promise<Workflow> {
     const before = await this.requireWorkflow(id);
     const after = updateWorkflowDraft(before, changes, this.clock.now());
+    if (!hasMaterialUpdate(snapshot(before), snapshot(after), resolveFieldPolicy('workflow'))) {
+      return before;
+    }
     return this.provenance.mutateWithProvenance({
       entityType: 'workflow',
       entityId: id,

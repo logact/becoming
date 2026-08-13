@@ -1,6 +1,7 @@
 import type { EntityId, IsoTimestamp } from '../domain/ids';
 import { archiveTask, createTask, updateTask } from '../domain/task';
 import type { NewTask, Task, TaskChanges } from '../domain/task';
+import { hasMaterialUpdate, resolveFieldPolicy } from '../domain/mutationProvenance';
 import { MutationProvenanceService } from './mutationProvenanceService';
 import { systemClock, uuidGenerator } from './recordService';
 import type { Clock, IdGenerator } from './recordService';
@@ -68,6 +69,9 @@ export class TaskService<TContext> {
   ): Promise<Task> {
     const before = await this.requireTask(id);
     const after = updateTask(before, changes, this.clock.now());
+    if (!hasMaterialUpdate(snapshot(before), snapshot(after), resolveFieldPolicy('task'))) {
+      return before;
+    }
     return this.provenance.mutateWithProvenance({
       entityType: 'task', entityId: id, action: 'update', actor, occurredAt,
       before: snapshot(before), after: snapshot(after),

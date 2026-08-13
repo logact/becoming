@@ -1,6 +1,7 @@
 import type { EntityId, IsoTimestamp } from '../domain/ids';
 import { archiveGoal, createGoal, updateGoal } from '../domain/goal';
 import type { Goal, GoalChanges, NewGoal } from '../domain/goal';
+import { hasMaterialUpdate, resolveFieldPolicy } from '../domain/mutationProvenance';
 import { MutationProvenanceService } from './mutationProvenanceService';
 import { systemClock, uuidGenerator } from './recordService';
 import type { Clock, IdGenerator } from './recordService';
@@ -80,6 +81,9 @@ export class GoalService<TContext> {
   ): Promise<Goal> {
     const before = await this.requireGoal(id);
     const after = updateGoal(before, changes, this.clock.now());
+    if (!hasMaterialUpdate(snapshot(before), snapshot(after), resolveFieldPolicy('goal'))) {
+      return before;
+    }
     return this.provenance.mutateWithProvenance({
       entityType: 'goal', entityId: id, action: 'update', actor, occurredAt,
       before: snapshot(before), after: snapshot(after),

@@ -1,6 +1,7 @@
 import type { EntityId, IsoTimestamp } from '../domain/ids';
 import { archiveProject, createProject, updateProject } from '../domain/project';
 import type { NewProject, Project, ProjectChanges } from '../domain/project';
+import { hasMaterialUpdate, resolveFieldPolicy } from '../domain/mutationProvenance';
 import type { RecordRepository } from '../persistence/recordRepository';
 import type { ProjectFilter, ProjectRepository } from '../persistence/projectRepository';
 import { MutationProvenanceService } from './mutationProvenanceService';
@@ -84,6 +85,9 @@ export class ProjectService<TContext> {
   async updateProject(command: UpdateProjectCommand): Promise<Project> {
     const before = await this.requireProject(command.id);
     const after = updateProject(before, command.changes, this.clock.now());
+    if (!hasMaterialUpdate(snapshot(before), snapshot(after), resolveFieldPolicy('project'))) {
+      return before;
+    }
     return this.provenance.mutateWithProvenance({
       entityType: 'project', entityId: command.id, action: 'update',
       actor: command.actor, occurredAt: command.occurredAt,

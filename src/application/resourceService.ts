@@ -5,6 +5,10 @@ import {
   updateResource,
 } from '../domain/resource';
 import type { NewResource, Resource, ResourceChanges } from '../domain/resource';
+import {
+  hasMaterialUpdate,
+  resolveFieldPolicy,
+} from '../domain/mutationProvenance';
 import type { EntitySnapshot } from '../domain/mutationProvenance';
 import type { RecordRepository } from '../persistence/recordRepository';
 import type {
@@ -127,6 +131,9 @@ export class ResourceService<TContext> {
   async updateResource(command: UpdateResourceCommand): Promise<Resource> {
     const before = await this.requireResource(command.id);
     const after = updateResource(before, command.changes, this.clock.now());
+    if (!hasMaterialUpdate(snapshot(before), snapshot(after), resolveFieldPolicy('resource'))) {
+      return before;
+    }
     const changesSemantics = hasSemanticChange(before, after);
     return this.provenance.mutateWithProvenance({
       entityType: 'resource', entityId: command.id, action: 'update',

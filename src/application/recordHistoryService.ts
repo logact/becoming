@@ -9,6 +9,8 @@ import { createRelation } from '../domain/relation';
 import type { Relation } from '../domain/relation';
 import type { RelationRepository } from '../persistence/relationRepository';
 import type { RecordHistoryRepository } from '../persistence/recordRepository';
+import type { RecordRepository } from '../persistence/recordRepository';
+import { MutationProvenanceService } from './mutationProvenanceService';
 import { systemClock, uuidGenerator } from './recordService';
 import type { Clock, IdGenerator } from './recordService';
 import type { UnitOfWork } from './unitOfWork';
@@ -43,12 +45,17 @@ export interface CorrectRecordCommand {
 
 export interface ArchiveRecordCommand {
   recordId: EntityId;
+  /** Identifies the archive request's actor for append-only provenance. */
+  actor?: string;
+  occurredAt?: IsoTimestamp;
   archivedAt?: IsoTimestamp;
 }
 
 export interface RecordHistoryServicePorts<TContext> {
   unitOfWork: UnitOfWork<TContext>;
   records: (context: TContext) => RecordHistoryRepository;
+  /** Optional non-transactional read path for archival preconditions. */
+  readRecords?: RecordHistoryRepository;
   relations: (context: TContext) => RelationRepository;
   clock?: Clock;
   ids?: IdGenerator;
@@ -65,10 +72,17 @@ export interface RecordHistoryServicePorts<TContext> {
 export class RecordHistoryService<TContext> {
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
+  private readonly provenance: MutationProvenanceService<TContext>;
 
   constructor(private readonly ports: RecordHistoryServicePorts<TContext>) {
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
+    this.provenance = new MutationProvenanceService({
+      unitOfWork: ports.unitOfWork,
+      records: (context) => ports.records(context) as RecordRepository,
+      clock: this.clock,
+      ids: this.ids,
+    });
   }
 
   async correct(command: CorrectRecordCommand): Promise<{ correction: Record; relation: Relation }> {
@@ -119,19 +133,27 @@ export class RecordHistoryService<TContext> {
   }
 
   async archive(command: ArchiveRecordCommand): Promise<Record> {
-    return this.ports.unitOfWork.run(async (context) => {
-      const records = this.ports.records(context);
-      const target = await records.getById(command.recordId);
-      if (target === null) {
-        throw new RecordHistoryNotFoundError(command.recordId);
-      }
-      const archived = archiveRecord(target, command.archivedAt ?? this.clock.now());
-      if (archived === target) {
-        return target;
-      }
-      await records.save(archived);
-      return archived;
+    const target = await this.readRecord(command.recordId);
+    if (target === null) throw new RecordHistoryNotFoundError(command.recordId);
+    const archived = archiveRecord(target, command.archivedAt ?? this.clock.now());
+    // Retrying a successful archive is explicitly idempotent and does not
+    // append another success Record.
+    if (archived === target) return target;
+    return this.provenance.mutateWithProvenance({
+      entityType: 'record', entityId: command.recordId, action: 'archive',
+      actor: command.actor ?? 'system', occurredAt: command.occurredAt,
+      before: snapshot(target), after: snapshot(archived),
+      mutate: async (context) => {
+        const records = this.ports.records(context);
+        await records.save(archived);
+        return archived;
+      },
     });
+  }
+
+  private async readRecord(id: EntityId): Promise<Record | null> {
+    if (this.ports.readRecords !== undefined) return this.ports.readRecords.getById(id);
+    return this.ports.unitOfWork.run((context) => this.ports.records(context).getById(id));
   }
 
   /**
@@ -173,4 +195,8 @@ export class RecordHistoryService<TContext> {
         : history.filter((record) => record.archivedAt === null);
     });
   }
+}
+
+function snapshot(record: Record): { [field: string]: unknown } {
+  return { ...record };
 }
