@@ -117,7 +117,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 
 - [x] [#33](https://github.com/logact/becoming/issues/33) — Expose workflow discovery and provenance-aware mutation services (Feature #23)
 - [x] [#36](https://github.com/logact/becoming/issues/36) — Add label queries, lifecycle boundaries, and provenance (Feature #24) **(done)**
-- [ ] [#38](https://github.com/logact/becoming/issues/38) — Enforce workflow state machine integrity and mutation rules (Feature #25)
+- [ ] [#38](https://github.com/logact/becoming/issues/38) — Enforce workflow state machine integrity and mutation rules (Feature #25) **(processing)**
 - [ ] [#40](https://github.com/logact/becoming/issues/40) — Persist workflow transition templates and machine queries (Feature #26)
 - [ ] [#47](https://github.com/logact/becoming/issues/47) — Implement Project transition management and independence (Feature #28)
 - [ ] [#50](https://github.com/logact/becoming/issues/50) — Persist entity state history and initialize current state safely (Feature #29)
@@ -240,6 +240,7 @@ Before closing M1:
 | Task | Started (UTC) | Completed (UTC) | Elapsed | Worker token usage | Commit |
 | --- | --- | --- | --- | --- | --- |
 | [#33](https://github.com/logact/becoming/issues/33) | 2026-08-13T03:30:03Z | 2026-08-13T03:32:17Z | 2m 14s | Unavailable (worker runtime did not expose it) | [`23a8e72`](https://github.com/logact/becoming/commit/23a8e7289112146394d1ee303ab7bad7b6b0ba27) |
+| [#36](https://github.com/logact/becoming/issues/36) | 2026-08-13T03:33:38Z | 2026-08-13T03:45:50Z | 12m 12s | Unavailable (worker runtime did not expose it) | [`417b266`](https://github.com/logact/becoming/commit/417b2669364ce8421ace7ac5df3de33ba94c6ee9) |
 
 ## Maintaining the plan
 
