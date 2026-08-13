@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Becoming",
+    "slug": "becoming",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.logact.becoming",
+      "buildNumber": "1"
+    },
+    "plugins": ["expo-sqlite"],
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

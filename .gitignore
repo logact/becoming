@@ -6,6 +6,9 @@ node_modules/
 dist/
 web-build/
 
+# App Store Connect API keys (written by CI from secrets, or placed locally)
+.asc/
+
 # macOS
 .DS_Store
 

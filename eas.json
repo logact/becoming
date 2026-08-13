@@ -1,0 +1,20 @@
+{
+  "cli": {
+    "version": ">= 21.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascApiKeyPath": "./.asc/app-store-connect.p8",
+        "ascApiKeyIssuerId": "4f2ddda2-eb72-4858-a80f-4eb72b834ac3",
+        "ascApiKeyId": "L2565YXUJM"
+      }
+    }
+  }
+}

@@ -3,5 +3,12 @@
   "compilerOptions": {
     "types": ["node", "jest"]
   },
-  "include": ["src", "__tests__", "babel.config.js", "jest.config.js"]
+  "include": [
+    "src",
+    "__tests__",
+    "App.tsx",
+    "index.ts",
+    "babel.config.js",
+    "jest.config.js"
+  ]
 }

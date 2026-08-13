@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Becoming — goal-planning and execution system. Native iOS app built with TypeScript, React Native, and Expo; on-device persistence in SQLite via expo-sqlite.",
+  "main": "index.ts",
   "scripts": {
+    "start": "expo start",
     "typecheck": "tsc --noEmit",
     "test": "jest"
   },
