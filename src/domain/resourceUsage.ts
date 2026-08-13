@@ -42,6 +42,8 @@ export interface ResourceUsagePayload {
   };
   /** Present only on an appended correction/reversal occurrence. */
   correctsRecordId?: EntityId;
+  /** Durable caller-supplied identity used to make command retries safe. */
+  idempotencyKey?: string;
 }
 
 export interface NewResourceUsageRecord {
@@ -60,11 +62,14 @@ export interface NewResourceUsageRecord {
     projectBudgetContext?: string;
     taskAllocationContext?: string;
   };
+  idempotencyKey?: string;
 }
 
 export interface NewResourceUsageCorrection extends Omit<NewResourceUsageRecord, 'taskId' | 'projectId' | 'resourceId' | 'amount' | 'unit' | 'plannedContext'> {
   /** The existing occurrence retained as the correction target. */
   corrects: ResourceUsageEntry;
+  /** Omit for a full reversal; a smaller positive amount is a partial reversal. */
+  amount?: Decimal | string;
 }
 
 export interface ResourceUsageEntry {
@@ -169,8 +174,12 @@ export function resourceUsagePayload(payload: JsonValue | null): ResourceUsagePa
   if (candidate.correctsRecordId !== undefined && typeof candidate.correctsRecordId !== 'string') {
     throw new Error('Resource usage correctsRecordId must be a string when present');
   }
+  if (candidate.idempotencyKey !== undefined && typeof candidate.idempotencyKey !== 'string') {
+    throw new Error('Resource usage idempotencyKey must be a string when present');
+  }
   const taskId = candidate.taskId === undefined ? undefined : requireNonBlank('taskId', candidate.taskId as string);
   const correctsRecordId = candidate.correctsRecordId === undefined ? undefined : requireNonBlank('correctsRecordId', candidate.correctsRecordId as string);
+  const idempotencyKey = candidate.idempotencyKey === undefined ? undefined : requireNonBlank('idempotencyKey', candidate.idempotencyKey as string);
   const executionContext = candidate.executionContext === undefined
     ? undefined : assertJsonValue(candidate.executionContext);
   if (candidate.plannedContext !== undefined && (Array.isArray(candidate.plannedContext) || typeof candidate.plannedContext !== 'object' || candidate.plannedContext === null)) {
@@ -185,6 +194,7 @@ export function resourceUsagePayload(payload: JsonValue | null): ResourceUsagePa
     ...(executionContext === undefined ? {} : { executionContext }),
     ...(plannedContext === undefined ? {} : { plannedContext }),
     ...(correctsRecordId === undefined ? {} : { correctsRecordId }),
+    ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
   };
 }
 
@@ -206,6 +216,7 @@ export function createResourceUsageRecord(input: NewResourceUsageRecord, deps: R
     ...(input.taskId === undefined ? {} : { taskId: requireNonBlank('taskId', input.taskId) }),
     ...(input.executionContext === undefined ? {} : { executionContext: assertJsonValue(input.executionContext) }),
     ...(input.plannedContext === undefined ? {} : { plannedContext: validatePlannedContext(input.plannedContext) }),
+    ...(input.idempotencyKey === undefined ? {} : { idempotencyKey: requireNonBlank('idempotencyKey', input.idempotencyKey) }),
   };
   const record = createRecord({ description: input.description, title: input.title, occurredAt: input.occurredAt, recordedAt: input.recordedAt, actor: requireNonBlank('actor', input.actor), recordType: 'resource_usage', payload }, deps.record);
   return { record, ...linksFor(record, payload, deps) };
@@ -218,9 +229,14 @@ export function createResourceUsageRecord(input: NewResourceUsageRecord, deps: R
 export function createResourceUsageReversal(input: NewResourceUsageCorrection, deps: ResourceUsageFactoryDeps = {}): ResourceUsageEntry {
   validateResourceUsageEntry(input.corrects);
   const target = resourceUsagePayload(input.corrects.record.payload);
+  const quantity = canonicalQuantity(input.amount ?? target.amount, target.unit);
+  if (quantity.amount.compare(Decimal.parse(target.amount)) > 0) {
+    throw new Error('Resource usage correction amount must not exceed the original usage amount');
+  }
   const payload: ResourceUsagePayload = {
-    ...target, aggregationEffect: -1, correctsRecordId: input.corrects.record.id,
+    ...target, amount: quantity.amount.toString(), aggregationEffect: -1, correctsRecordId: input.corrects.record.id,
     ...(input.executionContext === undefined ? {} : { executionContext: assertJsonValue(input.executionContext) }),
+    ...(input.idempotencyKey === undefined ? {} : { idempotencyKey: requireNonBlank('idempotencyKey', input.idempotencyKey) }),
   };
   const record = createRecord({ description: input.description, title: input.title, occurredAt: input.occurredAt, recordedAt: input.recordedAt, actor: requireNonBlank('actor', input.actor), recordType: 'correction', payload }, deps.record);
   return { record, ...linksFor(record, payload, deps) };
@@ -262,7 +278,7 @@ function validateLink(relation: Relation, recordId: EntityId, relationType: stri
 }
 
 /** Validate active cross-aggregate references without database foreign keys. */
-export async function validateActiveResourceUsageReferences(entry: ResourceUsageEntry, resource: Pick<Resource, 'id' | 'unit'>, lookup: ActiveResourceUsageReferenceLookup): Promise<void> {
+export async function validateActiveResourceUsageReferences(entry: ResourceUsageEntry, resource: Pick<Resource, 'id' | 'unit'> | undefined, lookup: ActiveResourceUsageReferenceLookup): Promise<void> {
   validateResourceUsageEntry(entry, resource);
   const payload = resourceUsagePayload(entry.record.payload);
   if (!(await lookup.isProjectActive(payload.projectId))) throw new ResourceUsageReferenceNotFoundError('project', payload.projectId);
