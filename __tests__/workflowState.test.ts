@@ -1,8 +1,11 @@
 import {
   archiveWorkflowState,
   createWorkflowState,
+  normalizeWorkflowStateTitle,
   updateWorkflowState,
   validateWorkflowState,
+  WorkflowStateInitialConflictError,
+  WorkflowStateTitleConflictError,
 } from '../src/domain/workflowState';
 import type {
   WorkflowState,
@@ -13,7 +16,12 @@ import { archiveLabel, createLabel } from '../src/domain/label';
 import { archiveWorkflow, createWorkflow } from '../src/domain/workflow';
 import { SqliteLabelRepository } from '../src/persistence/labelRepository';
 import { SqliteWorkflowRepository } from '../src/persistence/workflowRepository';
-import { SqliteWorkflowStateRepository } from '../src/persistence/workflowStateRepository';
+import {
+  SqliteWorkflowStateRepository,
+  WorkflowStateHasActiveTransitionReferencesError,
+} from '../src/persistence/workflowStateRepository';
+import { SqliteWorkflowStateTransitionReferenceRepository } from '../src/persistence/workflowStateTransitionReferenceRepository';
+import { withTransaction } from '../src/persistence/transactions';
 import {
   LabelArchivedError,
   LabelNotFoundError,
@@ -110,6 +118,26 @@ describe('workflow state domain model', () => {
         sortOrder: Number.NaN,
       }),
     ).toThrow(/sortOrder/);
+  });
+
+  it('documents trimmed, case-insensitive title normalization', () => {
+    expect(normalizeWorkflowStateTitle('  In Progress  ')).toBe('in progress');
+  });
+
+  it('permits independent initial or terminal flags but rejects their overlap', () => {
+    expect(() =>
+      createWorkflowState({ ...validInput(), isInitial: true, isTerminal: true }),
+    ).toThrow(/both initial and terminal/);
+    const state = createWorkflowState(validInput());
+    expect(() =>
+      updateWorkflowState(state, { isInitial: true, isTerminal: true }),
+    ).toThrow(/both initial and terminal/);
+    expect(
+      createWorkflowState({ ...validInput(), isInitial: true }).isInitial,
+    ).toBe(true);
+    expect(
+      createWorkflowState({ ...validInput(), isTerminal: true }).isTerminal,
+    ).toBe(true);
   });
 
   it('updates intrinsic template fields without mutating the original', () => {
@@ -334,11 +362,11 @@ describe('WorkflowStateRepository contract', () => {
   it('breaks identical sort order and creation time ties by id', async () => {
     const db = await createTestDatabase();
     const repository = new SqliteWorkflowStateRepository(db);
-    const higherId = createWorkflowState(validInput(), {
+    const higherId = createWorkflowState({ ...validInput(), title: 'Higher' }, {
       id: '00000000-0000-4000-8000-0000000000ff',
       now: CREATED_AT,
     });
-    const lowerId = createWorkflowState(validInput(), {
+    const lowerId = createWorkflowState({ ...validInput(), title: 'Lower' }, {
       id: '00000000-0000-4000-8000-000000000001',
       now: CREATED_AT,
     });
@@ -428,6 +456,117 @@ describe('WorkflowStateRepository contract', () => {
     await closeQuietly(db);
   });
 
+  it('enforces normalized active title uniqueness per machine only', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteWorkflowStateRepository(db);
+    const backlog = createWorkflowState(validInput());
+    await repository.add(backlog);
+
+    await expect(
+      repository.add(createWorkflowState({ ...validInput(), title: '  BACKLOG ' })),
+    ).rejects.toThrow(WorkflowStateTitleConflictError);
+    await repository.add(
+      createWorkflowState({ ...validInput(), workflowId: OTHER_WORKFLOW_ID, title: 'backlog' }),
+    );
+    await expect(
+      repository.save(updateWorkflowState(backlog, { title: ' Backlog ' })),
+    ).resolves.toBeUndefined();
+    await closeQuietly(db);
+  });
+
+  it('enforces one active initial state and exposes initial and terminal queries', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteWorkflowStateRepository(db);
+    const initial = createWorkflowState({ ...validInput(), isInitial: true });
+    const terminalA = createWorkflowState({ ...validInput(), title: 'Done', isTerminal: true, sortOrder: 2 });
+    const terminalB = createWorkflowState({ ...validInput(), title: 'Cancelled', isTerminal: true, sortOrder: 1 });
+    await repository.add(initial);
+    await repository.add(terminalA);
+    await repository.add(terminalB);
+
+    await expect(
+      repository.add(createWorkflowState({ ...validInput(), title: 'Other start', isInitial: true })),
+    ).rejects.toThrow(WorkflowStateInitialConflictError);
+    expect(await repository.findActiveInitialForMachine(MACHINE)).toEqual(initial);
+    expect((await repository.listActiveTerminalsForMachine(MACHINE)).map((state) => state.id))
+      .toEqual([terminalB.id, terminalA.id]);
+    await closeQuietly(db);
+  });
+
+  it('rolls back a competing initial-state write in one transaction', async () => {
+    const db = await createTestDatabase();
+    const first = createWorkflowState({ ...validInput(), isInitial: true });
+    const second = createWorkflowState({ ...validInput(), title: 'Start Here', isInitial: true });
+
+    await expect(
+      withTransaction(db, async (tx) => {
+        const repository = new SqliteWorkflowStateRepository(tx);
+        await repository.add(first);
+        await repository.add(second);
+      }),
+    ).rejects.toThrow(WorkflowStateInitialConflictError);
+    expect(await new SqliteWorkflowStateRepository(db).listActiveForMachine(MACHINE)).toEqual([]);
+    await closeQuietly(db);
+  });
+
+  it('lets only one of two competing initial-state creations win', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteWorkflowStateRepository(db);
+    const results = await Promise.allSettled([
+      repository.add(createWorkflowState({ ...validInput(), title: 'Backlog', isInitial: true })),
+      repository.add(createWorkflowState({ ...validInput(), title: 'Start Here', isInitial: true })),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.filter((result) => result.status === 'rejected');
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(
+      WorkflowStateInitialConflictError,
+    );
+    expect(await repository.listActiveForMachine(MACHINE)).toHaveLength(1);
+    await closeQuietly(db);
+  });
+
+  it('reorders only a complete active machine and assigns deterministic sequential orders', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteWorkflowStateRepository(db);
+    const first = createWorkflowState({ ...validInput(), title: 'First', sortOrder: 9 });
+    const second = createWorkflowState({ ...validInput(), title: 'Second', sortOrder: 8 });
+    const outsider = createWorkflowState({ ...validInput(), workflowId: OTHER_WORKFLOW_ID, title: 'Outsider' });
+    await repository.add(first);
+    await repository.add(second);
+    await repository.add(outsider);
+
+    await expect(
+      repository.reorderActiveForMachine(MACHINE, [second.id, outsider.id], UPDATED_AT),
+    ).rejects.toThrow(/exactly once/);
+    expect(await repository.getById(second.id)).toEqual(second);
+    await repository.reorderActiveForMachine(MACHINE, [second.id, first.id], UPDATED_AT);
+    expect((await repository.listActiveForMachine(MACHINE)).map((state) => state.id))
+      .toEqual([second.id, first.id]);
+    expect(await repository.getById(outsider.id)).toEqual(outsider);
+    await closeQuietly(db);
+  });
+
+  it('blocks archival while an active transition references the state', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteWorkflowStateRepository(db);
+    const state = createWorkflowState(validInput());
+    await repository.add(state);
+    await db.runAsync(
+      `INSERT INTO workflow_state_transitions (
+         id, workflow_id, entity_type, label_id, from_state_id, to_state_id,
+         requires_exit_criteria, created_at, updated_at, archived_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ['transition-1', state.workflowId, state.entityType, state.labelId,
+        state.id, 'other-state', 0, CREATED_AT, CREATED_AT, null],
+    );
+
+    await expect(repository.save(archiveWorkflowState(state, ARCHIVED_AT)))
+      .rejects.toThrow(WorkflowStateHasActiveTransitionReferencesError);
+    expect(await repository.getById(state.id)).toEqual(state);
+    await closeQuietly(db);
+  });
+
   it('freezes an archived template against further edits', async () => {
     const db = await createTestDatabase();
     const repository = new SqliteWorkflowStateRepository(db);
@@ -490,7 +629,8 @@ describe('WorkflowStateService', () => {
     const workflows = new SqliteWorkflowRepository(db);
     const labels = new SqliteLabelRepository(db);
     const states = new SqliteWorkflowStateRepository(db);
-    const service = new WorkflowStateService({ workflows, labels, states });
+    const transitionReferences = new SqliteWorkflowStateTransitionReferenceRepository(db);
+    const service = new WorkflowStateService({ workflows, labels, states, transitionReferences });
     return { db, workflows, labels, states, service };
   }
 
@@ -669,6 +809,32 @@ describe('WorkflowStateService', () => {
     const active = await service.listActiveStates(workflow.id, 'task', label.id);
 
     expect(active.map((s) => s.id)).toEqual([backlog.id, done.id]);
+    await closeQuietly(db);
+  });
+
+  it('reorders safely and exposes V1 initial and terminal semantics', async () => {
+    const { db, workflows, labels, service } = await createService();
+    const { workflow, label } = await seedMachine({ workflows, labels });
+    const start = await service.defineState({
+      workflowId: workflow.id, entityType: 'task', labelId: label.id,
+      title: 'Start', isInitial: true,
+    });
+    const done = await service.defineState({
+      workflowId: workflow.id, entityType: 'task', labelId: label.id,
+      title: 'Done', isTerminal: true,
+    });
+
+    await expect(service.reorderStates(workflow.id, 'task', label.id, [start.id]))
+      .rejects.toThrow(/exactly once/);
+    const reordered = await service.reorderStates(
+      workflow.id, 'task', label.id, [done.id, start.id], UPDATED_AT,
+    );
+    expect(reordered.map((state) => state.sortOrder)).toEqual([1, 2]);
+    expect(await service.getActiveInitialState(workflow.id, 'task', label.id)).toEqual({
+      ...start, sortOrder: 2, updatedAt: UPDATED_AT,
+    });
+    expect(await service.listActiveTerminalStates(workflow.id, 'task', label.id))
+      .toEqual([{ ...done, sortOrder: 1, updatedAt: UPDATED_AT }]);
     await closeQuietly(db);
   });
 

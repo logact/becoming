@@ -13,6 +13,8 @@ import type {
 import type { WorkflowRepository } from '../persistence/workflowRepository';
 import type { LabelRepository } from '../persistence/labelRepository';
 import type { WorkflowStateRepository } from '../persistence/workflowStateRepository';
+import { WorkflowStateHasActiveTransitionReferencesError } from '../persistence/workflowStateRepository';
+import type { WorkflowStateTransitionReferenceRepository } from '../persistence/workflowStateTransitionReferenceRepository';
 import {
   LabelArchivedError,
   LabelNotFoundError,
@@ -42,6 +44,10 @@ import type { Clock, IdGenerator } from './recordService';
  *   the same active/archived rule.
  * - `entityType` must be one of the eight core entity types; this invariant
  *   is enforced by the domain aggregate itself.
+ * - Active titles normalize by trim + lowercase and are unique per machine;
+ *   each machine has at most one active initial state. A state may be initial
+ *   or terminal but never both; V1 permits draft machines with no initial
+ *   state and zero or more terminal states.
  */
 
 /** Thrown when the Workflow referenced by a state command does not exist. */
@@ -91,6 +97,8 @@ export interface WorkflowStateServicePorts {
   workflows: WorkflowRepository;
   labels: LabelRepository;
   states: WorkflowStateRepository;
+  /** Optional archive preflight; #40 will own richer transition behavior. */
+  transitionReferences?: WorkflowStateTransitionReferenceRepository;
   clock?: Clock;
   ids?: IdGenerator;
 }
@@ -99,6 +107,7 @@ export class WorkflowStateService {
   private readonly workflows: WorkflowRepository;
   private readonly labels: LabelRepository;
   private readonly states: WorkflowStateRepository;
+  private readonly transitionReferences?: WorkflowStateTransitionReferenceRepository;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
 
@@ -106,6 +115,7 @@ export class WorkflowStateService {
     this.workflows = ports.workflows;
     this.labels = ports.labels;
     this.states = ports.states;
+    this.transitionReferences = ports.transitionReferences;
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
   }
@@ -163,6 +173,60 @@ export class WorkflowStateService {
   }
 
   /**
+   * Assign sequential sort orders to the complete active set of one machine.
+   * The command rejects unknown, duplicated, omitted, or cross-machine ids,
+   * so active ordering is total and deterministic after every reorder.
+   */
+  async reorderStates(
+    workflowId: EntityId,
+    entityType: CoreEntityType,
+    labelId: EntityId,
+    orderedStateIds: readonly EntityId[],
+    reorderedAt?: IsoTimestamp,
+  ): Promise<WorkflowState[]> {
+    const machine = { workflowId, entityType, labelId };
+    const active = await this.states.listActiveForMachine(machine);
+    const activeIds = new Set(active.map((state) => state.id));
+    if (
+      orderedStateIds.length !== active.length ||
+      new Set(orderedStateIds).size !== orderedStateIds.length ||
+      !orderedStateIds.every((id) => activeIds.has(id))
+    ) {
+      throw new Error(
+        `reorderStates must list every active state of machine ${workflowId}/${entityType}/${labelId} exactly once`,
+      );
+    }
+    const now = reorderedAt ?? this.clock.now();
+    await this.states.reorderActiveForMachine(machine, orderedStateIds, now);
+    const byId = new Map(active.map((state) => [state.id, state]));
+    return orderedStateIds.map((id, index) => ({
+      ...(byId.get(id) as WorkflowState),
+      sortOrder: index + 1,
+      updatedAt: now,
+    }));
+  }
+
+  /**
+   * An initial state starts a machine; a terminal state ends it. V1 permits a
+   * draft to have no initial state and permits zero or more terminal states.
+   */
+  async getActiveInitialState(
+    workflowId: EntityId,
+    entityType: CoreEntityType,
+    labelId: EntityId,
+  ): Promise<WorkflowState | null> {
+    return this.states.findActiveInitialForMachine({ workflowId, entityType, labelId });
+  }
+
+  async listActiveTerminalStates(
+    workflowId: EntityId,
+    entityType: CoreEntityType,
+    labelId: EntityId,
+  ): Promise<WorkflowState[]> {
+    return this.states.listActiveTerminalsForMachine({ workflowId, entityType, labelId });
+  }
+
+  /**
    * Archive a State template. The archived template stays retrievable by id
    * and in historical machine queries. Throws `WorkflowStateNotFoundError`
    * for an unknown id and a domain error when already archived.
@@ -172,6 +236,12 @@ export class WorkflowStateService {
     archivedAt?: IsoTimestamp,
   ): Promise<WorkflowState> {
     const state = await this.requireState(stateId);
+    if (
+      this.transitionReferences &&
+      await this.transitionReferences.hasActiveReferences(stateId)
+    ) {
+      throw new WorkflowStateHasActiveTransitionReferencesError(stateId);
+    }
     const archived = archiveWorkflowState(state, archivedAt ?? this.clock.now());
     await this.states.save(archived);
     return archived;

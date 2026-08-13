@@ -23,6 +23,13 @@ import type { EntityId, IsoTimestamp } from './ids';
  *   never by the database.
  * - `title` must not be blank and `sortOrder`, when present, must be an
  *   integer.
+ * - A state cannot be both initial and terminal: an initial state starts a
+ *   machine lifecycle while a terminal state ends it.
+ *
+ * Machine-level invariants that need sibling rows are enforced by the
+ * repository on every active write: normalized title uniqueness and at most
+ * one active initial state per machine. V1 deliberately permits zero or more
+ * terminal states and permits a draft machine to have no initial state yet.
  *
  * Editing updates the intrinsic template fields; machine identity and
  * creation identity never change. Archival is the only lifecycle transition:
@@ -53,6 +60,35 @@ export interface WorkflowStateMachine {
   workflowId: EntityId;
   entityType: CoreEntityType;
   labelId: EntityId;
+}
+
+/** Thrown when an active machine already contains the normalized title. */
+export class WorkflowStateTitleConflictError extends Error {
+  constructor(machine: WorkflowStateMachine, title: string) {
+    super(
+      `Workflow state machine ${machine.workflowId}/${machine.entityType}/${machine.labelId} already has an active state titled ${JSON.stringify(title)}`,
+    );
+    this.name = 'WorkflowStateTitleConflictError';
+  }
+}
+
+/** Thrown when a command would leave two active initial states in a machine. */
+export class WorkflowStateInitialConflictError extends Error {
+  constructor(machine: WorkflowStateMachine) {
+    super(
+      `Workflow state machine ${machine.workflowId}/${machine.entityType}/${machine.labelId} already has an active initial state`,
+    );
+    this.name = 'WorkflowStateInitialConflictError';
+  }
+}
+
+/**
+ * Normalize a title for active per-machine uniqueness: surrounding
+ * whitespace is ignored and comparison is case-insensitive. Archived states
+ * do not participate, so their titles may be reused by a later active state.
+ */
+export function normalizeWorkflowStateTitle(title: string): string {
+  return title.trim().toLowerCase();
 }
 
 /** Input for defining a new Workflow State template. */
@@ -108,6 +144,15 @@ function requireValidSortOrder(value: number | null): number | null {
   return value;
 }
 
+function requireNotBothInitialAndTerminal(
+  isInitial: boolean,
+  isTerminal: boolean,
+): void {
+  if (isInitial && isTerminal) {
+    throw new Error('WorkflowState cannot be both initial and terminal');
+  }
+}
+
 /** Validate the invariants every WorkflowState must satisfy. */
 export function validateWorkflowState(state: WorkflowState): void {
   requireCoreEntityType(state.entityType);
@@ -115,6 +160,7 @@ export function validateWorkflowState(state: WorkflowState): void {
   requireNonBlankId('labelId', state.labelId);
   requireNonBlankTitle(state.title);
   requireValidSortOrder(state.sortOrder);
+  requireNotBothInitialAndTerminal(state.isInitial, state.isTerminal);
 }
 
 /**

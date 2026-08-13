@@ -4,7 +4,12 @@ import type {
   WorkflowState,
   WorkflowStateMachine,
 } from '../domain/workflowState';
-import { validateWorkflowState } from '../domain/workflowState';
+import {
+  normalizeWorkflowStateTitle,
+  WorkflowStateInitialConflictError,
+  WorkflowStateTitleConflictError,
+  validateWorkflowState,
+} from '../domain/workflowState';
 import type { SqliteDatabase } from './database';
 
 /**
@@ -28,7 +33,13 @@ import type { SqliteDatabase } from './database';
  * `listForMachine` returns the full machine history — active and archived —
  * so archived states stay resolvable in historical version queries.
  *
- * The repository also guards write rules on `save`: machine identity and
+ * Machine-wide write invariants are part of the guarded INSERT/UPDATE
+ * statements: active titles are unique after trim/lowercase normalization,
+ * and at most one active initial state exists per machine. This keeps
+ * competing create/update commands safe. Archiving also refuses to strand an
+ * active transition row through a logical-reference check, not a foreign key.
+ *
+ * The repository also guards identity rules on `save`: machine identity and
  * creation identity never change, and an archived template is frozen — only
  * the transition from active to archived may move `archived_at`.
  */
@@ -41,6 +52,32 @@ export interface WorkflowStateRepository {
 
   /** Persist changes to an existing Workflow State. Throws if the id is unknown. */
   save(state: WorkflowState): Promise<void>;
+
+  /** Return the active initial state of one machine, or null. */
+  findActiveInitialForMachine(
+    machine: WorkflowStateMachine,
+  ): Promise<WorkflowState | null>;
+
+  /** Return an active state by normalized title in one machine, or null. */
+  findActiveByTitle(
+    machine: WorkflowStateMachine,
+    title: string,
+  ): Promise<WorkflowState | null>;
+
+  /** Return all active terminal states of one machine in deterministic order. */
+  listActiveTerminalsForMachine(
+    machine: WorkflowStateMachine,
+  ): Promise<WorkflowState[]>;
+
+  /**
+   * Assign sequential orders to precisely the supplied active states in one
+   * atomic statement. The list must cover the machine's active set exactly.
+   */
+  reorderActiveForMachine(
+    machine: WorkflowStateMachine,
+    orderedStateIds: readonly EntityId[],
+    updatedAt: string,
+  ): Promise<void>;
 
   /**
    * Return the active State templates of exactly one machine, ordered by
@@ -121,6 +158,14 @@ function toDomain(row: WorkflowStateRow): WorkflowState {
   };
 }
 
+function machineOf(state: WorkflowState): WorkflowStateMachine {
+  return {
+    workflowId: state.workflowId,
+    entityType: state.entityType,
+    labelId: state.labelId,
+  };
+}
+
 /**
  * Guard the write rules a `save` must enforce given the stored row: machine
  * identity and creation identity never change, and an archived template is
@@ -166,27 +211,38 @@ export class SqliteWorkflowStateRepository implements WorkflowStateRepository {
   async add(state: WorkflowState): Promise<void> {
     validateWorkflowState(state);
     const row = toRow(state);
-    await this.db.runAsync(
+    if (row.archived_at !== null) {
+      await this.db.runAsync(
       `INSERT INTO workflow_states (${COLUMNS})
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        this.rowValues(row),
+      );
+      return;
+    }
+    const result = await this.db.runAsync(
+      `INSERT INTO workflow_states (${COLUMNS})
+       SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+       WHERE NOT EXISTS (
+         SELECT 1 FROM workflow_states
+         WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+           AND archived_at IS NULL AND lower(trim(title)) = ?
+       )
+       AND NOT (
+         ? = 1 AND EXISTS (
+           SELECT 1 FROM workflow_states
+           WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+             AND archived_at IS NULL AND is_initial = 1
+         )
+       )`,
       [
-        row.id,
-        row.workflow_id,
-        row.entity_type,
-        row.label_id,
-        row.title,
-        row.description,
-        row.category,
-        row.sort_order,
+        ...this.rowValues(row),
+        row.workflow_id, row.entity_type, row.label_id,
+        normalizeWorkflowStateTitle(row.title),
         row.is_initial,
-        row.is_terminal,
-        row.entry_criteria,
-        row.exit_criteria,
-        row.created_at,
-        row.updated_at,
-        row.archived_at,
+        row.workflow_id, row.entity_type, row.label_id,
       ],
     );
+    if (result.changes === 0) await this.throwConflictReason(state);
   }
 
   async getById(id: EntityId): Promise<WorkflowState | null> {
@@ -205,32 +261,122 @@ export class SqliteWorkflowStateRepository implements WorkflowStateRepository {
     }
     assertWorkflowStateUpdateAllowed(stored, state);
     const row = toRow(state);
-    await this.db.runAsync(
-      `UPDATE workflow_states SET
+    const assignments = `UPDATE workflow_states SET
          workflow_id = ?, entity_type = ?, label_id = ?,
          title = ?, description = ?, category = ?, sort_order = ?,
          is_initial = ?, is_terminal = ?,
          entry_criteria = ?, exit_criteria = ?,
-         created_at = ?, updated_at = ?, archived_at = ?
-       WHERE id = ?`,
+         created_at = ?, updated_at = ?, archived_at = ?`;
+    if (row.archived_at !== null) {
+      const result = await this.db.runAsync(
+        `${assignments} WHERE id = ?
+         AND NOT EXISTS (
+           SELECT 1 FROM workflow_state_transitions
+           WHERE archived_at IS NULL
+             AND (from_state_id = ? OR to_state_id = ?)
+         )`,
+        [...this.updateValues(row), row.id, row.id, row.id],
+      );
+      if (result.changes === 0) {
+        throw new WorkflowStateHasActiveTransitionReferencesError(state.id);
+      }
+      return;
+    }
+    const result = await this.db.runAsync(
+      `${assignments}
+       WHERE id = ?
+         AND NOT EXISTS (
+           SELECT 1 FROM workflow_states
+           WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+             AND archived_at IS NULL AND id <> ?
+             AND lower(trim(title)) = ?
+         )
+         AND NOT (
+           ? = 1 AND EXISTS (
+             SELECT 1 FROM workflow_states
+             WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+               AND archived_at IS NULL AND is_initial = 1 AND id <> ?
+           )
+         )`,
       [
-        row.workflow_id,
-        row.entity_type,
-        row.label_id,
-        row.title,
-        row.description,
-        row.category,
-        row.sort_order,
-        row.is_initial,
-        row.is_terminal,
-        row.entry_criteria,
-        row.exit_criteria,
-        row.created_at,
-        row.updated_at,
-        row.archived_at,
-        row.id,
+        ...this.updateValues(row), row.id,
+        row.workflow_id, row.entity_type, row.label_id, row.id,
+        normalizeWorkflowStateTitle(row.title), row.is_initial,
+        row.workflow_id, row.entity_type, row.label_id, row.id,
       ],
     );
+    if (result.changes === 0) await this.throwConflictReason(state);
+  }
+
+  async findActiveInitialForMachine(machine: WorkflowStateMachine): Promise<WorkflowState | null> {
+    const row = await this.db.getFirstAsync<WorkflowStateRow>(
+      `SELECT ${COLUMNS} FROM workflow_states
+       WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+         AND archived_at IS NULL AND is_initial = 1`,
+      [machine.workflowId, machine.entityType, machine.labelId],
+    );
+    return row === null ? null : toDomain(row);
+  }
+
+  async findActiveByTitle(machine: WorkflowStateMachine, title: string): Promise<WorkflowState | null> {
+    const row = await this.db.getFirstAsync<WorkflowStateRow>(
+      `SELECT ${COLUMNS} FROM workflow_states
+       WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+         AND archived_at IS NULL AND lower(trim(title)) = ?`,
+      [machine.workflowId, machine.entityType, machine.labelId, normalizeWorkflowStateTitle(title)],
+    );
+    return row === null ? null : toDomain(row);
+  }
+
+  async listActiveTerminalsForMachine(machine: WorkflowStateMachine): Promise<WorkflowState[]> {
+    const rows = await this.db.getAllAsync<WorkflowStateRow>(
+      `SELECT ${COLUMNS} FROM workflow_states
+       WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+         AND archived_at IS NULL AND is_terminal = 1
+       ${MACHINE_ORDER}`,
+      [machine.workflowId, machine.entityType, machine.labelId],
+    );
+    return rows.map(toDomain);
+  }
+
+  async reorderActiveForMachine(
+    machine: WorkflowStateMachine,
+    orderedStateIds: readonly EntityId[],
+    updatedAt: string,
+  ): Promise<void> {
+    if (orderedStateIds.length === 0) {
+      const active = await this.listActiveForMachine(machine);
+      if (active.length === 0) return;
+      throw new Error('reorderActiveForMachine must list every active state exactly once');
+    }
+    const cases = orderedStateIds.map(() => 'WHEN ? THEN ?').join(' ');
+    const placeholders = orderedStateIds.map(() => '?').join(', ');
+    const result = await this.db.runAsync(
+      `UPDATE workflow_states
+       SET sort_order = CASE id ${cases} END, updated_at = ?
+       WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+         AND archived_at IS NULL AND id IN (${placeholders})
+         AND (SELECT COUNT(*) FROM workflow_states
+              WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+                AND archived_at IS NULL) = ?
+         AND (SELECT COUNT(*) FROM workflow_states
+              WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+                AND archived_at IS NULL AND id IN (${placeholders})) = ?`,
+      [
+        ...orderedStateIds.flatMap((id, index) => [id, index + 1]),
+        updatedAt,
+        machine.workflowId, machine.entityType, machine.labelId,
+        ...orderedStateIds,
+        machine.workflowId, machine.entityType, machine.labelId,
+        orderedStateIds.length,
+        machine.workflowId, machine.entityType, machine.labelId,
+        ...orderedStateIds,
+        orderedStateIds.length,
+      ],
+    );
+    if (result.changes !== orderedStateIds.length) {
+      throw new Error('reorderActiveForMachine must list every active state of the machine exactly once');
+    }
   }
 
   async listActiveForMachine(
@@ -256,5 +402,41 @@ export class SqliteWorkflowStateRepository implements WorkflowStateRepository {
       [machine.workflowId, machine.entityType, machine.labelId],
     );
     return rows.map(toDomain);
+  }
+
+  private rowValues(row: WorkflowStateRow): (string | number | null)[] {
+    return [row.id, row.workflow_id, row.entity_type, row.label_id, row.title,
+      row.description, row.category, row.sort_order, row.is_initial,
+      row.is_terminal, row.entry_criteria, row.exit_criteria, row.created_at,
+      row.updated_at, row.archived_at];
+  }
+
+  private updateValues(row: WorkflowStateRow): (string | number | null)[] {
+    return this.rowValues(row).slice(1);
+  }
+
+  private async throwConflictReason(state: WorkflowState): Promise<never> {
+    const machine = machineOf(state);
+    const titleClash = await this.findActiveByTitle(machine, state.title);
+    if (titleClash !== null && titleClash.id !== state.id) {
+      throw new WorkflowStateTitleConflictError(machine, state.title);
+    }
+    const initial = await this.findActiveInitialForMachine(machine);
+    if (state.isInitial && initial !== null && initial.id !== state.id) {
+      throw new WorkflowStateInitialConflictError(machine);
+    }
+    throw new Error(`WorkflowState ${state.id} conflicts with the invariants of machine ${machine.workflowId}/${machine.entityType}/${machine.labelId}`);
+  }
+}
+
+/**
+ * Raised when archiving would leave an active template transition pointing at
+ * an archived state. This is a logical-reference safeguard, not a foreign
+ * key, and remains deliberately narrow until #40 owns transitions fully.
+ */
+export class WorkflowStateHasActiveTransitionReferencesError extends Error {
+  constructor(stateId: EntityId) {
+    super(`WorkflowState ${stateId} has active transition references and cannot be archived`);
+    this.name = 'WorkflowStateHasActiveTransitionReferencesError';
   }
 }
