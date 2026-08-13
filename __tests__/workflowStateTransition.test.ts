@@ -10,6 +10,7 @@ import { SqliteWorkflowStateTransitionRepository } from '../src/persistence/work
 import {
   WorkflowStateTransitionEndpointArchivedError,
   WorkflowStateTransitionEndpointNotFoundError,
+  WorkflowStateTransitionDuplicateActiveEdgeError,
   WorkflowStateTransitionMachineMismatchError,
   WorkflowStateTransitionNotFoundError,
   WorkflowStateTransitionService,
@@ -130,7 +131,7 @@ describe('WorkflowStateTransitionRepository contract', () => {
     );
     const archived = archiveWorkflowStateTransition(
       createWorkflowStateTransition(
-        transitionInput(),
+        { ...transitionInput(), toStateId: 'state-d' },
         { id: 'transition-d', now: CREATED_AT },
       ),
       ARCHIVED_AT,
@@ -152,7 +153,7 @@ describe('WorkflowStateTransitionRepository contract', () => {
     expect((await repository.listActiveIncomingForState(MACHINE, 'state-b')).map((item) => item.id))
       .toEqual(['transition-b', 'transition-c']);
     expect((await repository.listIncomingForState(MACHINE, 'state-b')).map((item) => item.id))
-      .toEqual(['transition-b', 'transition-d', 'transition-c']);
+      .toEqual(['transition-b', 'transition-c']);
     await closeQuietly(db);
   });
 
@@ -173,6 +174,26 @@ describe('WorkflowStateTransitionRepository contract', () => {
       `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'workflow_state_transitions'`,
     );
     expect(foreignKeys[0].sql?.toUpperCase()).not.toContain('FOREIGN KEY');
+    await closeQuietly(db);
+  });
+
+  it('permits self-transitions but storage permits only one active edge per exact endpoint pair', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteWorkflowStateTransitionRepository(db);
+    const self = createWorkflowStateTransition(
+      { ...transitionInput(), toStateId: 'state-a', title: 'Retry' },
+      { id: 'self-edge', now: CREATED_AT },
+    );
+    await repository.add(self);
+    await expect(repository.add(createWorkflowStateTransition(
+      { ...transitionInput(), toStateId: 'state-a', title: 'Differently titled duplicate' },
+      { id: 'duplicate-self-edge', now: UPDATED_AT },
+    ))).rejects.toThrow(/UNIQUE constraint failed/);
+    await repository.save(archiveWorkflowStateTransition(self, ARCHIVED_AT));
+    await repository.add(createWorkflowStateTransition(
+      { ...transitionInput(), toStateId: 'state-a' },
+      { id: 'replacement-self-edge', now: UPDATED_AT },
+    ));
     await closeQuietly(db);
   });
 });
@@ -248,6 +269,95 @@ describe('WorkflowStateTransitionService', () => {
       .rejects.toBeInstanceOf(WorkflowStateTransitionMachineMismatchError);
     await expect(service.updateTransition('missing', {}))
       .rejects.toBeInstanceOf(WorkflowStateTransitionNotFoundError);
+    await closeQuietly(db);
+  });
+
+  it.each([
+    ['workflowId', { workflowId: 'workflow-2' }],
+    ['entityType', { entityType: 'goal' }],
+    ['labelId', { labelId: 'label-2' }],
+  ])('rejects a destination with a mismatched %s without persisting', async (_dimension, change) => {
+    const { db, states, transitions, service } = await setup();
+    const source = state('source');
+    const destination = state('destination', change);
+    await states.add(source);
+    await states.add(destination);
+
+    await expect(service.defineTransition({ fromStateId: source.id, toStateId: destination.id }))
+      .rejects.toBeInstanceOf(WorkflowStateTransitionMachineMismatchError);
+    expect(await transitions.listForMachine(MACHINE)).toEqual([]);
+    await closeQuietly(db);
+  });
+
+  it('allows one self-edge, rejects differently titled duplicates, and reactivates only against valid active endpoints', async () => {
+    const { db, states, transitions, service } = await setup();
+    const source = state('source');
+    const destination = state('destination');
+    await states.add(source);
+    await states.add(destination);
+
+    const self = await service.defineTransition({ fromStateId: source.id, toStateId: source.id, title: 'Retry' });
+    await expect(service.defineTransition({ fromStateId: source.id, toStateId: source.id, title: 'Another retry' }))
+      .rejects.toBeInstanceOf(WorkflowStateTransitionDuplicateActiveEdgeError);
+    const edge = await service.defineTransition({ fromStateId: source.id, toStateId: destination.id });
+    await service.archiveTransition(edge.id, ARCHIVED_AT);
+    await transitions.add(createWorkflowStateTransition(
+      { ...MACHINE, fromStateId: source.id, toStateId: destination.id },
+      { id: 'replacement', now: UPDATED_AT },
+    ));
+    await expect(service.reactivateTransition(edge.id))
+      .rejects.toBeInstanceOf(WorkflowStateTransitionDuplicateActiveEdgeError);
+    expect(self.archivedAt).toBeNull();
+    await closeQuietly(db);
+  });
+
+  it('reactivates an archived edge when its original topology remains valid', async () => {
+    const { db, states, service } = await setup();
+    const source = state('source');
+    const destination = state('destination');
+    await states.add(source);
+    await states.add(destination);
+    const edge = await service.defineTransition({ fromStateId: source.id, toStateId: destination.id });
+    await service.archiveTransition(edge.id, ARCHIVED_AT);
+
+    await expect(service.reactivateTransition(edge.id, UPDATED_AT)).resolves.toMatchObject({
+      id: edge.id,
+      archivedAt: null,
+      updatedAt: UPDATED_AT,
+    });
+    await closeQuietly(db);
+  });
+
+  it('rejects update and reactivation when an endpoint becomes archived or no longer belongs to the transition machine', async () => {
+    const { db, states, transitions, service } = await setup();
+    const source = state('source');
+    const destination = state('destination');
+    await states.add(source);
+    await states.add(destination);
+    const edge = await service.defineTransition({ fromStateId: source.id, toStateId: destination.id });
+    await transitions.save(archiveWorkflowStateTransition(edge, ARCHIVED_AT));
+    await states.save({ ...destination, archivedAt: ARCHIVED_AT, updatedAt: ARCHIVED_AT });
+    await expect(service.reactivateTransition(edge.id))
+      .rejects.toBeInstanceOf(WorkflowStateTransitionEndpointArchivedError);
+    await expect(service.updateTransition(edge.id, { title: 'blocked' }))
+      .rejects.toBeInstanceOf(WorkflowStateTransitionEndpointArchivedError);
+    await closeQuietly(db);
+  });
+
+  it('keeps one active edge when duplicate define requests race', async () => {
+    const { db, states, transitions, service } = await setup();
+    const source = state('source');
+    const destination = state('destination');
+    await states.add(source);
+    await states.add(destination);
+    const results = await Promise.allSettled([
+      service.defineTransition({ fromStateId: source.id, toStateId: destination.id }),
+      service.defineTransition({ fromStateId: source.id, toStateId: destination.id }),
+    ]);
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    const rejected = results.filter((result) => result.status === 'rejected');
+    expect(rejected).toHaveLength(1);
+    expect(await transitions.listActiveForMachine(MACHINE)).toHaveLength(1);
     await closeQuietly(db);
   });
 });

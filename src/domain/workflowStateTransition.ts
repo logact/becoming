@@ -86,7 +86,13 @@ export function validateWorkflowStateTransition(
   requireNonBlankId('toStateId', transition.toStateId);
 }
 
-/** Define a transition template. No template content is interpreted here. */
+/**
+ * Define a transition template. No template content is interpreted here.
+ *
+ * V1 topology policy deliberately permits self-transitions.  A self-edge is
+ * useful for an explicit retry/rework action and is governed by the same
+ * one-active-edge policy as every other pair of endpoints.
+ */
 export function createWorkflowStateTransition(
   input: NewWorkflowStateTransition,
   deps: WorkflowStateTransitionFactoryDeps = {},
@@ -148,4 +154,20 @@ export function archiveWorkflowStateTransition(
     throw new Error(`WorkflowStateTransition ${transition.id} is already archived`);
   }
   return { ...transition, archivedAt, updatedAt: archivedAt };
+}
+
+/**
+ * Reactivate a previously archived template without changing its historical
+ * identity. The application service rechecks endpoint topology first.
+ */
+export function reactivateWorkflowStateTransition(
+  transition: WorkflowStateTransition,
+  reactivatedAt: IsoTimestamp = nowIso(),
+): WorkflowStateTransition {
+  if (transition.archivedAt === null) {
+    throw new Error(`WorkflowStateTransition ${transition.id} is already active`);
+  }
+  const reactivated = { ...transition, archivedAt: null, updatedAt: reactivatedAt };
+  validateWorkflowStateTransition(reactivated);
+  return reactivated;
 }

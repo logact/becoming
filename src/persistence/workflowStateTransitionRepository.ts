@@ -40,6 +40,11 @@ export interface WorkflowStateTransitionRepository {
     machine: WorkflowStateTransitionMachine,
     toStateId: EntityId,
   ): Promise<WorkflowStateTransition[]>;
+  findActiveByEndpoints(
+    machine: WorkflowStateTransitionMachine,
+    fromStateId: EntityId,
+    toStateId: EntityId,
+  ): Promise<WorkflowStateTransition | null>;
 }
 
 interface WorkflowStateTransitionRow {
@@ -122,9 +127,20 @@ function assertUpdateAllowed(
       `WorkflowStateTransition ${stored.id} machine, endpoint, and creation identity are immutable`,
     );
   }
-  if (stored.archivedAt !== null) {
+  if (stored.archivedAt !== null && next.archivedAt !== null) {
     throw new Error(
       `WorkflowStateTransition ${stored.id} is archived and its definition is immutable`,
+    );
+  }
+  if (stored.archivedAt !== null && (
+    stored.title !== next.title ||
+    stored.description !== next.description ||
+    stored.condition !== next.condition ||
+    stored.action !== next.action ||
+    stored.requiresExitCriteria !== next.requiresExitCriteria
+  )) {
+    throw new Error(
+      `WorkflowStateTransition ${stored.id} may only be reactivated without changing its definition`,
     );
   }
 }
@@ -205,6 +221,21 @@ export class SqliteWorkflowStateTransitionRepository
 
   async listIncomingForState(machine: WorkflowStateTransitionMachine, toStateId: EntityId): Promise<WorkflowStateTransition[]> {
     return this.list(machine, 'to_state_id = ?', [toStateId]);
+  }
+
+  async findActiveByEndpoints(
+    machine: WorkflowStateTransitionMachine,
+    fromStateId: EntityId,
+    toStateId: EntityId,
+  ): Promise<WorkflowStateTransition | null> {
+    const row = await this.db.getFirstAsync<WorkflowStateTransitionRow>(
+      `SELECT ${COLUMNS} FROM workflow_state_transitions
+       WHERE workflow_id = ? AND entity_type = ? AND label_id = ?
+         AND from_state_id = ? AND to_state_id = ? AND archived_at IS NULL
+       LIMIT 1`,
+      [machine.workflowId, machine.entityType, machine.labelId, fromStateId, toStateId],
+    );
+    return row === null ? null : toDomain(row);
   }
 
   private async list(

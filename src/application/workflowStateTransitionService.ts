@@ -8,6 +8,7 @@ import type {
 import {
   archiveWorkflowStateTransition,
   createWorkflowStateTransition,
+  reactivateWorkflowStateTransition,
   updateWorkflowStateTransition,
 } from '../domain/workflowStateTransition';
 import type {
@@ -48,6 +49,20 @@ export class WorkflowStateTransitionNotFoundError extends Error {
   constructor(id: EntityId) {
     super(`WorkflowStateTransition ${id} not found`);
     this.name = 'WorkflowStateTransitionNotFoundError';
+  }
+}
+
+/** Each active endpoint pair is normalized to exactly one transition edge. */
+export class WorkflowStateTransitionDuplicateActiveEdgeError extends Error {
+  constructor(
+    readonly existingTransitionId: EntityId,
+    fromStateId: EntityId,
+    toStateId: EntityId,
+  ) {
+    super(
+      `WorkflowStateTransition active edge ${fromStateId} -> ${toStateId} already exists as ${existingTransitionId}`,
+    );
+    this.name = 'WorkflowStateTransitionDuplicateActiveEdgeError';
   }
 }
 
@@ -101,6 +116,7 @@ export class WorkflowStateTransitionService {
         destination.id,
       );
     }
+    await this.requireNoActiveEdge(machineOf(source), source.id, destination.id);
     const transition = createWorkflowStateTransition(
       {
         workflowId: source.workflowId,
@@ -116,7 +132,12 @@ export class WorkflowStateTransitionService {
       },
       { id: this.ids.newId(), now: command.definedAt ?? this.clock.now() },
     );
-    await this.transitions.add(transition);
+    try {
+      await this.transitions.add(transition);
+    } catch (error) {
+      await this.rethrowDuplicateEdgeConstraint(error, machineOf(source), source.id, destination.id);
+      throw error;
+    }
     return transition;
   }
 
@@ -130,6 +151,7 @@ export class WorkflowStateTransitionService {
     updatedAt?: IsoTimestamp,
   ): Promise<WorkflowStateTransition> {
     const transition = await this.requireTransition(id);
+    await this.requireActiveTopology(transition);
     const updated = updateWorkflowStateTransition(
       transition,
       changes,
@@ -150,6 +172,30 @@ export class WorkflowStateTransitionService {
     );
     await this.transitions.save(archived);
     return archived;
+  }
+
+  /**
+   * Reactivation re-validates endpoint existence, active status, machine
+   * identity, and the normalized active-edge rule before it is persisted.
+   */
+  async reactivateTransition(
+    id: EntityId,
+    reactivatedAt?: IsoTimestamp,
+  ): Promise<WorkflowStateTransition> {
+    const transition = await this.requireTransition(id);
+    const { source, destination, machine } = await this.requireActiveTopology(transition);
+    await this.requireNoActiveEdge(machine, source.id, destination.id);
+    const reactivated = reactivateWorkflowStateTransition(
+      transition,
+      reactivatedAt ?? this.clock.now(),
+    );
+    try {
+      await this.transitions.save(reactivated);
+    } catch (error) {
+      await this.rethrowDuplicateEdgeConstraint(error, machine, source.id, destination.id);
+      throw error;
+    }
+    return reactivated;
   }
 
   async listActiveTransitions(
@@ -215,6 +261,69 @@ export class WorkflowStateTransitionService {
     const transition = await this.transitions.getById(id);
     if (transition === null) throw new WorkflowStateTransitionNotFoundError(id);
     return transition;
+  }
+
+  private async requireNoActiveEdge(
+    machine: WorkflowStateTransitionMachine,
+    fromStateId: EntityId,
+    toStateId: EntityId,
+  ): Promise<void> {
+    const existing = await this.transitions.findActiveByEndpoints(
+      machine,
+      fromStateId,
+      toStateId,
+    );
+    if (existing !== null) {
+      throw new WorkflowStateTransitionDuplicateActiveEdgeError(
+        existing.id,
+        fromStateId,
+        toStateId,
+      );
+    }
+  }
+
+  private async requireActiveTopology(
+    transition: WorkflowStateTransition,
+  ): Promise<{
+    source: WorkflowState;
+    destination: WorkflowState;
+    machine: WorkflowStateTransitionMachine;
+  }> {
+    const source = await this.requireActiveEndpoint('source', transition.fromStateId);
+    const destination = await this.requireActiveEndpoint('destination', transition.toStateId);
+    const machine = machineOf(source);
+    if (!sameMachine(source, destination) ||
+      transition.workflowId !== machine.workflowId ||
+      transition.entityType !== machine.entityType ||
+      transition.labelId !== machine.labelId) {
+      throw new WorkflowStateTransitionMachineMismatchError(source.id, destination.id);
+    }
+    return { source, destination, machine };
+  }
+
+  private async rethrowDuplicateEdgeConstraint(
+    error: unknown,
+    machine: WorkflowStateTransitionMachine,
+    fromStateId: EntityId,
+    toStateId: EntityId,
+  ): Promise<void> {
+    if (!(error instanceof Error) ||
+      (!error.message.includes('UNIQUE constraint failed') &&
+        !error.message.includes('unique constraint'))) {
+      return;
+    }
+    const existing = await this.transitions.findActiveByEndpoints(
+      machine,
+      fromStateId,
+      toStateId,
+    );
+    if (existing !== null) {
+      throw new WorkflowStateTransitionDuplicateActiveEdgeError(
+        existing.id,
+        fromStateId,
+        toStateId,
+      );
+    }
   }
 }
 
