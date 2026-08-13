@@ -124,7 +124,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [x] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11) **(done)**
 - [x] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6) **(done)**
 - [ ] [#59](https://github.com/logact/becoming/issues/59) — Capture creation provenance for all core concepts (Feature #30)
-- [ ] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5)
+- [ ] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5) **(processing)**
 - [ ] [#75](https://github.com/logact/becoming/issues/75) — Query current and historical semantic relations (Feature #19)
 - [ ] [#89](https://github.com/logact/becoming/issues/89) — Implement Goal mutation commands with provenance (Feature #17) **(processing)**
 - [ ] [#91](https://github.com/logact/becoming/issues/91) — Implement Project domain, persistence, and mutations (Feature #20) **(processing)**
