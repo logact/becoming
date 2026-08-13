@@ -121,13 +121,13 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [x] [#40](https://github.com/logact/becoming/issues/40) — Persist workflow transition templates and machine queries (Feature #26) **(done)**
 - [x] [#47](https://github.com/logact/becoming/issues/47) — Implement Project transition management and independence (Feature #28) **(done)**
 - [x] [#50](https://github.com/logact/becoming/issues/50) — Persist entity state history and initialize current state safely (Feature #29) **(done)**
-- [ ] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11) **(processing)**
-- [ ] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6) **(processing)**
+- [x] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11) **(done)**
+- [x] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6) **(done)**
 - [ ] [#59](https://github.com/logact/becoming/issues/59) — Capture creation provenance for all core concepts (Feature #30)
 - [ ] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5)
 - [ ] [#75](https://github.com/logact/becoming/issues/75) — Query current and historical semantic relations (Feature #19)
-- [ ] [#89](https://github.com/logact/becoming/issues/89) — Implement Goal mutation commands with provenance (Feature #17)
-- [ ] [#91](https://github.com/logact/becoming/issues/91) — Implement Project domain, persistence, and mutations (Feature #20)
+- [ ] [#89](https://github.com/logact/becoming/issues/89) — Implement Goal mutation commands with provenance (Feature #17) **(processing)**
+- [ ] [#91](https://github.com/logact/becoming/issues/91) — Implement Project domain, persistence, and mutations (Feature #20) **(processing)**
 - [ ] [#94](https://github.com/logact/becoming/issues/94) — Implement Task domain, persistence, and mutations (Feature #18) **(processing)**
 
 ### Wave 5 — Integrity and history
@@ -245,6 +245,8 @@ Before closing M1:
 | [#40](https://github.com/logact/becoming/issues/40) | ~2026-08-13T03:57:38Z (inferred) | 2026-08-13T04:06:53Z | ~9m 15s | Unavailable (worker runtime did not expose it) | [`dc746cb`](https://github.com/logact/becoming/commit/dc746cb1e537c8724fbcb9b2423681a7f6d08b2d) |
 | [#47](https://github.com/logact/becoming/issues/47) | 2026-08-13T04:10:02Z | 2026-08-13T05:28:31Z | 1h 18m 29s | Unavailable (worker runtime did not expose it) | [`0515459`](https://github.com/logact/becoming/commit/051545911cd5194d7b3cd2da1d4ec5785c2302c7) |
 | [#50](https://github.com/logact/becoming/issues/50) | 2026-08-13T06:04:36Z | 2026-08-13T06:10:21Z | 5m 45s | Unavailable (worker runtime did not expose it) | [`045d518`](https://github.com/logact/becoming/commit/045d51891de44339f0de34dd757c43bfc324c51d) |
+| [#54](https://github.com/logact/becoming/issues/54) | 2026-08-13T06:18:48Z | 2026-08-13T06:20:09Z | ~1m 21s | Unavailable (worker runtime did not expose it) | [`69f3296`](https://github.com/logact/becoming/commit/69f32964fffe04c24a7d5cf2387f43f46d9232c8) |
+| [#56](https://github.com/logact/becoming/issues/56) | 2026-08-13T06:12:27Z | 2026-08-13T06:19:27Z | ~7m | Unavailable (worker runtime did not expose it) | [`abdf59c`](https://github.com/logact/becoming/commit/abdf59c2282ef3432aeab314ee06608c95ff0ffc) |
 
 ## Maintaining the plan
 
