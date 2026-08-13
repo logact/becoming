@@ -135,7 +135,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 Exit gate: topology, transition validation, Record queries, mutation history, initial budget contracts, relation audit, lineage policies, and Goal querying pass integration tests.
 
 - [x] [#39](https://github.com/logact/becoming/issues/39) — Complete workflow state history and provenance coverage (Feature #25) **(done)**
-- [ ] [#41](https://github.com/logact/becoming/issues/41) — Enforce workflow transition topology and duplicate policies (Feature #26) **(processing)**
+- [x] [#41](https://github.com/logact/becoming/issues/41) — Enforce workflow transition topology and duplicate policies (Feature #26) **(done)**
 - [x] [#52](https://github.com/logact/becoming/issues/52) — Build the Project transition validation engine (Feature #29) **(done)**
 - [x] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6) **(done)**
 - [ ] [#60](https://github.com/logact/becoming/issues/60) — Capture update, archive, and restoration provenance (Feature #30)
@@ -148,9 +148,9 @@ Exit gate: topology, transition validation, Record queries, mutation history, in
 
 Exit gate: lifecycle transitions and relation changes are atomic with audit data; budget mutation and Goal/Project/Task relations preserve temporal history.
 
-- [ ] [#42](https://github.com/logact/becoming/issues/42) — Add transition lifecycle services and provenance coverage (Feature #26)
-- [ ] [#55](https://github.com/logact/becoming/issues/55) — Commit lifecycle transitions atomically with concurrency controls (Feature #29)
-- [ ] [#62](https://github.com/logact/becoming/issues/62) — Create and supersede project resource budgets (Feature #12)
+- [ ] [#42](https://github.com/logact/becoming/issues/42) — Add transition lifecycle services and provenance coverage (Feature #26) **(processing)**
+- [ ] [#55](https://github.com/logact/becoming/issues/55) — Commit lifecycle transitions atomically with concurrency controls (Feature #29) **(processing)**
+- [ ] [#62](https://github.com/logact/becoming/issues/62) — Create and supersede project resource budgets (Feature #12) **(processing)**
 - [ ] [#66](https://github.com/logact/becoming/issues/66) — Query endpoint relationship history and replacements (Feature #5)
 - [ ] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8)
 - [ ] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10)
@@ -258,6 +258,7 @@ Before closing M1:
 | [#39](https://github.com/logact/becoming/issues/39) | Approx. 2026-08-13T06:34Z | Approx. 2026-08-13T06:52Z | ~18m | Unavailable (worker runtime did not expose it) | [`1714ca3`](https://github.com/logact/becoming/commit/1714ca3) |
 | [#52](https://github.com/logact/becoming/issues/52) | Approximate (worker did not capture boundaries) | Approximate | ~8m | Unavailable (worker runtime did not expose it) | [`d6ae64d`](https://github.com/logact/becoming/commit/d6ae64d) |
 | [#61](https://github.com/logact/becoming/issues/61) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`9fd6a54`](https://github.com/logact/becoming/commit/9fd6a542131220225b29dff8cf59f6d205aa6e2b) |
+| [#41](https://github.com/logact/becoming/issues/41) | Approximate (worker did not capture boundaries) | Approximate | ~20m | Unavailable (worker runtime did not expose it) | [`fca2cc3`](https://github.com/logact/becoming/commit/fca2cc3f1ff11e7f54014c1a1845c188c8d9f345) |
 
 ## Maintaining the plan
 
