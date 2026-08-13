@@ -39,6 +39,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Validate publishing configuration
+        env:
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          APPLE_TEAM_TYPE: ${{ vars.APPLE_TEAM_TYPE }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${ASC_API_KEY_P8:?Set the ASC_API_KEY_P8 repository secret}"
+          : "${APPLE_TEAM_ID:?Set the APPLE_TEAM_ID repository variable}"
+          : "${APPLE_TEAM_TYPE:?Set the APPLE_TEAM_TYPE repository variable}"
+          case "$APPLE_TEAM_TYPE" in
+            INDIVIDUAL|COMPANY_OR_ORGANIZATION|IN_HOUSE) ;;
+            *) echo "::error::APPLE_TEAM_TYPE must be INDIVIDUAL, COMPANY_OR_ORGANIZATION, or IN_HOUSE"; exit 1 ;;
+          esac
+          jq -er '.submit.production.ios.ascApiKeyIssuerId | select(length > 0)' eas.json > /dev/null
+          jq -er '.submit.production.ios.ascApiKeyId | select(length > 0)' eas.json > /dev/null
+
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -62,9 +80,19 @@ jobs:
           set -euo pipefail
           mkdir -p .asc
           printf '%s' "$ASC_API_KEY_P8" | base64 --decode > .asc/app-store-connect.p8
+          grep -q -- '-----BEGIN PRIVATE KEY-----' .asc/app-store-connect.p8
 
       - name: Build iOS app with EAS
-        run: npx --yes eas-cli@21.8.0 build --platform ios --profile production --non-interactive --wait
+        env:
+          EXPO_ASC_API_KEY_PATH: .asc/app-store-connect.p8
+          EXPO_APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          EXPO_APPLE_TEAM_TYPE: ${{ vars.APPLE_TEAM_TYPE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export EXPO_ASC_ISSUER_ID="$(jq -er .submit.production.ios.ascApiKeyIssuerId eas.json)"
+          export EXPO_ASC_KEY_ID="$(jq -er .submit.production.ios.ascApiKeyId eas.json)"
+          npx --yes eas-cli@21.8.0 build --platform ios --profile production --non-interactive --wait
 
       - name: Submit build to App Store Connect
         run: npx --yes eas-cli@21.8.0 submit --platform ios --profile production --latest --non-interactive
@@ -89,8 +117,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          : "${ASC_API_KEY_P8:?Set the ASC_API_KEY_P8 repository secret}"
           mkdir -p .asc
           printf '%s' "$ASC_API_KEY_P8" | base64 --decode > .asc/app-store-connect.p8
+          grep -q -- '-----BEGIN PRIVATE KEY-----' .asc/app-store-connect.p8
           jq -n \
             --arg key_id "$(jq -r .submit.production.ios.ascApiKeyId eas.json)" \
             --arg issuer_id "$(jq -r .submit.production.ios.ascApiKeyIssuerId eas.json)" \
