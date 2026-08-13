@@ -31,6 +31,12 @@ export interface ProjectEntityStateRepository {
   add(state: ProjectEntityState): Promise<void>;
   getById(id: EntityId): Promise<ProjectEntityState | null>;
   findCurrent(context: ProjectEntityStateContext): Promise<ProjectEntityState | null>;
+  /**
+   * Return every open period for one exact context in deterministic order.
+   * This deliberately exposes corrupt multiple-current history to read
+   * projections which need to report it rather than choose a winner.
+   */
+  listCurrent(context: ProjectEntityStateContext): Promise<ProjectEntityState[]>;
   /** Alias for the lifecycle-audit lookup port. */
   getCurrent(context: ProjectEntityStateContext): Promise<ProjectEntityState | null>;
   listHistory(context: ProjectEntityStateContext): Promise<ProjectEntityState[]>;
@@ -152,6 +158,19 @@ export class SqliteProjectEntityStateRepository
   ): Promise<ProjectEntityState | null> {
     // Although the partial unique index prevents this in normal operation,
     // detect legacy/corrupt data rather than silently choosing a winner.
+    const rows = await this.listCurrent(context);
+    if (rows.length > 1) {
+      throw new ProjectEntityStateMultipleCurrentError(
+        context,
+        rows.map((row) => row.id),
+      );
+    }
+    return rows.length === 0 ? null : rows[0];
+  }
+
+  async listCurrent(
+    context: ProjectEntityStateContext,
+  ): Promise<ProjectEntityState[]> {
     const rows = await this.db.getAllAsync<ProjectEntityStateRow>(
       `SELECT ${COLUMNS} FROM project_entity_states
        WHERE project_id = ? AND entity_type = ? AND entity_id = ?
@@ -164,13 +183,7 @@ export class SqliteProjectEntityStateRepository
         context.labelId,
       ],
     );
-    if (rows.length > 1) {
-      throw new ProjectEntityStateMultipleCurrentError(
-        context,
-        rows.map((row) => row.id),
-      );
-    }
-    return rows.length === 0 ? null : toDomain(rows[0]);
+    return rows.map(toDomain);
   }
 
   async getCurrent(

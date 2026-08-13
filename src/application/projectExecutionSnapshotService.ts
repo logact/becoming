@@ -1,9 +1,16 @@
 import type { Goal } from '../domain/goal';
 import type { EntityId, IsoTimestamp } from '../domain/ids';
+import type { Label } from '../domain/label';
 import type { Project } from '../domain/project';
+import type { ProjectEntityState } from '../domain/projectEntityState';
+import type { ProjectState } from '../domain/projectState';
 import type { Task } from '../domain/task';
+import type { EntityLabelRepository } from '../persistence/entityLabelRepository';
 import type { GoalRepository } from '../persistence/goalRepository';
+import type { LabelRepository } from '../persistence/labelRepository';
+import type { ProjectEntityStateRepository } from '../persistence/projectEntityStateRepository';
 import type { ProjectRepository } from '../persistence/projectRepository';
+import type { ProjectStateRepository } from '../persistence/projectStateRepository';
 import type { TaskRepository } from '../persistence/taskRepository';
 import {
   DecompositionHierarchyQueryService,
@@ -22,9 +29,29 @@ import {
 } from './taskProjectMembershipQueryService';
 
 /** A typed intrinsic endpoint carried by the execution projection. */
+export type ProjectExecutionLifecycle =
+  | { kind: 'no_applicable_machine' }
+  | { kind: 'managed'; labels: ProjectExecutionLifecycleLabel[] };
+
+/** One active label's lifecycle result for a snapshot node. */
+export type ProjectExecutionLifecycleLabel = {
+  machine: { projectId: EntityId; entityType: 'goal' | 'task'; labelId: EntityId };
+  label: Label | null;
+  /** The machine is absent when the Project has no active State definitions for this label. */
+  status: 'no_machine' | 'uninitialized' | 'current' | 'anomalous';
+  current: { period: ProjectEntityState; state: ProjectState } | null;
+  anomalies: ProjectExecutionLifecycleAnomaly[];
+};
+
+export type ProjectExecutionLifecycleAnomaly =
+  | { kind: 'orphan_label'; labelId: EntityId }
+  | { kind: 'multiple_current_states'; periodIds: EntityId[] }
+  | { kind: 'missing_project_state'; periodId: EntityId; projectStateId: EntityId }
+  | { kind: 'project_state_machine_mismatch'; periodId: EntityId; projectStateId: EntityId; actual: { projectId: EntityId; entityType: string; labelId: EntityId } };
+
 export type ProjectExecutionNode =
-  | { type: 'goal'; id: EntityId; goal: Goal | null }
-  | { type: 'task'; id: EntityId; task: Task | null };
+  | { type: 'goal'; id: EntityId; goal: Goal | null; lifecycle: ProjectExecutionLifecycle }
+  | { type: 'task'; id: EntityId; task: Task | null; lifecycle: ProjectExecutionLifecycle };
 
 export interface ProjectExecutionSnapshotOptions {
   /** Select the historical graph valid at this instant (half-open intervals). */
@@ -71,6 +98,11 @@ export interface ProjectExecutionSnapshotServicePorts {
   pursuits: ProjectGoalPursuitQueryService;
   memberships: TaskProjectMembershipQueryService;
   hierarchy: DecompositionHierarchyQueryService;
+  /** Optional during staged adoption; omitted means lifecycle is explicitly unavailable. */
+  entityLabels?: Pick<EntityLabelRepository, 'findActiveForEntity'>;
+  labels?: Pick<LabelRepository, 'getById'>;
+  projectStates?: Pick<ProjectStateRepository, 'listActiveForMachine' | 'getById'>;
+  entityStates?: Pick<ProjectEntityStateRepository, 'listCurrent'>;
 }
 
 export class ProjectExecutionSnapshotService {
@@ -107,7 +139,7 @@ export class ProjectExecutionSnapshotService {
       ...activeTasks.map((view) => node('task', view.taskId)),
       ...rawEdges.flatMap((edge) => [edge.parent, edge.child]),
     ]);
-    const resolved = await Promise.all(allNodes.map((value) => this.resolveNode(value)));
+    const resolved = await Promise.all(allNodes.map((value) => this.resolveNode(projectId, value)));
     const visible = new Set(resolved.filter((value) => includeArchived || !isArchived(value)).map(nodeKey));
     const nodes = resolved.filter((value) => visible.has(nodeKey(value)));
     const edges = rawEdges.filter((edge) => visible.has(nodeKey(edge.parent)) && visible.has(nodeKey(edge.child)));
@@ -135,10 +167,41 @@ export class ProjectExecutionSnapshotService {
     return { projectId, project, scope: { asOf: options.asOf ?? null, includeEnded: historical, includeArchived }, pursuedRoots: roots, activeTasks, nodes, edges, findings: sortFindings(findings) };
   }
 
-  private async resolveNode(value: DecompositionNode): Promise<ProjectExecutionNode> {
+  private async resolveNode(projectId: EntityId, value: DecompositionNode): Promise<ProjectExecutionNode> {
+    const lifecycle = await this.lifecycleFor(projectId, value);
     return value.type === 'goal'
-      ? { type: 'goal', id: value.id, goal: await this.ports.goals.getById(value.id) }
-      : { type: 'task', id: value.id, task: await this.ports.tasks.getById(value.id) };
+      ? { type: 'goal', id: value.id, goal: await this.ports.goals.getById(value.id), lifecycle }
+      : { type: 'task', id: value.id, task: await this.ports.tasks.getById(value.id), lifecycle };
+  }
+
+  private async lifecycleFor(projectId: EntityId, value: DecompositionNode): Promise<ProjectExecutionLifecycle> {
+    const { entityLabels, labels, projectStates, entityStates } = this.ports;
+    if (!entityLabels || !labels || !projectStates || !entityStates) return { kind: 'no_applicable_machine' };
+    const assignments = await entityLabels.findActiveForEntity(value.type, value.id, { limit: 10_000 });
+    const entries = await Promise.all(assignments.map(async ({ labelId }) => {
+      const machine = { projectId, entityType: value.type, labelId } as const;
+      const [label, definitions, periods] = await Promise.all([
+        labels.getById(labelId),
+        projectStates.listActiveForMachine(machine),
+        entityStates.listCurrent({ ...machine, entityId: value.id }),
+      ]);
+      const anomalies: ProjectExecutionLifecycleAnomaly[] = [];
+      if (label === null) anomalies.push({ kind: 'orphan_label', labelId });
+      if (periods.length > 1) anomalies.push({ kind: 'multiple_current_states', periodIds: periods.map((period) => period.id) });
+      let current: ProjectExecutionLifecycleLabel['current'] = null;
+      if (periods.length === 1) {
+        const period = periods[0];
+        const state = await projectStates.getById(period.projectStateId);
+        if (state === null) anomalies.push({ kind: 'missing_project_state', periodId: period.id, projectStateId: period.projectStateId });
+        else if (state.projectId !== machine.projectId || state.entityType !== machine.entityType || state.labelId !== machine.labelId) {
+          anomalies.push({ kind: 'project_state_machine_mismatch', periodId: period.id, projectStateId: state.id, actual: { projectId: state.projectId, entityType: state.entityType, labelId: state.labelId } });
+        } else current = { period, state };
+      }
+      const status: ProjectExecutionLifecycleLabel['status'] = anomalies.length > 0 ? 'anomalous' : definitions.length === 0 ? 'no_machine' : current === null ? 'uninitialized' : 'current';
+      return { machine, label, status, current, anomalies };
+    }));
+    const ordered = entries.sort((a, b) => a.machine.labelId.localeCompare(b.machine.labelId));
+    return ordered.length === 0 ? { kind: 'no_applicable_machine' } : { kind: 'managed', labels: ordered };
   }
 }
 
