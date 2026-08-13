@@ -16,11 +16,23 @@ export class ProjectEntityStateCurrentConflictError extends Error {
   }
 }
 
+/** Stored history is corrupt when a context has more than one open period. */
+export class ProjectEntityStateMultipleCurrentError extends Error {
+  constructor(context: ProjectEntityStateContext, ids: readonly EntityId[]) {
+    super(
+      `Entity ${context.entityType} ${context.entityId} has multiple current Project states in ${context.projectId}/${context.labelId}: ${ids.join(', ')}`,
+    );
+    this.name = 'ProjectEntityStateMultipleCurrentError';
+  }
+}
+
 /** Read/write port for immutable runtime Project state periods. */
 export interface ProjectEntityStateRepository {
   add(state: ProjectEntityState): Promise<void>;
   getById(id: EntityId): Promise<ProjectEntityState | null>;
   findCurrent(context: ProjectEntityStateContext): Promise<ProjectEntityState | null>;
+  /** Alias for the lifecycle-audit lookup port. */
+  getCurrent(context: ProjectEntityStateContext): Promise<ProjectEntityState | null>;
   listHistory(context: ProjectEntityStateContext): Promise<ProjectEntityState[]>;
   /** Only changes `endedAt` from null to a valid final value. */
   end(state: ProjectEntityState): Promise<void>;
@@ -136,10 +148,13 @@ export class SqliteProjectEntityStateRepository
   async findCurrent(
     context: ProjectEntityStateContext,
   ): Promise<ProjectEntityState | null> {
-    const row = await this.db.getFirstAsync<ProjectEntityStateRow>(
+    // Although the partial unique index prevents this in normal operation,
+    // detect legacy/corrupt data rather than silently choosing a winner.
+    const rows = await this.db.getAllAsync<ProjectEntityStateRow>(
       `SELECT ${COLUMNS} FROM project_entity_states
        WHERE project_id = ? AND entity_type = ? AND entity_id = ?
-         AND label_id = ? AND ended_at IS NULL`,
+         AND label_id = ? AND ended_at IS NULL
+       ORDER BY entered_at, created_at, id`,
       [
         context.projectId,
         context.entityType,
@@ -147,7 +162,19 @@ export class SqliteProjectEntityStateRepository
         context.labelId,
       ],
     );
-    return row === null ? null : toDomain(row);
+    if (rows.length > 1) {
+      throw new ProjectEntityStateMultipleCurrentError(
+        context,
+        rows.map((row) => row.id),
+      );
+    }
+    return rows.length === 0 ? null : toDomain(rows[0]);
+  }
+
+  async getCurrent(
+    context: ProjectEntityStateContext,
+  ): Promise<ProjectEntityState | null> {
+    return this.findCurrent(context);
   }
 
   async listHistory(
