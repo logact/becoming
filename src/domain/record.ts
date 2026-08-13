@@ -37,6 +37,10 @@ export type { JsonValue } from './json';
  * The default supported record types (see `Table-definetion.txt`). The policy
  * is explicit and extensible: validation accepts an override list so new
  * types can be adopted deliberately instead of silently.
+ *
+ * `mutation` is adopted by the atomic core-mutation provenance contract (see
+ * `src/domain/mutationProvenance.ts`): one Record of this type carries the
+ * provenance payload of each audited core-entity mutation.
  */
 export const RECORD_TYPES = [
   'action',
@@ -48,6 +52,7 @@ export const RECORD_TYPES = [
   'resource_usage',
   'external_event',
   'correction',
+  'mutation',
 ] as const;
 
 export type RecordType = (typeof RECORD_TYPES)[number];

@@ -1,3 +1,4 @@
+import type { UnitOfWork } from '../application/unitOfWork';
 import type { SqliteDatabase } from './database';
 
 /**
@@ -23,4 +24,16 @@ export async function withTransaction<T>(
     await db.execAsync('ROLLBACK');
     throw error;
   }
+}
+
+/**
+ * Bind the application-level `UnitOfWork` port to a SQLite database. The
+ * transaction context is the `SqliteDatabase` handle itself, so services
+ * construct their repositories with the context they receive inside `run`
+ * (e.g. `new SqliteRecordRepository(context)`).
+ */
+export function sqliteUnitOfWork(
+  db: SqliteDatabase,
+): UnitOfWork<SqliteDatabase> {
+  return { run: (work) => withTransaction(db, work) };
 }
