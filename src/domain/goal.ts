@@ -35,6 +35,20 @@ export interface NewGoal {
   successCriteria?: string;
 }
 
+/** Editable intrinsic fields of an active Goal. Null clears optional detail. */
+export interface GoalChanges {
+  title?: string;
+  targetState?: string;
+  description?: string | null;
+  successCriteria?: string | null;
+}
+
+/** Deterministic dependencies used when defining a Goal. */
+export interface CreateGoalDependencies {
+  id?: EntityId;
+  now?: IsoTimestamp;
+}
+
 function requireNonBlank(field: string, value: string): string {
   if (value.trim().length === 0) {
     throw new Error(`Goal ${field} must not be blank`);
@@ -52,10 +66,13 @@ export function validateGoal(goal: Goal): void {
  * Define a new Goal with a fresh id and current timestamps. Optional detail
  * fields normalize to null when omitted, matching the TEXT columns.
  */
-export function createGoal(input: NewGoal): Goal {
-  const now = nowIso();
+export function createGoal(
+  input: NewGoal,
+  dependencies: CreateGoalDependencies = {},
+): Goal {
+  const now = dependencies.now ?? nowIso();
   const goal: Goal = {
-    id: newId(),
+    id: dependencies.id ?? newId(),
     title: requireNonBlank('title', input.title),
     description: input.description ?? null,
     targetState: requireNonBlank('targetState', input.targetState),
@@ -65,6 +82,31 @@ export function createGoal(input: NewGoal): Goal {
     archivedAt: null,
   };
   return goal;
+}
+
+/** Update an active Goal without changing its identity or creation time. */
+export function updateGoal(
+  goal: Goal,
+  changes: GoalChanges,
+  updatedAt: IsoTimestamp = nowIso(),
+): Goal {
+  if (goal.archivedAt !== null) {
+    throw new Error(`Goal ${goal.id} is archived and cannot be updated`);
+  }
+  const updated: Goal = {
+    ...goal,
+    title: changes.title ?? goal.title,
+    targetState: changes.targetState ?? goal.targetState,
+    description:
+      changes.description === undefined ? goal.description : changes.description,
+    successCriteria:
+      changes.successCriteria === undefined
+        ? goal.successCriteria
+        : changes.successCriteria,
+    updatedAt,
+  };
+  validateGoal(updated);
+  return updated;
 }
 
 /**

@@ -1,5 +1,16 @@
-import { archiveGoal, createGoal, validateGoal } from '../src/domain/goal';
+import {
+  archiveGoal,
+  createGoal,
+  updateGoal,
+  validateGoal,
+} from '../src/domain/goal';
+import { GoalNotFoundError, GoalService } from '../src/application/goalService';
+import { PROVENANCE_RECORD_TYPE } from '../src/domain/mutationProvenance';
 import { SqliteGoalRepository } from '../src/persistence/goalRepository';
+import { SqliteRecordRepository } from '../src/persistence/recordRepository';
+import { sqliteUnitOfWork } from '../src/persistence/transactions';
+import type { Record } from '../src/domain/record';
+import type { SqliteDatabase } from '../src/persistence/database';
 import { closeQuietly, createTestDatabase } from './helpers/testDatabase';
 
 describe('goal domain model', () => {
@@ -60,6 +71,25 @@ describe('goal domain model', () => {
       createGoal({ title: 'Old goal', targetState: 'Past state' }),
     );
     expect(() => archiveGoal(archived)).toThrow(/already archived/);
+  });
+
+  it('updates active intrinsic fields without changing createdAt', () => {
+    const goal = createGoal({ title: 'Original', targetState: 'Initial' });
+    const updated = updateGoal(goal, {
+      title: 'Refined', targetState: 'Accepted', description: 'Scope', successCriteria: 'Verified',
+    }, '2026-08-12T12:00:00.000Z');
+
+    expect(updated).toMatchObject({
+      title: 'Refined', targetState: 'Accepted', description: 'Scope', successCriteria: 'Verified',
+      createdAt: goal.createdAt, updatedAt: '2026-08-12T12:00:00.000Z',
+    });
+    expect(updateGoal(updated, { description: null, successCriteria: null }, '2026-08-12T12:01:00.000Z'))
+      .toMatchObject({ description: null, successCriteria: null });
+  });
+
+  it('rejects updates to an archived Goal', () => {
+    const archived = archiveGoal(createGoal({ title: 'Old', targetState: 'Past' }));
+    expect(() => updateGoal(archived, { title: 'Nope' })).toThrow(/archived/);
   });
 });
 
@@ -165,5 +195,96 @@ describe('GoalRepository contract', () => {
       repository.save(createGoal({ title: 'Ghost', targetState: 'None' })),
     ).rejects.toThrow(/unknown/);
     await closeQuietly(db);
+  });
+});
+
+describe('GoalService', () => {
+  const NOW = '2026-08-13T00:00:00.000Z';
+  const LATER = '2026-08-13T01:00:00.000Z';
+  let db: SqliteDatabase;
+  let service: GoalService<SqliteDatabase>;
+  let id = 0;
+
+  beforeEach(async () => {
+    db = await createTestDatabase();
+    service = new GoalService({
+      unitOfWork: sqliteUnitOfWork(db),
+      goals: (context) => new SqliteGoalRepository(context),
+      records: (context) => new SqliteRecordRepository(context),
+      readGoals: new SqliteGoalRepository(db),
+      clock: { now: () => LATER },
+      ids: { newId: () => `goal-or-provenance-${++id}` },
+    });
+  });
+
+  afterEach(async () => db.closeAsync());
+
+  async function count(table: 'goals' | 'records'): Promise<number> {
+    return (await db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) AS count FROM ${table}`))?.count ?? 0;
+  }
+
+  async function provenance(): Promise<Record[]> {
+    const rows = await db.getAllAsync<{ id: string }>(
+      'SELECT id FROM records WHERE record_type = ? ORDER BY created_at, id',
+      [PROVENANCE_RECORD_TYPE],
+    );
+    const repository = new SqliteRecordRepository(db);
+    return Promise.all(rows.map(({ id: recordId }) => repository.getById(recordId) as Promise<Record>));
+  }
+
+  it('creates, updates, and archives Goals with atomic allowlisted provenance', async () => {
+    const created = await service.createGoal({
+      actor: 'creator', title: 'Launch', targetState: 'Accepted', description: 'M1',
+      successCriteria: 'Users succeed', occurredAt: NOW,
+    });
+    const updated = await service.updateGoal(
+      created.id, { title: 'Launch M1', description: null, successCriteria: null }, 'editor', LATER,
+    );
+    const archived = await service.archiveGoal(created.id, 'archivist', LATER);
+
+    expect(created).toMatchObject({ createdAt: LATER, updatedAt: LATER, archivedAt: null });
+    expect(updated).toMatchObject({ createdAt: LATER, updatedAt: LATER, description: null, successCriteria: null });
+    expect(archived).toMatchObject({ archivedAt: LATER, updatedAt: LATER });
+    expect(await service.getGoal(created.id)).toEqual(archived);
+    const audit = await provenance();
+    expect(audit.map((record) => (record.payload as { action: string }).action))
+      .toEqual(['create', 'update', 'archive']);
+    expect(audit[0].payload).toMatchObject({
+      entityType: 'goal', entityId: created.id, actor: 'creator',
+      after: { title: 'Launch', targetState: 'Accepted', successCriteria: 'Users succeed' },
+    });
+    expect(audit[1].payload).toMatchObject({
+      before: { title: 'Launch', description: 'M1', successCriteria: 'Users succeed' },
+      after: { title: 'Launch M1', description: null, successCriteria: null },
+    });
+    expect(audit[2].payload).toMatchObject({ after: { archivedAt: LATER } });
+  });
+
+  it('rejects invalid or missing mutations without writing a Goal or provenance', async () => {
+    await expect(service.createGoal({ actor: 'user', title: ' ', targetState: 'Done' })).rejects.toThrow(/title/);
+    expect(await count('goals')).toBe(0);
+    expect(await count('records')).toBe(0);
+    await expect(service.updateGoal('missing', { title: 'No' }, 'user')).rejects.toBeInstanceOf(GoalNotFoundError);
+  });
+
+  it('rejects repeated archival without rewriting the Goal or adding provenance', async () => {
+    const goal = await service.createGoal({ actor: 'user', title: 'Archive', targetState: 'Keep' });
+    await service.archiveGoal(goal.id, 'user');
+    await expect(service.archiveGoal(goal.id, 'user')).rejects.toThrow(/already archived/);
+    expect(await count('records')).toBe(2);
+  });
+
+  it('rolls back the Goal write if provenance append fails', async () => {
+    const failing = new GoalService({
+      unitOfWork: sqliteUnitOfWork(db),
+      goals: (context) => new SqliteGoalRepository(context),
+      records: () => ({ add: async () => { throw new Error('record write failed'); }, getById: async () => null }),
+      readGoals: new SqliteGoalRepository(db),
+      clock: { now: () => LATER },
+    });
+    await expect(failing.createGoal({ actor: 'user', title: 'Atomic', targetState: 'No partial row' }))
+      .rejects.toThrow(/Provenance append/);
+    expect(await count('goals')).toBe(0);
+    expect(await count('records')).toBe(0);
   });
 });
