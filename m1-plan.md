@@ -125,7 +125,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [x] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6) **(done)**
 - [ ] [#59](https://github.com/logact/becoming/issues/59) — Capture creation provenance for all core concepts (Feature #30)
 - [x] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5) **(done)**
-- [ ] [#75](https://github.com/logact/becoming/issues/75) — Query current and historical semantic relations (Feature #19) **(processing)**
+- [x] [#75](https://github.com/logact/becoming/issues/75) — Query current and historical semantic relations (Feature #19) **(done)**
 - [x] [#89](https://github.com/logact/becoming/issues/89) — Implement Goal mutation commands with provenance (Feature #17) **(done)**
 - [x] [#91](https://github.com/logact/becoming/issues/91) — Implement Project domain, persistence, and mutations (Feature #20) **(done)**
 - [x] [#94](https://github.com/logact/becoming/issues/94) — Implement Task domain, persistence, and mutations (Feature #18) **(done)**
@@ -252,6 +252,7 @@ Before closing M1:
 | [#91](https://github.com/logact/becoming/issues/91) | ~2026-08-13T06:27Z | ~2026-08-13T06:35Z | ~8m | Unavailable (worker runtime did not expose it) | [`140d714`](https://github.com/logact/becoming/commit/140d714) |
 | [#64](https://github.com/logact/becoming/issues/64) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`c1ae076`](https://github.com/logact/becoming/commit/c1ae076e8d8461f3a9a7608bc363e5cc5398e5f4) |
 | [#90](https://github.com/logact/becoming/issues/90) | Approx. 2026-08-13T06:27Z | 2026-08-13T06:32:51Z | ~6m | Unavailable (worker runtime did not expose it) | [`861b683`](https://github.com/logact/becoming/commit/861b6832c98a2d78e57bc465ac9be4235f21825d) |
+| [#75](https://github.com/logact/becoming/issues/75) | Approx. 2026-08-13T06:25:34Z | 2026-08-13T06:33:34Z | ~8m | Unavailable (worker runtime did not expose it) | [`357643a`](https://github.com/logact/becoming/commit/357643a) |
 
 ## Maintaining the plan
 
