@@ -5,8 +5,16 @@ import {
 } from '../src/domain/workflowStateTransition';
 import type { WorkflowStateTransitionMachine } from '../src/domain/workflowStateTransition';
 import { createWorkflowState } from '../src/domain/workflowState';
+import { archiveLabel, createLabel } from '../src/domain/label';
+import { archiveWorkflow, createWorkflow } from '../src/domain/workflow';
 import { SqliteWorkflowStateRepository } from '../src/persistence/workflowStateRepository';
 import { SqliteWorkflowStateTransitionRepository } from '../src/persistence/workflowStateTransitionRepository';
+import { SqliteWorkflowRepository } from '../src/persistence/workflowRepository';
+import { SqliteLabelRepository } from '../src/persistence/labelRepository';
+import { SqliteRecordRepository } from '../src/persistence/recordRepository';
+import { sqliteUnitOfWork } from '../src/persistence/transactions';
+import type { SqliteDatabase } from '../src/persistence/database';
+import { PROVENANCE_RECORD_TYPE } from '../src/domain/mutationProvenance';
 import {
   WorkflowStateTransitionEndpointArchivedError,
   WorkflowStateTransitionEndpointNotFoundError,
@@ -360,4 +368,100 @@ describe('WorkflowStateTransitionService', () => {
     expect(await transitions.listActiveForMachine(MACHINE)).toHaveLength(1);
     await closeQuietly(db);
   });
+
+  it('resolves archived workflow, label, endpoints, and transitions as one historical machine', async () => {
+    const db = await createTestDatabase();
+    const workflows = new SqliteWorkflowRepository(db);
+    const labels = new SqliteLabelRepository(db);
+    const states = new SqliteWorkflowStateRepository(db);
+    const transitions = new SqliteWorkflowStateTransitionRepository(db);
+    const workflow = { ...createWorkflow({ title: 'Task flow', workflowType: 'task_execution' }), id: MACHINE.workflowId, createdAt: CREATED_AT, updatedAt: CREATED_AT };
+    const label = { ...createLabel({ name: 'Sprint' }), id: MACHINE.labelId, createdAt: CREATED_AT, updatedAt: CREATED_AT };
+    await workflows.add(workflow);
+    await labels.add(label);
+    const source = createWorkflowState({ ...MACHINE, title: 'Ready', exitCriteria: 'assigned' }, { id: 'source', now: CREATED_AT });
+    const destination = createWorkflowState({ ...MACHINE, title: 'Doing' }, { id: 'destination', now: CREATED_AT });
+    await states.add(source);
+    await states.add(destination);
+    const service = new WorkflowStateTransitionService({ states, transitions, workflows, labels });
+    const edge = await service.defineTransition({
+      fromStateId: source.id, toStateId: destination.id, condition: 'opaque:assignee',
+      action: 'opaque:notify', requiresExitCriteria: true,
+    });
+    await service.archiveTransition(edge.id, ARCHIVED_AT);
+    await states.save({ ...source, archivedAt: ARCHIVED_AT, updatedAt: ARCHIVED_AT });
+    await states.save({ ...destination, archivedAt: ARCHIVED_AT, updatedAt: ARCHIVED_AT });
+    await workflows.save(archiveWorkflow(workflow, ARCHIVED_AT));
+    await labels.save(archiveLabel(label, ARCHIVED_AT));
+
+    const resolved = await service.resolveMachineHistory(MACHINE.workflowId, 'task', MACHINE.labelId);
+    expect(resolved.workflow?.archivedAt).toBe(ARCHIVED_AT);
+    expect(resolved.label?.archivedAt).toBe(ARCHIVED_AT);
+    expect(resolved.states).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: source.id, exitCriteria: 'assigned', archivedAt: ARCHIVED_AT }),
+    ]));
+    expect(resolved.transitions).toEqual([
+      expect.objectContaining({ id: edge.id, condition: 'opaque:assignee', action: 'opaque:notify', requiresExitCriteria: true, archivedAt: ARCHIVED_AT }),
+    ]);
+    await closeQuietly(db);
+  });
+
+  it('commits transition lifecycle provenance atomically with allowlisted opaque fields', async () => {
+    const db = await createTestDatabase();
+    const states = new SqliteWorkflowStateRepository(db);
+    const transitions = new SqliteWorkflowStateTransitionRepository(db);
+    const source = stateForAudit('source');
+    const destination = stateForAudit('destination');
+    await states.add(source);
+    await states.add(destination);
+    let next = 0;
+    const service = new WorkflowStateTransitionService<SqliteDatabase>({
+      states, transitions, unitOfWork: sqliteUnitOfWork(db),
+      transitionsInTransaction: (context) => new SqliteWorkflowStateTransitionRepository(context),
+      records: (context) => new SqliteRecordRepository(context),
+      clock: { now: () => UPDATED_AT }, ids: { newId: () => `transition-audit-${++next}` },
+    });
+    const created = await service.defineTransition({
+      actor: 'planner', fromStateId: source.id, toStateId: destination.id,
+      condition: 'must be assigned', action: 'send notification', requiresExitCriteria: true,
+    });
+    await service.updateTransition(created.id, { action: 'send escalation' }, UPDATED_AT, 'planner');
+    await service.archiveTransition(created.id, ARCHIVED_AT, 'planner');
+
+    const rows = await db.getAllAsync<{ payload: string }>(
+      'SELECT payload FROM records WHERE record_type = ? ORDER BY created_at, id', [PROVENANCE_RECORD_TYPE],
+    );
+    const payloads = rows.map(({ payload }) => JSON.parse(payload) as { entityType: string; action: string; before: Record<string, unknown> | null; after: Record<string, unknown> | null });
+    expect(payloads.map((payload) => payload.action)).toEqual(['create', 'update', 'archive']);
+    expect(payloads.every((payload) => payload.entityType === 'workflow_state_transition')).toBe(true);
+    expect(payloads[0].after).toMatchObject({ condition: 'must be assigned', action: 'send notification', requiresExitCriteria: true });
+    expect(Object.keys(payloads[0].after ?? {}).sort()).toEqual([
+      'action', 'archivedAt', 'condition', 'createdAt', 'description', 'entityType', 'fromStateId',
+      'labelId', 'requiresExitCriteria', 'title', 'toStateId', 'updatedAt', 'workflowId',
+    ]);
+    await closeQuietly(db);
+  });
+
+  it('rolls back a transition create when provenance cannot be appended', async () => {
+    const db = await createTestDatabase();
+    const states = new SqliteWorkflowStateRepository(db);
+    const transitions = new SqliteWorkflowStateTransitionRepository(db);
+    const source = stateForAudit('source');
+    const destination = stateForAudit('destination');
+    await states.add(source);
+    await states.add(destination);
+    const service = new WorkflowStateTransitionService<SqliteDatabase>({
+      states, transitions, unitOfWork: sqliteUnitOfWork(db),
+      transitionsInTransaction: (context) => new SqliteWorkflowStateTransitionRepository(context),
+      records: () => ({ add: async () => { throw new Error('record write failed'); } } as unknown as SqliteRecordRepository),
+    });
+    await expect(service.defineTransition({ actor: 'planner', fromStateId: source.id, toStateId: destination.id }))
+      .rejects.toThrow(/rolled back/);
+    expect(await transitions.listForMachine(MACHINE)).toEqual([]);
+    await closeQuietly(db);
+  });
 });
+
+function stateForAudit(id: string) {
+  return createWorkflowState({ ...MACHINE, title: id }, { id, now: CREATED_AT });
+}

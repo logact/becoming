@@ -52,7 +52,8 @@ export type ProvenanceEntityType =
   | CoreEntityType
   | 'label'
   | 'entity_label'
-  | 'workflow_state';
+  | 'workflow_state'
+  | 'workflow_state_transition';
 
 export function isMutationAction(value: string): value is MutationAction {
   return (MUTATION_ACTIONS as readonly string[]).includes(value);

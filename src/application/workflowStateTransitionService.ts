@@ -2,9 +2,12 @@ import type { CoreEntityType } from '../domain/entityTypes';
 import type { EntityId, IsoTimestamp } from '../domain/ids';
 import type { WorkflowState } from '../domain/workflowState';
 import type { WorkflowStateRepository } from '../persistence/workflowStateRepository';
+import type { WorkflowRepository } from '../persistence/workflowRepository';
+import type { LabelRepository } from '../persistence/labelRepository';
 import type {
   WorkflowStateTransitionRepository,
 } from '../persistence/workflowStateTransitionRepository';
+import type { RecordRepository } from '../persistence/recordRepository';
 import {
   archiveWorkflowStateTransition,
   createWorkflowStateTransition,
@@ -16,6 +19,11 @@ import type {
   WorkflowStateTransitionChanges,
   WorkflowStateTransitionMachine,
 } from '../domain/workflowStateTransition';
+import type { EntitySnapshot, FieldSelectionPolicy } from '../domain/mutationProvenance';
+import { MutationProvenanceService } from './mutationProvenanceService';
+import type { UnitOfWork } from './unitOfWork';
+import { LabelNotFoundError } from './labelAssignmentService';
+import { WorkflowNotFoundError } from './workflowStateService';
 import { systemClock, uuidGenerator } from './recordService';
 import type { Clock, IdGenerator } from './recordService';
 
@@ -67,6 +75,7 @@ export class WorkflowStateTransitionDuplicateActiveEdgeError extends Error {
 }
 
 export interface DefineWorkflowStateTransitionCommand {
+  actor?: string;
   fromStateId: EntityId;
   toStateId: EntityId;
   title?: string | null;
@@ -77,29 +86,73 @@ export interface DefineWorkflowStateTransitionCommand {
   definedAt?: IsoTimestamp;
 }
 
-export interface WorkflowStateTransitionServicePorts {
+/** Historical transition lookup returns archived machine references as-is. */
+export interface ResolvedWorkflowStateTransitionMachine {
+  workflow: Awaited<ReturnType<WorkflowRepository['getById']>>;
+  label: Awaited<ReturnType<LabelRepository['getById']>>;
+  states: WorkflowState[];
+  transitions: WorkflowStateTransition[];
+}
+
+export interface WorkflowStateTransitionServicePorts<TContext = unknown> {
   states: WorkflowStateRepository;
   transitions: WorkflowStateTransitionRepository;
+  /** Used only by explicit historical machine resolution. */
+  workflows?: WorkflowRepository;
+  /** Used only by explicit historical machine resolution. */
+  labels?: LabelRepository;
+  /** Optional atomic provenance transport for transition mutations. */
+  unitOfWork?: UnitOfWork<TContext>;
+  transitionsInTransaction?: (context: TContext) => WorkflowStateTransitionRepository;
+  records?: (context: TContext) => RecordRepository;
   clock?: Clock;
   ids?: IdGenerator;
 }
+
+const WORKFLOW_STATE_TRANSITION_POLICY: FieldSelectionPolicy = {
+  allowlist: [
+    'workflowId', 'entityType', 'labelId', 'fromStateId', 'toStateId',
+    'title', 'description', 'condition', 'action', 'requiresExitCriteria',
+    'createdAt', 'updatedAt', 'archivedAt',
+  ],
+  redacted: [],
+};
 
 /**
  * Application boundary for transition templates. It resolves both endpoint
  * ids before persistence, derives stored machine identity from the source,
  * and rejects cross-machine logical references without using foreign keys.
  */
-export class WorkflowStateTransitionService {
+export class WorkflowStateTransitionService<TContext = unknown> {
   private readonly states: WorkflowStateRepository;
   private readonly transitions: WorkflowStateTransitionRepository;
+  private readonly workflows?: WorkflowRepository;
+  private readonly labels?: LabelRepository;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
+  private readonly transitionsInTransaction?: (context: TContext) => WorkflowStateTransitionRepository;
+  private readonly provenance?: MutationProvenanceService<TContext>;
 
-  constructor(ports: WorkflowStateTransitionServicePorts) {
+  constructor(ports: WorkflowStateTransitionServicePorts<TContext>) {
     this.states = ports.states;
     this.transitions = ports.transitions;
+    this.workflows = ports.workflows;
+    this.labels = ports.labels;
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
+    this.transitionsInTransaction = ports.transitionsInTransaction;
+    if (ports.unitOfWork !== undefined || ports.records !== undefined || ports.transitionsInTransaction !== undefined) {
+      if (ports.unitOfWork === undefined || ports.records === undefined || ports.transitionsInTransaction === undefined) {
+        throw new Error('WorkflowStateTransitionService provenance requires unitOfWork, transitionsInTransaction, and records');
+      }
+      this.provenance = new MutationProvenanceService({
+        unitOfWork: ports.unitOfWork,
+        records: ports.records,
+        clock: this.clock,
+        ids: this.ids,
+        additionalFieldPolicies: { workflow_state_transition: WORKFLOW_STATE_TRANSITION_POLICY },
+      });
+    }
   }
 
   async defineTransition(
@@ -133,7 +186,8 @@ export class WorkflowStateTransitionService {
       { id: this.ids.newId(), now: command.definedAt ?? this.clock.now() },
     );
     try {
-      await this.transitions.add(transition);
+      await this.persist('create', transition.id, command.actor, command.definedAt, undefined, transition,
+        async (transitions) => { await transitions.add(transition); return transition; });
     } catch (error) {
       await this.rethrowDuplicateEdgeConstraint(error, machineOf(source), source.id, destination.id);
       throw error;
@@ -149,6 +203,7 @@ export class WorkflowStateTransitionService {
     id: EntityId,
     changes: WorkflowStateTransitionChanges,
     updatedAt?: IsoTimestamp,
+    actor?: string,
   ): Promise<WorkflowStateTransition> {
     const transition = await this.requireTransition(id);
     await this.requireActiveTopology(transition);
@@ -157,21 +212,22 @@ export class WorkflowStateTransitionService {
       changes,
       updatedAt ?? this.clock.now(),
     );
-    await this.transitions.save(updated);
-    return updated;
+    return this.persist('update', id, actor, updatedAt, transition, updated,
+      async (transitions) => { await transitions.save(updated); return updated; });
   }
 
   async archiveTransition(
     id: EntityId,
     archivedAt?: IsoTimestamp,
+    actor?: string,
   ): Promise<WorkflowStateTransition> {
     const transition = await this.requireTransition(id);
     const archived = archiveWorkflowStateTransition(
       transition,
       archivedAt ?? this.clock.now(),
     );
-    await this.transitions.save(archived);
-    return archived;
+    return this.persist('archive', id, actor, archivedAt, transition, archived,
+      async (transitions) => { await transitions.save(archived); return archived; });
   }
 
   /**
@@ -181,6 +237,7 @@ export class WorkflowStateTransitionService {
   async reactivateTransition(
     id: EntityId,
     reactivatedAt?: IsoTimestamp,
+    actor?: string,
   ): Promise<WorkflowStateTransition> {
     const transition = await this.requireTransition(id);
     const { source, destination, machine } = await this.requireActiveTopology(transition);
@@ -190,7 +247,8 @@ export class WorkflowStateTransitionService {
       reactivatedAt ?? this.clock.now(),
     );
     try {
-      await this.transitions.save(reactivated);
+      await this.persist('restore', id, actor, reactivatedAt, transition, reactivated,
+        async (transitions) => { await transitions.save(reactivated); return reactivated; });
     } catch (error) {
       await this.rethrowDuplicateEdgeConstraint(error, machine, source.id, destination.id);
       throw error;
@@ -212,6 +270,32 @@ export class WorkflowStateTransitionService {
     labelId: EntityId,
   ): Promise<WorkflowStateTransition[]> {
     return this.transitions.listForMachine({ workflowId, entityType, labelId });
+  }
+
+  /**
+   * Resolve a complete historical transition machine. Workflow and Label
+   * references deliberately remain resolvable after archival, while state
+   * rows supply source exit criteria alongside each opaque transition rule.
+   */
+  async resolveMachineHistory(
+    workflowId: EntityId,
+    entityType: CoreEntityType,
+    labelId: EntityId,
+  ): Promise<ResolvedWorkflowStateTransitionMachine> {
+    if (this.workflows === undefined || this.labels === undefined) {
+      throw new Error('WorkflowStateTransitionService historical resolution requires workflows and labels');
+    }
+    const workflow = await this.workflows.getById(workflowId);
+    if (workflow === null) throw new WorkflowNotFoundError(workflowId);
+    const label = await this.labels.getById(labelId);
+    if (label === null) throw new LabelNotFoundError(labelId);
+    const machine = { workflowId, entityType, labelId };
+    return {
+      workflow,
+      label,
+      states: await this.states.listForMachine(machine),
+      transitions: await this.transitions.listForMachine(machine),
+    };
   }
 
   async listActiveOutgoing(stateId: EntityId): Promise<WorkflowStateTransition[]> {
@@ -325,6 +409,24 @@ export class WorkflowStateTransitionService {
       );
     }
   }
+
+  private async persist(
+    action: 'create' | 'update' | 'archive' | 'restore',
+    entityId: EntityId,
+    actor: string | undefined,
+    occurredAt: IsoTimestamp | undefined,
+    before: WorkflowStateTransition | undefined,
+    after: WorkflowStateTransition,
+    mutation: (transitions: WorkflowStateTransitionRepository) => Promise<WorkflowStateTransition>,
+  ): Promise<WorkflowStateTransition> {
+    if (this.provenance === undefined) return mutation(this.transitions);
+    if (actor === undefined) throw new Error('WorkflowStateTransition provenance mutations require an actor');
+    return this.provenance.mutateWithProvenance({
+      entityType: 'workflow_state_transition', entityId, action, actor, occurredAt,
+      before: before === undefined ? undefined : snapshot(before), after: snapshot(after),
+      mutate: (context) => mutation((this.transitionsInTransaction as (context: TContext) => WorkflowStateTransitionRepository)(context)),
+    });
+  }
 }
 
 function machineOf(state: WorkflowState): WorkflowStateTransitionMachine {
@@ -339,4 +441,8 @@ function sameMachine(source: WorkflowState, destination: WorkflowState): boolean
   return source.workflowId === destination.workflowId &&
     source.entityType === destination.entityType &&
     source.labelId === destination.labelId;
+}
+
+function snapshot(transition: WorkflowStateTransition): EntitySnapshot {
+  return { ...transition };
 }
