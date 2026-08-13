@@ -212,14 +212,14 @@ Exit gate: current Project/Task balances and current/historical execution snapsh
 Exit gate: as-of balances, resource exceptions, and lifecycle-enriched Project snapshots expose anomalies instead of hiding them.
 
 - [x] [#84](https://github.com/logact/becoming/issues/84) — Implement historical balance queries and reconciliation (Feature #15) **(done)**
-- [ ] [#98](https://github.com/logact/becoming/issues/98) — Derive project and task resource exceptions (Feature #16) **(processing)**
+- [x] [#98](https://github.com/logact/becoming/issues/98) — Derive project and task resource exceptions (Feature #16) **(done)**
 - [ ] [#104](https://github.com/logact/becoming/issues/104) — Enrich execution snapshots with current lifecycle state (Feature #22)
 
 ### Wave 13 — Milestone-facing outcomes
 
 Exit gate: users can query active/resolved resource exceptions and inspect explainable Project progress; all milestone acceptance scenarios pass.
 
-- [ ] [#99](https://github.com/logact/becoming/issues/99) — Query active and resolved resource exceptions (Feature #16)
+- [ ] [#99](https://github.com/logact/becoming/issues/99) — Query active and resolved resource exceptions (Feature #16) **(processing)**
 - [ ] [#105](https://github.com/logact/becoming/issues/105) — Derive and explain Project progress (Feature #22)
 
 ## Milestone closeout
@@ -292,6 +292,7 @@ Before closing M1:
 | [#96](https://github.com/logact/becoming/issues/96) | Approximate (worker did not capture boundaries) | Approximate | ~5m | Unavailable (worker runtime did not expose it) | [`a3c9c93`](https://github.com/logact/becoming/commit/a3c9c93) |
 | [#84](https://github.com/logact/becoming/issues/84) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`9535cb4`](https://github.com/logact/becoming/commit/9535cb4) |
 | [#97](https://github.com/logact/becoming/issues/97) | Approximate (worker did not capture boundaries) | Approximate | ~6m | Unavailable (worker runtime did not expose it) | [`488538c`](https://github.com/logact/becoming/commit/488538c) |
+| [#98](https://github.com/logact/becoming/issues/98) | Approximate (worker did not capture boundaries) | Approximate | ~7m | Unavailable (worker runtime did not expose it) | [`4af3b4c`](https://github.com/logact/becoming/commit/4af3b4c) |
 
 ## Maintaining the plan
 
