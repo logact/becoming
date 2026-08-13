@@ -55,6 +55,8 @@ export const RELATION_TYPES = [
   'constrained_by',
   'consumes',
   'budgeted_by',
+  /** A Project-scoped, temporal selection of a reusable Workflow definition. */
+  'workflow_applies_to',
   'related_to',
 ] as const;
 

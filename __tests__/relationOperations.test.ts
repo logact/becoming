@@ -179,10 +179,10 @@ describe('relation policies (domain)', () => {
     );
   });
 
-  it('defaults to a unique active identity, except for consumes', () => {
+  it('defaults to a unique active identity, except for consumes and metadata-scoped workflow applicability', () => {
     for (const relationType of RELATION_TYPES) {
       expect(DEFAULT_RELATION_POLICIES[relationType].allowsMultipleActive).toBe(
-        relationType === 'consumes',
+        relationType === 'consumes' || relationType === 'workflow_applies_to',
       );
     }
   });

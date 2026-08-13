@@ -92,7 +92,10 @@ export const DEFAULT_RELATION_POLICIES: Readonly<Record<string, RelationPolicy>>
       RELATION_TYPES.map((relationType) => [
         relationType,
         openRelationPolicy(relationType, {
-          allowsMultipleActive: relationType === 'consumes',
+          // One Workflow can apply to several distinct managed contexts;
+          // applicability identity is scoped further by relation metadata.
+          allowsMultipleActive:
+            relationType === 'consumes' || relationType === 'workflow_applies_to',
         }),
       ]),
     ),
