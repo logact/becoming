@@ -22,6 +22,9 @@ import {
 } from '../src/persistence/workflowStateRepository';
 import { SqliteWorkflowStateTransitionReferenceRepository } from '../src/persistence/workflowStateTransitionReferenceRepository';
 import { withTransaction } from '../src/persistence/transactions';
+import { sqliteUnitOfWork } from '../src/persistence/transactions';
+import { SqliteRecordRepository } from '../src/persistence/recordRepository';
+import { PROVENANCE_RECORD_TYPE } from '../src/domain/mutationProvenance';
 import {
   LabelArchivedError,
   LabelNotFoundError,
@@ -847,6 +850,94 @@ describe('WorkflowStateService', () => {
     await expect(service.archiveState('no-such-state')).rejects.toThrow(
       WorkflowStateNotFoundError,
     );
+    await closeQuietly(db);
+  });
+
+  it('filters active and historical machine definitions and resolves archived references', async () => {
+    const { db, workflows, labels, service } = await createService();
+    const { workflow, label } = await seedMachine({ workflows, labels });
+    const active = await service.defineState({
+      workflowId: workflow.id, entityType: 'task', labelId: label.id,
+      title: 'Backlog', category: 'queue', isInitial: true,
+    });
+    const terminal = await service.defineState({
+      workflowId: workflow.id, entityType: 'task', labelId: label.id,
+      title: 'Done', category: 'complete', isTerminal: true,
+    });
+    await service.archiveState(terminal.id, ARCHIVED_AT);
+    await workflows.save(archiveWorkflow(workflow, ARCHIVED_AT));
+    await labels.save(archiveLabel(label, ARCHIVED_AT));
+
+    expect(await service.listActiveStates(workflow.id, 'task', label.id, { isInitial: true }))
+      .toEqual([active]);
+    expect(await service.listMachineHistory(workflow.id, 'task', label.id, { isTerminal: true }))
+      .toEqual([{ ...terminal, archivedAt: ARCHIVED_AT, updatedAt: ARCHIVED_AT }]);
+    const resolved = await service.resolveMachineHistory(workflow.id, 'task', label.id);
+    expect(resolved.workflow?.archivedAt).toBe(ARCHIVED_AT);
+    expect(resolved.label?.archivedAt).toBe(ARCHIVED_AT);
+    expect(resolved.states.map((state) => state.id)).toEqual([active.id, terminal.id].sort());
+    await closeQuietly(db);
+  });
+
+  it('commits state create/update/reorder/archive provenance atomically with allowlisted snapshots', async () => {
+    const db = await createTestDatabase();
+    const workflows = new SqliteWorkflowRepository(db);
+    const labels = new SqliteLabelRepository(db);
+    const states = new SqliteWorkflowStateRepository(db);
+    const service = new WorkflowStateService<SqliteDatabase>({
+      workflows, labels, states,
+      unitOfWork: sqliteUnitOfWork(db),
+      statesInTransaction: (context) => new SqliteWorkflowStateRepository(context),
+      records: (context) => new SqliteRecordRepository(context),
+      clock: { now: () => UPDATED_AT },
+      ids: (() => { let id = 0; return { newId: () => `state-audit-${++id}` }; })(),
+    });
+    const { workflow, label } = await seedMachine({ workflows, labels });
+    const first = await service.defineState({
+      actor: 'planner', workflowId: workflow.id, entityType: 'task', labelId: label.id,
+      title: 'Backlog', isInitial: true,
+    });
+    const second = await service.defineState({
+      actor: 'planner', workflowId: workflow.id, entityType: 'task', labelId: label.id,
+      title: 'Done', isTerminal: true,
+    });
+    await service.updateState(first.id, { category: 'queue' }, UPDATED_AT, 'planner');
+    await service.reorderStates(workflow.id, 'task', label.id, [second.id, first.id], UPDATED_AT, 'planner');
+    await service.archiveState(second.id, ARCHIVED_AT, 'planner');
+
+    const records = await db.getAllAsync<{ payload: string }>(
+      'SELECT payload FROM records WHERE record_type = ? ORDER BY created_at, id', [PROVENANCE_RECORD_TYPE],
+    );
+    expect(records).toHaveLength(6);
+    const payloads = records.map(({ payload }) => JSON.parse(payload) as { entityType: string; action: string; after: Record<string, unknown> | null });
+    expect(payloads.map((payload) => payload.action)).toEqual(['create', 'create', 'update', 'update', 'update', 'archive']);
+    expect(payloads.every((payload) => payload.entityType === 'workflow_state')).toBe(true);
+    expect(payloads[0].after).toMatchObject({ workflowId: workflow.id, labelId: label.id, title: 'Backlog' });
+    expect(Object.keys(payloads[0].after ?? {}).sort()).toEqual([
+      'archivedAt', 'category', 'createdAt', 'description', 'entityType', 'entryCriteria',
+      'exitCriteria', 'isInitial', 'isTerminal', 'labelId', 'sortOrder', 'title', 'updatedAt', 'workflowId',
+    ]);
+    await closeQuietly(db);
+  });
+
+  it('rolls back a state mutation when its provenance append fails', async () => {
+    const db = await createTestDatabase();
+    const workflows = new SqliteWorkflowRepository(db);
+    const labels = new SqliteLabelRepository(db);
+    const states = new SqliteWorkflowStateRepository(db);
+    const { workflow, label } = await seedMachine({ workflows, labels });
+    const service = new WorkflowStateService<SqliteDatabase>({
+      workflows, labels, states,
+      unitOfWork: sqliteUnitOfWork(db),
+      statesInTransaction: (context) => new SqliteWorkflowStateRepository(context),
+      records: () => ({ add: async () => { throw new Error('record write failed'); } } as unknown as SqliteRecordRepository),
+    });
+
+    await expect(service.defineState({
+      actor: 'planner', workflowId: workflow.id, entityType: 'task', labelId: label.id, title: 'Backlog',
+    })).rejects.toThrow(/rolled back/);
+    expect(await states.listForMachine({ workflowId: workflow.id, entityType: 'task', labelId: label.id }))
+      .toEqual([]);
     await closeQuietly(db);
   });
 });

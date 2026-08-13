@@ -15,6 +15,11 @@ import type { LabelRepository } from '../persistence/labelRepository';
 import type { WorkflowStateRepository } from '../persistence/workflowStateRepository';
 import { WorkflowStateHasActiveTransitionReferencesError } from '../persistence/workflowStateRepository';
 import type { WorkflowStateTransitionReferenceRepository } from '../persistence/workflowStateTransitionReferenceRepository';
+import type { RecordRepository } from '../persistence/recordRepository';
+import type { EntitySnapshot, FieldSelectionPolicy } from '../domain/mutationProvenance';
+import { MutationProvenanceService } from './mutationProvenanceService';
+import type { UnitOfWork } from './unitOfWork';
+import type { ProvenanceEntry } from './mutationProvenanceService';
 import {
   LabelArchivedError,
   LabelNotFoundError,
@@ -79,6 +84,7 @@ export class WorkflowStateNotFoundError extends Error {
  * the clock's current time.
  */
 export interface DefineWorkflowStateCommand {
+  actor?: string;
   workflowId: EntityId;
   entityType: string;
   labelId: EntityId;
@@ -93,31 +99,77 @@ export interface DefineWorkflowStateCommand {
   definedAt?: IsoTimestamp;
 }
 
-export interface WorkflowStateServicePorts {
+/** Optional semantic filters for active or historical machine inspection. */
+export interface WorkflowStateQuery {
+  category?: string | null;
+  isInitial?: boolean;
+  isTerminal?: boolean;
+}
+
+/** A historical machine remains intelligible even when its references archive. */
+export interface ResolvedWorkflowStateMachine {
+  workflow: Awaited<ReturnType<WorkflowRepository['getById']>>;
+  label: Awaited<ReturnType<LabelRepository['getById']>>;
+  states: WorkflowState[];
+}
+
+export interface WorkflowStateServicePorts<TContext = unknown> {
   workflows: WorkflowRepository;
   labels: LabelRepository;
   states: WorkflowStateRepository;
   /** Optional archive preflight; #40 will own richer transition behavior. */
   transitionReferences?: WorkflowStateTransitionReferenceRepository;
+  /**
+   * Optional provenance transport. Supplying all three ports makes state
+   * definition mutations atomic with one allowlisted mutation Record; the
+   * original direct repository mode remains available to bootstrap callers.
+   */
+  unitOfWork?: UnitOfWork<TContext>;
+  statesInTransaction?: (context: TContext) => WorkflowStateRepository;
+  records?: (context: TContext) => RecordRepository;
   clock?: Clock;
   ids?: IdGenerator;
 }
 
-export class WorkflowStateService {
+const WORKFLOW_STATE_POLICY: FieldSelectionPolicy = {
+  allowlist: [
+    'workflowId', 'entityType', 'labelId', 'title', 'description', 'category',
+    'sortOrder', 'isInitial', 'isTerminal', 'entryCriteria', 'exitCriteria',
+    'createdAt', 'updatedAt', 'archivedAt',
+  ],
+  redacted: [],
+};
+
+export class WorkflowStateService<TContext = unknown> {
   private readonly workflows: WorkflowRepository;
   private readonly labels: LabelRepository;
   private readonly states: WorkflowStateRepository;
   private readonly transitionReferences?: WorkflowStateTransitionReferenceRepository;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
+  private readonly statesInTransaction?: (context: TContext) => WorkflowStateRepository;
+  private readonly provenance?: MutationProvenanceService<TContext>;
 
-  constructor(ports: WorkflowStateServicePorts) {
+  constructor(ports: WorkflowStateServicePorts<TContext>) {
     this.workflows = ports.workflows;
     this.labels = ports.labels;
     this.states = ports.states;
     this.transitionReferences = ports.transitionReferences;
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
+    this.statesInTransaction = ports.statesInTransaction;
+    if (ports.unitOfWork !== undefined || ports.records !== undefined || ports.statesInTransaction !== undefined) {
+      if (ports.unitOfWork === undefined || ports.records === undefined || ports.statesInTransaction === undefined) {
+        throw new Error('WorkflowStateService provenance requires unitOfWork, statesInTransaction, and records');
+      }
+      this.provenance = new MutationProvenanceService({
+        unitOfWork: ports.unitOfWork,
+        records: ports.records,
+        clock: this.clock,
+        ids: this.ids,
+        additionalFieldPolicies: { workflow_state: WORKFLOW_STATE_POLICY },
+      });
+    }
   }
 
   /**
@@ -148,8 +200,8 @@ export class WorkflowStateService {
       id: this.ids.newId(),
       now: command.definedAt ?? this.clock.now(),
     });
-    await this.states.add(state);
-    return state;
+    return this.mutate('create', state.id, command.actor, command.definedAt, undefined, state,
+      async (states) => { await states.add(state); return state; });
   }
 
   /**
@@ -161,6 +213,7 @@ export class WorkflowStateService {
     stateId: EntityId,
     changes: WorkflowStateChanges,
     updatedAt?: IsoTimestamp,
+    actor?: string,
   ): Promise<WorkflowState> {
     const state = await this.requireState(stateId);
     const updated = updateWorkflowState(
@@ -168,8 +221,8 @@ export class WorkflowStateService {
       changes,
       updatedAt ?? this.clock.now(),
     );
-    await this.states.save(updated);
-    return updated;
+    return this.mutate('update', stateId, actor, updatedAt, state, updated,
+      async (states) => { await states.save(updated); return updated; });
   }
 
   /**
@@ -183,6 +236,7 @@ export class WorkflowStateService {
     labelId: EntityId,
     orderedStateIds: readonly EntityId[],
     reorderedAt?: IsoTimestamp,
+    actor?: string,
   ): Promise<WorkflowState[]> {
     const machine = { workflowId, entityType, labelId };
     const active = await this.states.listActiveForMachine(machine);
@@ -197,13 +251,26 @@ export class WorkflowStateService {
       );
     }
     const now = reorderedAt ?? this.clock.now();
-    await this.states.reorderActiveForMachine(machine, orderedStateIds, now);
     const byId = new Map(active.map((state) => [state.id, state]));
-    return orderedStateIds.map((id, index) => ({
+    const reordered = orderedStateIds.map((id, index) => ({
       ...(byId.get(id) as WorkflowState),
       sortOrder: index + 1,
       updatedAt: now,
     }));
+    if (this.provenance === undefined) {
+      await this.states.reorderActiveForMachine(machine, orderedStateIds, now);
+      return reordered;
+    }
+    if (actor === undefined) throw new Error('WorkflowState provenance mutations require an actor');
+    const entries: ProvenanceEntry[] = reordered.map((state) => ({
+      entityType: 'workflow_state', entityId: state.id, action: 'update', actor,
+      occurredAt: reorderedAt, before: snapshot(byId.get(state.id) as WorkflowState), after: snapshot(state),
+    }));
+    return this.provenance.mutateBatchWithProvenance(entries, async (context) => {
+      await (this.statesInTransaction as (context: TContext) => WorkflowStateRepository)(context)
+        .reorderActiveForMachine(machine, orderedStateIds, now);
+      return reordered;
+    });
   }
 
   /**
@@ -234,6 +301,7 @@ export class WorkflowStateService {
   async archiveState(
     stateId: EntityId,
     archivedAt?: IsoTimestamp,
+    actor?: string,
   ): Promise<WorkflowState> {
     const state = await this.requireState(stateId);
     if (
@@ -243,8 +311,8 @@ export class WorkflowStateService {
       throw new WorkflowStateHasActiveTransitionReferencesError(stateId);
     }
     const archived = archiveWorkflowState(state, archivedAt ?? this.clock.now());
-    await this.states.save(archived);
-    return archived;
+    return this.mutate('archive', stateId, actor, archivedAt, state, archived,
+      async (states) => { await states.save(archived); return archived; });
   }
 
   /** Return the State template with this id (active or archived), or null. */
@@ -260,8 +328,12 @@ export class WorkflowStateService {
     workflowId: EntityId,
     entityType: CoreEntityType,
     labelId: EntityId,
+    query?: WorkflowStateQuery,
   ): Promise<WorkflowState[]> {
-    return this.states.listActiveForMachine({ workflowId, entityType, labelId });
+    return filterStates(
+      await this.states.listActiveForMachine({ workflowId, entityType, labelId }),
+      query,
+    );
   }
 
   /**
@@ -273,8 +345,31 @@ export class WorkflowStateService {
     workflowId: EntityId,
     entityType: CoreEntityType,
     labelId: EntityId,
+    query?: WorkflowStateQuery,
   ): Promise<WorkflowState[]> {
-    return this.states.listForMachine({ workflowId, entityType, labelId });
+    return filterStates(
+      await this.states.listForMachine({ workflowId, entityType, labelId }),
+      query,
+    );
+  }
+
+  /**
+   * Resolve an explicit historical machine definition. Archived Workflow and
+   * Label rows are intentionally returned rather than treated as missing;
+   * only a broken logical reference throws, because it makes history
+   * uninterpretable.
+   */
+  async resolveMachineHistory(
+    workflowId: EntityId,
+    entityType: CoreEntityType,
+    labelId: EntityId,
+    query?: WorkflowStateQuery,
+  ): Promise<ResolvedWorkflowStateMachine> {
+    const workflow = await this.workflows.getById(workflowId);
+    if (workflow === null) throw new WorkflowNotFoundError(workflowId);
+    const label = await this.labels.getById(labelId);
+    if (label === null) throw new LabelNotFoundError(labelId);
+    return { workflow, label, states: await this.listMachineHistory(workflowId, entityType, labelId, query) };
   }
 
   private async requireState(stateId: EntityId): Promise<WorkflowState> {
@@ -284,4 +379,38 @@ export class WorkflowStateService {
     }
     return state;
   }
+
+  private async mutate(
+    action: 'create' | 'update' | 'archive',
+    entityId: EntityId,
+    actor: string | undefined,
+    occurredAt: IsoTimestamp | undefined,
+    before: WorkflowState | undefined,
+    after: WorkflowState,
+    mutation: (states: WorkflowStateRepository) => Promise<WorkflowState>,
+  ): Promise<WorkflowState> {
+    if (this.provenance === undefined) return mutation(this.states);
+    if (actor === undefined) throw new Error('WorkflowState provenance mutations require an actor');
+    return this.provenance.mutateWithProvenance({
+      entityType: 'workflow_state', entityId, action, actor, occurredAt,
+      before: before === undefined ? undefined : snapshot(before), after: snapshot(after),
+      mutate: (context) => mutation((this.statesInTransaction as (context: TContext) => WorkflowStateRepository)(context)),
+    });
+  }
+}
+
+function snapshot(state: WorkflowState): EntitySnapshot {
+  return { ...state };
+}
+
+function filterStates(
+  states: WorkflowState[],
+  query: WorkflowStateQuery | undefined,
+): WorkflowState[] {
+  if (query === undefined) return states;
+  return states.filter((state) =>
+    (query.category === undefined || state.category === query.category) &&
+    (query.isInitial === undefined || state.isInitial === query.isInitial) &&
+    (query.isTerminal === undefined || state.isTerminal === query.isTerminal),
+  );
 }

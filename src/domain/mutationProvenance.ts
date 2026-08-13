@@ -48,7 +48,11 @@ export type MutationAction = (typeof MUTATION_ACTIONS)[number];
  * contract audits only the eight core entities; supporting aggregates opt in
  * explicitly through an application service and its field policy.
  */
-export type ProvenanceEntityType = CoreEntityType | 'label' | 'entity_label';
+export type ProvenanceEntityType =
+  | CoreEntityType
+  | 'label'
+  | 'entity_label'
+  | 'workflow_state';
 
 export function isMutationAction(value: string): value is MutationAction {
   return (MUTATION_ACTIONS as readonly string[]).includes(value);

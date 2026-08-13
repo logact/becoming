@@ -130,6 +130,18 @@ export interface MutateWithProvenanceCommand<TContext, TResult> {
   mutate: (context: TContext) => Promise<TResult>;
 }
 
+/** One audit entry in an atomic batch that shares a single state mutation. */
+export interface ProvenanceEntry {
+  entityType: string;
+  entityId: EntityId;
+  action: string;
+  actor: string;
+  occurredAt?: IsoTimestamp;
+  description?: string;
+  before?: EntitySnapshot | null;
+  after?: EntitySnapshot | null;
+}
+
 export interface MutationProvenanceServicePorts<TContext> {
   unitOfWork: UnitOfWork<TContext>;
   /** Bind a Record repository to the unit-of-work context. */
@@ -202,11 +214,44 @@ export class MutationProvenanceService<TContext> {
   }
 
   /**
+   * Commit one compound current-state mutation with one provenance Record for
+   * every supplied changed aggregate. All payloads validate before the
+   * transaction, and a failure in either the mutation or any append rolls
+   * the entire batch back. This is used for operations such as a machine
+   * reorder that change several independently historical templates at once.
+   */
+  async mutateBatchWithProvenance<TResult>(
+    entries: readonly ProvenanceEntry[],
+    mutate: (context: TContext) => Promise<TResult>,
+  ): Promise<TResult> {
+    if (entries.length === 0) throw new ProvenanceValidationError('Provenance batch must not be empty');
+    const payloads = entries.map((entry) => this.buildPayload(entry));
+    return this.unitOfWork.run(async (context) => {
+      let result: TResult;
+      try {
+        result = await mutate(context);
+      } catch (error) {
+        const payload = payloads[0];
+        throw new MutationPersistenceError(payload.entityType, payload.entityId, payload.action, error);
+      }
+      for (let index = 0; index < payloads.length; index += 1) {
+        try {
+          await this.records(context).add(this.buildProvenanceRecord(entries[index], payloads[index]));
+        } catch (error) {
+          const payload = payloads[index];
+          throw new ProvenancePersistenceError(payload.entityType, payload.entityId, payload.action, error);
+        }
+      }
+      return result;
+    });
+  }
+
+  /**
    * Validate the command and build its provenance payload before the
    * transaction starts, so invalid commands never reach a repository.
    */
   private buildPayload(
-    command: MutateWithProvenanceCommand<TContext, unknown>,
+    command: Pick<MutateWithProvenanceCommand<TContext, unknown>, 'entityType' | 'entityId' | 'action' | 'actor' | 'occurredAt' | 'before' | 'after'>,
   ): ProvenancePayload {
     const extraPolicy = this.additionalFieldPolicies?.[
       command.entityType as Exclude<ProvenanceEntityType, CoreEntityType>
@@ -254,7 +299,7 @@ export class MutationProvenanceService<TContext> {
    * which is what keeps the audit trail finite (see class documentation).
    */
   private buildProvenanceRecord(
-    command: MutateWithProvenanceCommand<TContext, unknown>,
+    command: Pick<MutateWithProvenanceCommand<TContext, unknown>, 'entityType' | 'entityId' | 'action' | 'actor' | 'occurredAt' | 'description'>,
     payload: ProvenancePayload,
   ): Record {
     return createRecord(
