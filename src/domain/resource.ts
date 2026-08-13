@@ -51,6 +51,26 @@ export interface NewResource {
   capacity?: Decimal | string;
 }
 
+/** Injectable values used when defining a Resource in an application service. */
+export interface ResourceFactoryDeps {
+  id?: EntityId;
+  now?: IsoTimestamp;
+}
+
+/** The editable fields of an active Resource definition. */
+export interface ResourceChanges {
+  title?: string;
+  /** Omit to retain the description; pass null to clear it. */
+  description?: string | null;
+  resourceType?: string;
+  /** Omit to retain the unit; pass null only when capacity is also cleared. */
+  unit?: string | null;
+  /** Omit to retain the behavior; pass null to clear it. */
+  behavior?: string | null;
+  /** Omit to retain capacity; pass null to clear it. */
+  capacity?: Decimal | string | null;
+}
+
 function requireNonBlank(field: string, value: string): string {
   if (value.trim().length === 0) {
     throw new Error(`Resource ${field} must not be blank`);
@@ -95,10 +115,13 @@ export function validateResource(resource: Resource): void {
  * Define a new Resource with a fresh id and current timestamps. Optional
  * detail fields normalize to null when omitted, matching the TEXT columns.
  */
-export function createResource(input: NewResource): Resource {
-  const now = nowIso();
+export function createResource(
+  input: NewResource,
+  deps: ResourceFactoryDeps = {},
+): Resource {
+  const now = deps.now ?? nowIso();
   const resource: Resource = {
-    id: newId(),
+    id: deps.id ?? newId(),
     title: requireNonBlank('title', input.title),
     description: input.description ?? null,
     resourceType: requireNonBlank('resourceType', input.resourceType),
@@ -111,6 +134,38 @@ export function createResource(input: NewResource): Resource {
   };
   validateResource(resource);
   return resource;
+}
+
+/**
+ * Update an active Resource definition. The application layer is responsible
+ * for first checking linked quantities before semantic fields change.
+ */
+export function updateResource(
+  resource: Resource,
+  changes: ResourceChanges,
+  updatedAt: IsoTimestamp = nowIso(),
+): Resource {
+  if (resource.archivedAt !== null) {
+    throw new Error(`Resource ${resource.id} is archived and cannot be updated`);
+  }
+  const updated: Resource = {
+    ...resource,
+    title: changes.title ?? resource.title,
+    description:
+      changes.description === undefined ? resource.description : changes.description,
+    resourceType: changes.resourceType ?? resource.resourceType,
+    unit: changes.unit === undefined ? resource.unit : changes.unit,
+    behavior: changes.behavior === undefined ? resource.behavior : changes.behavior,
+    capacity:
+      changes.capacity === undefined
+        ? resource.capacity
+        : changes.capacity === null
+          ? null
+          : normalizeCapacity(changes.capacity),
+    updatedAt,
+  };
+  validateResource(updated);
+  return updated;
 }
 
 /**
