@@ -51,6 +51,7 @@ export interface EntityLabelRepository {
   findActiveForEntity(
     entityType: CoreEntityType,
     entityId: EntityId,
+    options?: EntityLabelListOptions,
   ): Promise<EntityLabelAssignment[]>;
 
   /**
@@ -60,6 +61,19 @@ export interface EntityLabelRepository {
   listForEntity(
     entityType: CoreEntityType,
     entityId: EntityId,
+    options?: EntityLabelListOptions,
+  ): Promise<EntityLabelAssignment[]>;
+
+  /** Return current assignments for a Label across core entities. */
+  findActiveForLabel(
+    labelId: EntityId,
+    options?: EntityLabelListOptions,
+  ): Promise<EntityLabelAssignment[]>;
+
+  /** Return all current and ended assignments for a Label across entities. */
+  listForLabel(
+    labelId: EntityId,
+    options?: EntityLabelListOptions,
   ): Promise<EntityLabelAssignment[]>;
 
   /**
@@ -68,6 +82,12 @@ export interface EntityLabelRepository {
    * Label on the same entity.
    */
   save(assignment: EntityLabelAssignment): Promise<void>;
+}
+
+/** Offset pagination shared by both directions of assignment discovery. */
+export interface EntityLabelListOptions {
+  limit?: number;
+  offset?: number;
 }
 
 interface EntityLabelRow {
@@ -149,27 +169,45 @@ export class SqliteEntityLabelRepository implements EntityLabelRepository {
   async findActiveForEntity(
     entityType: CoreEntityType,
     entityId: EntityId,
+    options: EntityLabelListOptions = {},
   ): Promise<EntityLabelAssignment[]> {
+    const { limit, offset } = pagination(options);
     const rows = await this.db.getAllAsync<EntityLabelRow>(
       `SELECT ${COLUMNS} FROM entity_labels
        WHERE entity_type = ? AND entity_id = ? AND ended_at IS NULL
        ORDER BY created_at, id`,
       [entityType, entityId],
     );
-    return rows.map(toDomain);
+    return rows.slice(offset, offset + limit).map(toDomain);
   }
 
   async listForEntity(
     entityType: CoreEntityType,
     entityId: EntityId,
+    options: EntityLabelListOptions = {},
   ): Promise<EntityLabelAssignment[]> {
+    const { limit, offset } = pagination(options);
     const rows = await this.db.getAllAsync<EntityLabelRow>(
       `SELECT ${COLUMNS} FROM entity_labels
        WHERE entity_type = ? AND entity_id = ?
        ORDER BY created_at, id`,
       [entityType, entityId],
     );
-    return rows.map(toDomain);
+    return rows.slice(offset, offset + limit).map(toDomain);
+  }
+
+  async findActiveForLabel(
+    labelId: EntityId,
+    options: EntityLabelListOptions = {},
+  ): Promise<EntityLabelAssignment[]> {
+    return this.listByLabel(labelId, true, options);
+  }
+
+  async listForLabel(
+    labelId: EntityId,
+    options: EntityLabelListOptions = {},
+  ): Promise<EntityLabelAssignment[]> {
+    return this.listByLabel(labelId, false, options);
   }
 
   async save(assignment: EntityLabelAssignment): Promise<void> {
@@ -218,4 +256,31 @@ export class SqliteEntityLabelRepository implements EntityLabelRepository {
       );
     }
   }
+
+  private async listByLabel(
+    labelId: EntityId,
+    activeOnly: boolean,
+    options: EntityLabelListOptions,
+  ): Promise<EntityLabelAssignment[]> {
+    const { limit, offset } = pagination(options);
+    const rows = await this.db.getAllAsync<EntityLabelRow>(
+      `SELECT ${COLUMNS} FROM entity_labels
+       WHERE label_id = ? AND (? = 0 OR ended_at IS NULL)
+       ORDER BY created_at, id`,
+      [labelId, activeOnly ? 1 : 0],
+    );
+    return rows.slice(offset, offset + limit).map(toDomain);
+  }
+}
+
+function pagination(options: EntityLabelListOptions): Required<EntityLabelListOptions> {
+  const limit = options.limit ?? 100;
+  const offset = options.offset ?? 0;
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error('Entity label list limit must be a positive integer');
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new Error('Entity label list offset must be a non-negative integer');
+  }
+  return { limit, offset };
 }

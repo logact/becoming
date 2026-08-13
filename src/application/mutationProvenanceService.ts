@@ -9,6 +9,7 @@ import type {
   EntitySnapshot,
   FieldSelectionPolicy,
   ProvenancePayload,
+  ProvenanceEntityType,
 } from '../domain/mutationProvenance';
 import { isCoreEntityType } from '../domain/entityTypes';
 import type { CoreEntityType } from '../domain/entityTypes';
@@ -137,6 +138,10 @@ export interface MutationProvenanceServicePorts<TContext> {
   ids?: IdGenerator;
   /** Extends or replaces the default per-entity field-selection policies. */
   fieldPolicies?: Partial<{ [K in CoreEntityType]: FieldSelectionPolicy }>;
+  /** Supporting aggregates explicitly opt in to the shared audit transport. */
+  additionalFieldPolicies?: Partial<
+    { [K in Exclude<ProvenanceEntityType, CoreEntityType>]: FieldSelectionPolicy }
+  >;
 }
 
 export class MutationProvenanceService<TContext> {
@@ -147,6 +152,9 @@ export class MutationProvenanceService<TContext> {
   private readonly fieldPolicies?: Partial<{
     [K in CoreEntityType]: FieldSelectionPolicy;
   }>;
+  private readonly additionalFieldPolicies?: Partial<
+    { [K in Exclude<ProvenanceEntityType, CoreEntityType>]: FieldSelectionPolicy }
+  >;
 
   constructor(ports: MutationProvenanceServicePorts<TContext>) {
     this.unitOfWork = ports.unitOfWork;
@@ -154,6 +162,7 @@ export class MutationProvenanceService<TContext> {
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
     this.fieldPolicies = ports.fieldPolicies;
+    this.additionalFieldPolicies = ports.additionalFieldPolicies;
   }
 
   /**
@@ -199,7 +208,10 @@ export class MutationProvenanceService<TContext> {
   private buildPayload(
     command: MutateWithProvenanceCommand<TContext, unknown>,
   ): ProvenancePayload {
-    if (!isCoreEntityType(command.entityType)) {
+    const extraPolicy = this.additionalFieldPolicies?.[
+      command.entityType as Exclude<ProvenanceEntityType, CoreEntityType>
+    ];
+    if (!isCoreEntityType(command.entityType) && extraPolicy === undefined) {
       throw new ProvenanceValidationError(
         `Provenance entityType must be a core entity type, got ${JSON.stringify(command.entityType)}`,
       );
@@ -209,7 +221,9 @@ export class MutationProvenanceService<TContext> {
         `Provenance action must be a supported mutation action, got ${JSON.stringify(command.action)}`,
       );
     }
-    const policy = resolveFieldPolicy(command.entityType, this.fieldPolicies);
+    const policy = isCoreEntityType(command.entityType)
+      ? resolveFieldPolicy(command.entityType, this.fieldPolicies)
+      : extraPolicy;
     try {
       return buildProvenancePayload(
         {
@@ -221,7 +235,10 @@ export class MutationProvenanceService<TContext> {
           before: command.before,
           after: command.after,
         },
-        policy,
+        policy as FieldSelectionPolicy,
+        (value): value is ProvenanceEntityType =>
+          isCoreEntityType(value) ||
+          Object.prototype.hasOwnProperty.call(this.additionalFieldPolicies ?? {}, value),
       );
     } catch (error) {
       throw new ProvenanceValidationError(

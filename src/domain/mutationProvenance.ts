@@ -43,6 +43,13 @@ export const MUTATION_ACTIONS = [
 
 export type MutationAction = (typeof MUTATION_ACTIONS)[number];
 
+/**
+ * Entity discriminators accepted by the provenance transport. The default
+ * contract audits only the eight core entities; supporting aggregates opt in
+ * explicitly through an application service and its field policy.
+ */
+export type ProvenanceEntityType = CoreEntityType | 'label' | 'entity_label';
+
 export function isMutationAction(value: string): value is MutationAction {
   return (MUTATION_ACTIONS as readonly string[]).includes(value);
 }
@@ -267,7 +274,7 @@ export function diffFieldMaps(
  * `archive`, and `restore`.
  */
 export interface ProvenancePayload {
-  entityType: CoreEntityType;
+  entityType: ProvenanceEntityType;
   entityId: EntityId;
   action: MutationAction;
   actor: string;
@@ -319,8 +326,9 @@ function requireTimestamp(field: string, value: IsoTimestamp): IsoTimestamp {
 export function buildProvenancePayload(
   input: ProvenancePayloadInput,
   policy: FieldSelectionPolicy,
+  isAllowedEntityType: (value: string) => value is ProvenanceEntityType = isCoreEntityType,
 ): ProvenancePayload {
-  if (!isCoreEntityType(input.entityType)) {
+  if (!isAllowedEntityType(input.entityType)) {
     throw new Error(
       `Provenance entityType must be a core entity type, got ${JSON.stringify(input.entityType)}`,
     );

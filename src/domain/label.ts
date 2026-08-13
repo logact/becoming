@@ -30,6 +30,13 @@ export interface NewLabel {
   description?: string;
 }
 
+/** The editable fields of an active Label definition. */
+export interface LabelChanges {
+  name?: string;
+  /** Omit to retain the description; pass null to clear it. */
+  description?: string | null;
+}
+
 /** Validate the invariants every Label must satisfy. */
 export function validateLabel(label: Label): void {
   if (label.name.trim().length === 0) {
@@ -68,4 +75,28 @@ export function archiveLabel(
     throw new Error(`Label ${label.id} is already archived`);
   }
   return { ...label, archivedAt, updatedAt: archivedAt };
+}
+
+/**
+ * Update an active Label definition without mutating its historical identity.
+ * Archived definitions are intentionally immutable: a caller must define a
+ * new Label if its meaning needs to be reintroduced.
+ */
+export function updateLabel(
+  label: Label,
+  changes: LabelChanges,
+  updatedAt: IsoTimestamp = nowIso(),
+): Label {
+  if (label.archivedAt !== null) {
+    throw new Error(`Label ${label.id} is archived and cannot be updated`);
+  }
+  const updated: Label = {
+    ...label,
+    name: changes.name ?? label.name,
+    description:
+      changes.description === undefined ? label.description : changes.description,
+    updatedAt,
+  };
+  validateLabel(updated);
+  return updated;
 }

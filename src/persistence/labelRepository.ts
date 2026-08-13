@@ -32,6 +32,20 @@ export interface LabelRepository {
 
   /** Persist changes to an existing Label. Throws if the id is unknown. */
   save(label: Label): Promise<void>;
+
+  /**
+   * List definitions in deterministic name, creation-time, id order. Active
+   * discovery excludes archived definitions unless historical mode is named
+   * explicitly. Offset pagination is deliberately deterministic and useful
+   * for small on-device result sets.
+   */
+  list(options?: LabelListOptions): Promise<Label[]>;
+}
+
+export interface LabelListOptions {
+  includeArchived?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 interface LabelRow {
@@ -120,6 +134,22 @@ export class SqliteLabelRepository implements LabelRepository {
     }
   }
 
+  async list(options: LabelListOptions = {}): Promise<Label[]> {
+    const includeArchived = options.includeArchived ?? false;
+    const limit = options.limit ?? 100;
+    const offset = options.offset ?? 0;
+    assertPagination(limit, offset);
+    const rows = await this.db.getAllAsync<LabelRow>(
+      `SELECT id, name, description, created_at, updated_at, archived_at
+       FROM labels
+       WHERE (? = 1 OR archived_at IS NULL)
+       ORDER BY name, created_at, id
+       LIMIT ? OFFSET ?`,
+      [includeArchived ? 1 : 0, limit, offset],
+    );
+    return rows.map(toDomain);
+  }
+
   /**
    * Reject a name already held by a *different* active Label. Archived
    * Labels do not block reuse; their historical references stay keyed by id.
@@ -132,5 +162,14 @@ export class SqliteLabelRepository implements LabelRepository {
     if (existing !== null && existing.id !== label.id) {
       throw new Error(`An active Label named "${label.name}" already exists`);
     }
+  }
+}
+
+function assertPagination(limit: number, offset: number): void {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error('Label list limit must be a positive integer');
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new Error('Label list offset must be a non-negative integer');
   }
 }
