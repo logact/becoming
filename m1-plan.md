@@ -153,7 +153,7 @@ Exit gate: lifecycle transitions and relation changes are atomic with audit data
 - [x] [#62](https://github.com/logact/becoming/issues/62) — Create and supersede project resource budgets (Feature #12) **(done)**
 - [x] [#66](https://github.com/logact/becoming/issues/66) — Query endpoint relationship history and replacements (Feature #5) **(done)**
 - [x] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8) **(done)**
-- [ ] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10) **(processing)**
+- [x] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10) **(done)**
 - [ ] [#92](https://github.com/logact/becoming/issues/92) — Implement Project-to-Goal pursuit relations (Feature #20)
 - [ ] [#95](https://github.com/logact/becoming/issues/95) — Implement Task-to-Project membership relations (Feature #18)
 
@@ -184,17 +184,17 @@ Exit gate: Project machines initialize atomically; resource allocation/usage con
 Exit gate: applied Workflow behavior, temporal allocation/consumption, unified timelines, and cycle-safe decomposition pass acceptance and rollback tests.
 
 - [x] [#45](https://github.com/logact/becoming/issues/45) — Complete workflow application errors, provenance, and acceptance tests (Feature #27) **(done)**
-- [ ] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13) **(processing)**
+- [x] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13) **(done)**
 - [ ] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14)
 - [ ] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15)
-- [ ] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10)
+- [ ] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10) **(processing)**
 - [ ] [#101](https://github.com/logact/becoming/issues/101) — Implement cycle-safe decomposition mutations (Feature #21)
 
 ### Wave 10 — Historical planning and exception contracts
 
 Exit gate: allocation/usage histories reconcile, timeline pagination is stable, planned-versus-actual policy is explicit, and hierarchy traversal is bounded and deterministic.
 
-- [ ] [#69](https://github.com/logact/becoming/issues/69) — Query allocation totals, history, and policy status (Feature #13)
+- [ ] [#69](https://github.com/logact/becoming/issues/69) — Query allocation totals, history, and policy status (Feature #13) **(processing)**
 - [ ] [#80](https://github.com/logact/becoming/issues/80) — Query and reconcile resource usage history (Feature #14)
 - [ ] [#87](https://github.com/logact/becoming/issues/87) — Add stable cursor pagination to entity timelines (Feature #10)
 - [ ] [#97](https://github.com/logact/becoming/issues/97) — Define planned-versus-actual exception semantics (Feature #16)
@@ -276,6 +276,8 @@ Before closing M1:
 | [#66](https://github.com/logact/becoming/issues/66) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`ed4d247`](https://github.com/logact/becoming/commit/ed4d247) |
 | [#67](https://github.com/logact/becoming/issues/67) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`ac2dced`](https://github.com/logact/becoming/commit/ac2dced) |
 | [#72](https://github.com/logact/becoming/issues/72) | Approximate (worker did not capture boundaries) | Approximate | ~7m | Unavailable (worker runtime did not expose it) | [`ea8bdb3`](https://github.com/logact/becoming/commit/ea8bdb3d9631a9917eb44b69b4d4f0de5178767a) |
+| [#68](https://github.com/logact/becoming/issues/68) | Approximate (worker did not capture boundaries) | Approximate | ~17m | Unavailable (worker runtime did not expose it) | [`22f1e47`](https://github.com/logact/becoming/commit/22f1e47) |
+| [#85](https://github.com/logact/becoming/issues/85) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`62a9ea3`](https://github.com/logact/becoming/commit/62a9ea3) |
 
 ## Maintaining the plan
 
