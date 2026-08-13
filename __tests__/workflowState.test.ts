@@ -859,11 +859,11 @@ describe('WorkflowStateService', () => {
     const { workflow, label } = await seedMachine({ workflows, labels });
     const active = await service.defineState({
       workflowId: workflow.id, entityType: 'task', labelId: label.id,
-      title: 'Backlog', category: 'queue', isInitial: true,
+      title: 'Backlog', category: 'queue', isInitial: true, definedAt: CREATED_AT,
     });
     const terminal = await service.defineState({
       workflowId: workflow.id, entityType: 'task', labelId: label.id,
-      title: 'Done', category: 'complete', isTerminal: true,
+      title: 'Done', category: 'complete', isTerminal: true, definedAt: UPDATED_AT,
     });
     await service.archiveState(terminal.id, ARCHIVED_AT);
     await workflows.save(archiveWorkflow(workflow, ARCHIVED_AT));
@@ -876,7 +876,9 @@ describe('WorkflowStateService', () => {
     const resolved = await service.resolveMachineHistory(workflow.id, 'task', label.id);
     expect(resolved.workflow?.archivedAt).toBe(ARCHIVED_AT);
     expect(resolved.label?.archivedAt).toBe(ARCHIVED_AT);
-    expect(resolved.states.map((state) => state.id)).toEqual([active.id, terminal.id].sort());
+    // History preserves the repository's semantic order: sortOrder, then
+    // creation time, then id. Random UUIDs must not define this assertion.
+    expect(resolved.states.map((state) => state.id)).toEqual([active.id, terminal.id]);
     await closeQuietly(db);
   });
 
