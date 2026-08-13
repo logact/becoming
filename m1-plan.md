@@ -153,7 +153,7 @@ Exit gate: lifecycle transitions and relation changes are atomic with audit data
 - [x] [#62](https://github.com/logact/becoming/issues/62) — Create and supersede project resource budgets (Feature #12) **(done)**
 - [x] [#66](https://github.com/logact/becoming/issues/66) — Query endpoint relationship history and replacements (Feature #5) **(done)**
 - [x] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8) **(done)**
-- [ ] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10)
+- [ ] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10) **(processing)**
 - [ ] [#92](https://github.com/logact/becoming/issues/92) — Implement Project-to-Goal pursuit relations (Feature #20)
 - [ ] [#95](https://github.com/logact/becoming/issues/95) — Implement Task-to-Project membership relations (Feature #18)
 
@@ -164,7 +164,7 @@ Exit gate: workflow resolution is deterministic; occupied states, capacity polic
 - [x] [#43](https://github.com/logact/becoming/issues/43) — Model workflow applicability and deterministic resolution (Feature #27) **(done)**
 - [x] [#48](https://github.com/logact/becoming/issues/48) — Protect occupied Project States during archival and migration (Feature #28) **(done)**
 - [x] [#63](https://github.com/logact/becoming/issues/63) — Query budget history and enforce capacity policy (Feature #12) **(done)**
-- [ ] [#72](https://github.com/logact/becoming/issues/72) — Query immediate sources and derivatives safely (Feature #8) **(processing)**
+- [x] [#72](https://github.com/logact/becoming/issues/72) — Query immediate sources and derivatives safely (Feature #8) **(done)**
 - [x] [#79](https://github.com/logact/becoming/issues/79) — Commit state history and transition audit atomically (Feature #9) **(done)**
 - [ ] [#93](https://github.com/logact/becoming/issues/93) — Query current and historical Goal pursuit (Feature #20)
 - [ ] [#96](https://github.com/logact/becoming/issues/96) — Query Task membership and Project contexts (Feature #18)
@@ -275,6 +275,7 @@ Before closing M1:
 | [#71](https://github.com/logact/becoming/issues/71) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`d280218`](https://github.com/logact/becoming/commit/d280218) |
 | [#66](https://github.com/logact/becoming/issues/66) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`ed4d247`](https://github.com/logact/becoming/commit/ed4d247) |
 | [#67](https://github.com/logact/becoming/issues/67) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`ac2dced`](https://github.com/logact/becoming/commit/ac2dced) |
+| [#72](https://github.com/logact/becoming/issues/72) | Approximate (worker did not capture boundaries) | Approximate | ~7m | Unavailable (worker runtime did not expose it) | [`ea8bdb3`](https://github.com/logact/becoming/commit/ea8bdb3d9631a9917eb44b69b4d4f0de5178767a) |
 
 ## Maintaining the plan
 
