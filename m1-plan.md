@@ -123,7 +123,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [x] [#50](https://github.com/logact/becoming/issues/50) — Persist entity state history and initialize current state safely (Feature #29) **(done)**
 - [x] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11) **(done)**
 - [x] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6) **(done)**
-- [ ] [#59](https://github.com/logact/becoming/issues/59) — Capture creation provenance for all core concepts (Feature #30)
+- [ ] [#59](https://github.com/logact/becoming/issues/59) — Capture creation provenance for all core concepts (Feature #30) **(processing)**
 - [x] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5) **(done)**
 - [x] [#75](https://github.com/logact/becoming/issues/75) — Query current and historical semantic relations (Feature #19) **(done)**
 - [x] [#89](https://github.com/logact/becoming/issues/89) — Implement Goal mutation commands with provenance (Feature #17) **(done)**
@@ -137,7 +137,7 @@ Exit gate: topology, transition validation, Record queries, mutation history, in
 - [ ] [#39](https://github.com/logact/becoming/issues/39) — Complete workflow state history and provenance coverage (Feature #25) **(processing)**
 - [ ] [#41](https://github.com/logact/becoming/issues/41) — Enforce workflow transition topology and duplicate policies (Feature #26)
 - [ ] [#52](https://github.com/logact/becoming/issues/52) — Build the Project transition validation engine (Feature #29)
-- [ ] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6) **(processing)**
+- [x] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6) **(done)**
 - [ ] [#60](https://github.com/logact/becoming/issues/60) — Capture update, archive, and restoration provenance (Feature #30)
 - [ ] [#61](https://github.com/logact/becoming/issues/61) — Define project budget relation contracts (Feature #12)
 - [ ] [#65](https://github.com/logact/becoming/issues/65) — Audit relation creation and ending atomically (Feature #5)
@@ -253,6 +253,7 @@ Before closing M1:
 | [#64](https://github.com/logact/becoming/issues/64) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`c1ae076`](https://github.com/logact/becoming/commit/c1ae076e8d8461f3a9a7608bc363e5cc5398e5f4) |
 | [#90](https://github.com/logact/becoming/issues/90) | Approx. 2026-08-13T06:27Z | 2026-08-13T06:32:51Z | ~6m | Unavailable (worker runtime did not expose it) | [`861b683`](https://github.com/logact/becoming/commit/861b6832c98a2d78e57bc465ac9be4235f21825d) |
 | [#75](https://github.com/logact/becoming/issues/75) | Approx. 2026-08-13T06:25:34Z | 2026-08-13T06:33:34Z | ~8m | Unavailable (worker runtime did not expose it) | [`357643a`](https://github.com/logact/becoming/commit/357643a) |
+| [#57](https://github.com/logact/becoming/issues/57) | Approx. 2026-08-13T06:33Z | 2026-08-13T06:43:44Z | ~11m | Unavailable (worker runtime did not expose it) | [`a51d97f`](https://github.com/logact/becoming/commit/a51d97fdf56a2a10e91b66cd18951e59fddfef21) |
 
 ## Maintaining the plan
 
