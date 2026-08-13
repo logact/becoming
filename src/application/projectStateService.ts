@@ -11,6 +11,16 @@ import type {
 } from '../domain/projectState';
 import type { LabelRepository } from '../persistence/labelRepository';
 import type { ProjectStateRepository } from '../persistence/projectStateRepository';
+import { SqliteProjectStateRepository } from '../persistence/projectStateRepository';
+import { SqliteProjectEntityStateRepository } from '../persistence/projectEntityStateRepository';
+import type { SqliteDatabase } from '../persistence/database';
+import { withTransaction } from '../persistence/transactions';
+import { createProjectEntityState, endProjectEntityState } from '../domain/projectEntityState';
+import type { ProjectEntityState } from '../domain/projectEntityState';
+import type { RecordRepository } from '../persistence/recordRepository';
+import type { EntitySnapshot, FieldSelectionPolicy } from '../domain/mutationProvenance';
+import { MutationProvenanceService } from './mutationProvenanceService';
+import type { UnitOfWork } from './unitOfWork';
 import {
   LabelArchivedError,
   LabelNotFoundError,
@@ -86,6 +96,22 @@ export class ProjectStateNotFoundError extends Error {
   }
 }
 
+/** Raised rather than silently invalidating current runtime state history. */
+export class ProjectStateOccupiedError extends Error {
+  constructor(readonly stateId: EntityId, readonly occupancyCount: number) {
+    super(`ProjectState ${stateId} is occupied by ${occupancyCount} current Project entity state${occupancyCount === 1 ? '' : 's'}; migrate occupants before archival`);
+    this.name = 'ProjectStateOccupiedError';
+  }
+}
+
+/** A bulk migration can only remain in the exact same active state machine. */
+export class ProjectStateMigrationDestinationError extends Error {
+  constructor(sourceId: EntityId, destinationId: EntityId, reason: 'missing' | 'archived' | 'machine_mismatch' | 'same_state') {
+    super(`ProjectState migration destination ${destinationId} for ${sourceId} is invalid: ${reason}`);
+    this.name = 'ProjectStateMigrationDestinationError';
+  }
+}
+
 /**
  * Command for defining a new Project State. Works for Project-native states
  * (no `sourceWorkflowStateId`) and for states copied from a Workflow template
@@ -93,6 +119,7 @@ export class ProjectStateNotFoundError extends Error {
  * the clock's current time.
  */
 export interface CreateProjectStateCommand {
+  actor?: string;
   projectId: EntityId;
   entityType: string;
   labelId: EntityId;
@@ -112,9 +139,48 @@ export interface ProjectStateServicePorts {
   projects: ProjectLookup;
   labels: LabelRepository;
   states: ProjectStateRepository;
+  /** Required only for atomic occupant migration. */
+  db?: SqliteDatabase;
+  /** Optional atomic provenance transport for Project State mutations. */
+  unitOfWork?: UnitOfWork<SqliteDatabase>;
+  statesInTransaction?: (context: SqliteDatabase) => ProjectStateRepository;
+  records?: (context: SqliteDatabase) => RecordRepository;
   clock?: Clock;
   ids?: IdGenerator;
 }
+
+export interface MigrateProjectStateOccupantsCommand {
+  sourceStateId: EntityId;
+  destinationStateId: EntityId;
+  /** Archive the source once every current occupant has moved. Defaults true. */
+  archiveSource?: boolean;
+  migratedAt?: IsoTimestamp;
+  actor?: string;
+}
+
+export interface ProjectStateOccupantMigration {
+  source: ProjectState;
+  destination: ProjectState;
+  previous: ProjectEntityState[];
+  current: ProjectEntityState[];
+  archivedSource: ProjectState | null;
+}
+
+/** An inspectable machine view intentionally includes archived references. */
+export interface ResolvedProjectStateMachine {
+  project: Awaited<ReturnType<ProjectLookup['getById']>>;
+  label: Awaited<ReturnType<LabelRepository['getById']>>;
+  states: ProjectState[];
+}
+
+const PROJECT_STATE_POLICY: FieldSelectionPolicy = {
+  allowlist: [
+    'projectId', 'entityType', 'labelId', 'title', 'description', 'category',
+    'sortOrder', 'isInitial', 'isTerminal', 'entryCriteria', 'exitCriteria',
+    'sourceWorkflowStateId', 'createdAt', 'updatedAt', 'archivedAt',
+  ],
+  redacted: [],
+};
 
 export class ProjectStateService {
   private readonly projects: ProjectLookup;
@@ -122,6 +188,9 @@ export class ProjectStateService {
   private readonly states: ProjectStateRepository;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
+  private readonly db?: SqliteDatabase;
+  private readonly statesInTransaction?: (context: SqliteDatabase) => ProjectStateRepository;
+  private readonly provenance?: MutationProvenanceService<SqliteDatabase>;
 
   constructor(ports: ProjectStateServicePorts) {
     this.projects = ports.projects;
@@ -129,6 +198,20 @@ export class ProjectStateService {
     this.states = ports.states;
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
+    this.db = ports.db;
+    this.statesInTransaction = ports.statesInTransaction;
+    if (ports.unitOfWork !== undefined || ports.records !== undefined || ports.statesInTransaction !== undefined) {
+      if (ports.unitOfWork === undefined || ports.records === undefined || ports.statesInTransaction === undefined) {
+        throw new Error('ProjectStateService provenance requires unitOfWork, statesInTransaction, and records');
+      }
+      this.provenance = new MutationProvenanceService({
+        unitOfWork: ports.unitOfWork,
+        records: ports.records,
+        clock: this.clock,
+        ids: this.ids,
+        additionalFieldPolicies: { project_state: PROJECT_STATE_POLICY },
+      });
+    }
   }
 
   /**
@@ -160,8 +243,8 @@ export class ProjectStateService {
       id: this.ids.newId(),
       now: command.createdAt ?? this.clock.now(),
     });
-    await this.states.add(state);
-    return state;
+    return this.mutate('create', state.id, command.actor, command.createdAt, undefined, state,
+      async (states) => { await states.add(state); return state; });
   }
 
   /**
@@ -177,6 +260,7 @@ export class ProjectStateService {
     stateId: EntityId,
     changes: ProjectStateChanges,
     updatedAt?: IsoTimestamp,
+    actor?: string,
   ): Promise<ProjectState> {
     const state = await this.requireState(stateId);
     const updated = updateProjectState(
@@ -184,8 +268,8 @@ export class ProjectStateService {
       changes,
       updatedAt ?? this.clock.now(),
     );
-    await this.states.save(updated);
-    return updated;
+    return this.mutate('update', stateId, actor, updatedAt, state, updated,
+      async (states) => { await states.save(updated); return updated; });
   }
 
   /**
@@ -235,11 +319,82 @@ export class ProjectStateService {
   async archiveState(
     stateId: EntityId,
     archivedAt?: IsoTimestamp,
+    actor?: string,
   ): Promise<ProjectState> {
     const state = await this.requireState(stateId);
-    const archived = archiveProjectState(state, archivedAt ?? this.clock.now());
-    await this.states.save(archived);
-    return archived;
+    if (this.db === undefined) {
+      // Legacy repository-only construction cannot inspect runtime occupancy.
+      // It remains valid only when there is no current-state persistence port.
+      const archived = archiveProjectState(state, archivedAt ?? this.clock.now());
+      return this.mutate('archive', stateId, actor, archivedAt, state, archived,
+        async (states) => { await states.save(archived); return archived; });
+    }
+    const at = archivedAt ?? this.clock.now();
+    const archive = async (context: SqliteDatabase): Promise<ProjectState> => {
+      const states = new SqliteProjectStateRepository(context);
+      const current = await states.getById(stateId);
+      if (current === null) throw new ProjectStateNotFoundError(stateId);
+      const occupancy = await new SqliteProjectEntityStateRepository(context).listCurrentForProjectState(stateId);
+      if (occupancy.length !== 0) throw new ProjectStateOccupiedError(stateId, occupancy.length);
+      const archived = archiveProjectState(current, at);
+      await states.save(archived);
+      return archived;
+    };
+    if (this.provenance === undefined) return withTransaction(this.db, archive);
+    if (actor === undefined) throw new Error('ProjectState provenance mutations require an actor');
+    const archived = archiveProjectState(state, at);
+    return this.provenance.mutateWithProvenance({
+      entityType: 'project_state', entityId: stateId, action: 'archive', actor, occurredAt: at,
+      before: snapshot(state), after: snapshot(archived),
+      mutate: (context) => archive(context),
+    });
+  }
+
+  /**
+   * Explicitly move every current occupant to an active State in the same
+   * machine. Closing and opening all periods and optional source archival are
+   * one transaction, so a fault or competing command leaves no partial move.
+   */
+  async migrateOccupants(
+    command: MigrateProjectStateOccupantsCommand,
+  ): Promise<ProjectStateOccupantMigration> {
+    if (this.db === undefined) throw new Error('ProjectStateService migration requires db');
+    const at = command.migratedAt ?? this.clock.now();
+    const migrate = async (context: SqliteDatabase): Promise<ProjectStateOccupantMigration> => {
+      const states = new SqliteProjectStateRepository(context);
+      const source = await states.getById(command.sourceStateId);
+      if (source === null) throw new ProjectStateNotFoundError(command.sourceStateId);
+      const destination = await states.getById(command.destinationStateId);
+      if (destination === null) throw new ProjectStateMigrationDestinationError(source.id, command.destinationStateId, 'missing');
+      if (destination.id === source.id) throw new ProjectStateMigrationDestinationError(source.id, destination.id, 'same_state');
+      if (destination.archivedAt !== null) throw new ProjectStateMigrationDestinationError(source.id, destination.id, 'archived');
+      if (source.projectId !== destination.projectId || source.entityType !== destination.entityType || source.labelId !== destination.labelId) {
+        throw new ProjectStateMigrationDestinationError(source.id, destination.id, 'machine_mismatch');
+      }
+      const periods = new SqliteProjectEntityStateRepository(context);
+      const open = await periods.listCurrentForProjectState(source.id);
+      const previous = open.map((period) => endProjectEntityState(period, at));
+      for (const period of previous) await periods.end(period);
+      const current = previous.map((period) => createProjectEntityState({
+        projectId: period.projectId, entityType: period.entityType, entityId: period.entityId,
+        labelId: period.labelId, projectStateId: destination.id, enteredAt: at,
+      }, { id: this.ids.newId(), now: at }));
+      for (const period of current) await periods.add(period);
+      const archivedSource = command.archiveSource === false ? null : archiveProjectState(source, at);
+      if (archivedSource !== null) await states.save(archivedSource);
+      return { source, destination, previous, current, archivedSource };
+    };
+    // A migration records the source definition's archival, when requested;
+    // period history itself is append-preserved transition evidence.
+    if (this.provenance === undefined || command.archiveSource === false) return withTransaction(this.db, migrate);
+    if (command.actor === undefined) throw new Error('ProjectState provenance mutations require an actor');
+    const source = await this.requireState(command.sourceStateId);
+    const archived = archiveProjectState(source, at);
+    return this.provenance.mutateWithProvenance({
+      entityType: 'project_state', entityId: source.id, action: 'archive', actor: command.actor, occurredAt: at,
+      description: `migrate occupants from ProjectState ${source.id} to ${command.destinationStateId}`,
+      before: snapshot(source), after: snapshot(archived), mutate: migrate,
+    });
   }
 
   /** Return the Project State with this id (active or archived), or null. */
@@ -272,6 +427,19 @@ export class ProjectStateService {
     return this.states.listForMachine({ projectId, entityType, labelId });
   }
 
+  /** Resolve complete history without hiding archived Project/Label origins. */
+  async resolveMachineHistory(
+    projectId: EntityId,
+    entityType: CoreEntityType,
+    labelId: EntityId,
+  ): Promise<ResolvedProjectStateMachine> {
+    const project = await this.projects.getById(projectId);
+    if (project === null) throw new ProjectNotFoundError(projectId);
+    const label = await this.labels.getById(labelId);
+    if (label === null) throw new LabelNotFoundError(labelId);
+    return { project, label, states: await this.listMachineHistory(projectId, entityType, labelId) };
+  }
+
   private async requireState(stateId: EntityId): Promise<ProjectState> {
     const state = await this.states.getById(stateId);
     if (state === null) {
@@ -279,4 +447,20 @@ export class ProjectStateService {
     }
     return state;
   }
+
+  private async mutate(
+    action: 'create' | 'update' | 'archive', entityId: EntityId, actor: string | undefined,
+    occurredAt: IsoTimestamp | undefined, before: ProjectState | undefined, after: ProjectState,
+    mutation: (states: ProjectStateRepository) => Promise<ProjectState>,
+  ): Promise<ProjectState> {
+    if (this.provenance === undefined) return mutation(this.states);
+    if (actor === undefined) throw new Error('ProjectState provenance mutations require an actor');
+    return this.provenance.mutateWithProvenance({
+      entityType: 'project_state', entityId, action, actor, occurredAt,
+      before: before === undefined ? undefined : snapshot(before), after: snapshot(after),
+      mutate: (context) => mutation((this.statesInTransaction as (context: SqliteDatabase) => ProjectStateRepository)(context)),
+    });
+  }
 }
+
+function snapshot(state: ProjectState): EntitySnapshot { return { ...state }; }

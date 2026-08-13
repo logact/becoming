@@ -20,7 +20,12 @@ import { SqliteLabelRepository } from '../src/persistence/labelRepository';
 import { SqliteWorkflowRepository } from '../src/persistence/workflowRepository';
 import { SqliteWorkflowStateRepository } from '../src/persistence/workflowStateRepository';
 import { SqliteProjectStateRepository } from '../src/persistence/projectStateRepository';
+import { SqliteProjectEntityStateRepository } from '../src/persistence/projectEntityStateRepository';
+import { createProjectEntityState } from '../src/domain/projectEntityState';
 import type { SqliteDatabase } from '../src/persistence/database';
+import { sqliteUnitOfWork } from '../src/persistence/transactions';
+import { SqliteRecordRepository } from '../src/persistence/recordRepository';
+import { PROVENANCE_RECORD_TYPE } from '../src/domain/mutationProvenance';
 import {
   LabelArchivedError,
   LabelNotFoundError,
@@ -29,6 +34,8 @@ import {
   ProjectArchivedError,
   ProjectNotFoundError,
   ProjectStateNotFoundError,
+  ProjectStateMigrationDestinationError,
+  ProjectStateOccupiedError,
   ProjectStateService,
 } from '../src/application/projectStateService';
 import type { ProjectLookup } from '../src/application/projectStateService';
@@ -1067,5 +1074,96 @@ describe('ProjectStateService', () => {
     expect(active).toHaveLength(1);
     expect(active[0].isInitial).toBe(true);
     await closeQuietly(db);
+  });
+
+  it('rejects occupied archival unchanged, then atomically migrates current occupants', async () => {
+    const db = await createTestDatabase();
+    const projects = new SqliteProjectLookup(db);
+    const labels = new SqliteLabelRepository(db);
+    const states = new SqliteProjectStateRepository(db);
+    const service = new ProjectStateService({ projects, labels, states, db, ids: (() => {
+      let id = 0;
+      return { newId: () => `migrated-period-${++id}` };
+    })() });
+    const { label } = await seedMachine({ db, labels });
+    const source = await service.createState({ projectId: PROJECT_ID, entityType: 'task', labelId: label.id, title: 'Backlog', isInitial: true });
+    const destination = await service.createState({ projectId: PROJECT_ID, entityType: 'task', labelId: label.id, title: 'Ready' });
+    const periods = new SqliteProjectEntityStateRepository(db);
+    const occupant = createProjectEntityState({ projectId: PROJECT_ID, entityType: 'task', entityId: 'task-1', labelId: label.id, projectStateId: source.id }, { id: 'source-period', now: CREATED_AT });
+    await periods.add(occupant);
+
+    await expect(service.archiveState(source.id, ARCHIVED_AT)).rejects.toBeInstanceOf(ProjectStateOccupiedError);
+    expect(await states.getById(source.id)).toEqual(source);
+    expect(await periods.listCurrentForProjectState(source.id)).toEqual([occupant]);
+
+    const migration = await service.migrateOccupants({ sourceStateId: source.id, destinationStateId: destination.id, migratedAt: ARCHIVED_AT });
+    expect(migration.archivedSource?.archivedAt).toBe(ARCHIVED_AT);
+    expect(migration.previous).toEqual([{ ...occupant, endedAt: ARCHIVED_AT }]);
+    expect(migration.current).toHaveLength(1);
+    expect(migration.current[0]).toMatchObject({ projectStateId: destination.id, endedAt: null, enteredAt: ARCHIVED_AT });
+    expect(await periods.listCurrentForProjectState(source.id)).toEqual([]);
+    expect(await periods.listCurrentForProjectState(destination.id)).toEqual(migration.current);
+    expect((await periods.listHistory({ projectId: PROJECT_ID, entityType: 'task', entityId: 'task-1', labelId: label.id })).map((period) => period.projectStateId)).toEqual([source.id, destination.id]);
+    await closeQuietly(db);
+  });
+
+  it('rejects archived, cross-machine, and self migration destinations without closing occupants', async () => {
+    const db = await createTestDatabase();
+    const projects = new SqliteProjectLookup(db);
+    const labels = new SqliteLabelRepository(db);
+    const states = new SqliteProjectStateRepository(db);
+    const service = new ProjectStateService({ projects, labels, states, db });
+    const { label } = await seedMachine({ db, labels });
+    const other = createLabel({ name: 'Other' }); await labels.add(other);
+    const source = await service.createState({ projectId: PROJECT_ID, entityType: 'task', labelId: label.id, title: 'Backlog' });
+    const archived = await service.createState({ projectId: PROJECT_ID, entityType: 'task', labelId: label.id, title: 'Old' });
+    await service.archiveState(archived.id, ARCHIVED_AT);
+    const otherMachine = await service.createState({ projectId: PROJECT_ID, entityType: 'task', labelId: other.id, title: 'Elsewhere' });
+    const periods = new SqliteProjectEntityStateRepository(db);
+    const occupant = createProjectEntityState({ projectId: PROJECT_ID, entityType: 'task', entityId: 'task-1', labelId: label.id, projectStateId: source.id }, { id: 'source-period', now: CREATED_AT });
+    await periods.add(occupant);
+    for (const destinationStateId of [source.id, archived.id, otherMachine.id, 'missing']) {
+      await expect(service.migrateOccupants({ sourceStateId: source.id, destinationStateId, migratedAt: ARCHIVED_AT })).rejects.toBeInstanceOf(ProjectStateMigrationDestinationError);
+      expect(await periods.listCurrentForProjectState(source.id)).toEqual([occupant]);
+    }
+    await closeQuietly(db);
+  });
+
+  it('records project-state mutations atomically and rolls back an occupied migration when provenance fails', async () => {
+    const db = await createTestDatabase();
+    const projects = new SqliteProjectLookup(db);
+    const labels = new SqliteLabelRepository(db);
+    const states = new SqliteProjectStateRepository(db);
+    const service = new ProjectStateService({
+      projects, labels, states, db,
+      unitOfWork: sqliteUnitOfWork(db),
+      statesInTransaction: (context) => new SqliteProjectStateRepository(context),
+      records: () => ({ add: async () => { throw new Error('record failed'); } } as unknown as SqliteRecordRepository),
+    });
+    const { label } = await seedMachine({ db, labels });
+    await expect(service.createState({ actor: 'planner', projectId: PROJECT_ID, entityType: 'task', labelId: label.id, title: 'Backlog' }))
+      .rejects.toThrow(/rolled back/);
+    expect(await states.listForMachine({ projectId: PROJECT_ID, entityType: 'task', labelId: label.id })).toEqual([]);
+    await closeQuietly(db);
+
+    const auditedDb = await createTestDatabase();
+    const auditedProjects = new SqliteProjectLookup(auditedDb);
+    const auditedLabels = new SqliteLabelRepository(auditedDb);
+    const auditedStates = new SqliteProjectStateRepository(auditedDb);
+    const audited = new ProjectStateService({
+      projects: auditedProjects, labels: auditedLabels, states: auditedStates, db: auditedDb,
+      unitOfWork: sqliteUnitOfWork(auditedDb),
+      statesInTransaction: (context) => new SqliteProjectStateRepository(context),
+      records: (context) => new SqliteRecordRepository(context),
+    });
+    const { label: auditedLabel } = await seedMachine({ db: auditedDb, labels: auditedLabels });
+    const created = await audited.createState({ actor: 'planner', projectId: PROJECT_ID, entityType: 'task', labelId: auditedLabel.id, title: 'Backlog' });
+    await audited.updateState(created.id, { title: 'Ready' }, UPDATED_AT, 'planner');
+    const payloads = await auditedDb.getAllAsync<{ payload: string }>('SELECT payload FROM records WHERE record_type = ? ORDER BY created_at, id', [PROVENANCE_RECORD_TYPE]);
+    expect(payloads.map(({ payload }) => JSON.parse(payload))).toEqual(expect.arrayContaining([
+      expect.objectContaining({ entityType: 'project_state', action: 'create' }),
+      expect.objectContaining({ entityType: 'project_state', action: 'update' }),
+    ]));
+    await closeQuietly(auditedDb);
   });
 });

@@ -34,6 +34,8 @@ export interface ProjectEntityStateRepository {
   /** Alias for the lifecycle-audit lookup port. */
   getCurrent(context: ProjectEntityStateContext): Promise<ProjectEntityState | null>;
   listHistory(context: ProjectEntityStateContext): Promise<ProjectEntityState[]>;
+  /** Open runtime periods currently occupying a particular Project State. */
+  listCurrentForProjectState(projectStateId: EntityId): Promise<ProjectEntityState[]>;
   /** Only changes `endedAt` from null to a valid final value. */
   end(state: ProjectEntityState): Promise<void>;
 }
@@ -190,6 +192,18 @@ export class SqliteProjectEntityStateRepository
         context.entityId,
         context.labelId,
       ],
+    );
+    return rows.map(toDomain);
+  }
+
+  async listCurrentForProjectState(
+    projectStateId: EntityId,
+  ): Promise<ProjectEntityState[]> {
+    const rows = await this.db.getAllAsync<ProjectEntityStateRow>(
+      `SELECT ${COLUMNS} FROM project_entity_states
+       WHERE project_state_id = ? AND ended_at IS NULL
+       ORDER BY entered_at, created_at, id`,
+      [projectStateId],
     );
     return rows.map(toDomain);
   }
