@@ -57,6 +57,10 @@ export const RELATION_TYPES = [
   'budgeted_by',
   /** A Project-scoped, temporal selection of a reusable Workflow definition. */
   'workflow_applies_to',
+  /** The source is the immediate origin from which the target was derived. */
+  'origin_of',
+  /** The source was transformed to produce the target. */
+  'transforms_into',
   'related_to',
 ] as const;
 

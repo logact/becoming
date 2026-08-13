@@ -2,7 +2,7 @@ import type { EntityId, IsoTimestamp } from '../domain/ids';
 import type { CoreEntityType } from '../domain/entityTypes';
 import { createRelation, endRelation } from '../domain/relation';
 import type { Relation } from '../domain/relation';
-import { resolveRelationPolicy } from '../domain/relationPolicy';
+import { LINEAGE_RELATION_TYPES, resolveRelationPolicy } from '../domain/relationPolicy';
 import type { RelationPolicy } from '../domain/relationPolicy';
 import type { RelationRepository } from '../persistence/relationRepository';
 import { systemClock, uuidGenerator } from './recordService';
@@ -98,6 +98,24 @@ export class DuplicateActiveRelationError extends Error {
       `An active ${JSON.stringify(existing.relationType)} relation already exists from ${existing.sourceType} ${existing.sourceId} to ${existing.targetType} ${existing.targetId} (${existing.id})`,
     );
     this.name = 'DuplicateActiveRelationError';
+  }
+}
+
+/** A constrained lineage edge may not make an entity its own ancestor. */
+export class RelationCycleError extends Error {
+  constructor(relation: Relation) {
+    super(
+      `Lineage relation ${relation.sourceType} ${relation.sourceId} -> ${relation.targetType} ${relation.targetId} would create a cycle`,
+    );
+  }
+}
+
+/** Thrown when a policy's target-scoped active cardinality is exhausted. */
+export class RelationTargetCardinalityError extends Error {
+  constructor(relation: Relation, maximum: number) {
+    super(
+      `Relation type ${JSON.stringify(relation.relationType)} permits at most ${maximum} active relation(s) targeting ${relation.targetType} ${relation.targetId}`,
+    );
   }
 }
 
@@ -401,6 +419,22 @@ export class RelationService<TContext> {
         throw new DuplicateActiveRelationError(existing);
       }
     }
+    if (policy.maximumActiveRelationsForTarget !== undefined) {
+      const existingForTarget = await relations.listCurrent({
+        target: { type: relation.targetType, id: relation.targetId },
+        relationType: relation.relationType,
+        limit: policy.maximumActiveRelationsForTarget,
+      });
+      if (existingForTarget.length >= policy.maximumActiveRelationsForTarget) {
+        throw new RelationTargetCardinalityError(
+          relation,
+          policy.maximumActiveRelationsForTarget,
+        );
+      }
+    }
+    if (policy.rejectsCycles && await this.wouldCreateLineageCycle(relations, relation)) {
+      throw new RelationCycleError(relation);
+    }
     try {
       await relations.add(relation);
     } catch (error) {
@@ -408,6 +442,40 @@ export class RelationService<TContext> {
     }
     await this.appendProvenance(context, 'created', relation, actor);
     return relation;
+  }
+
+  /**
+   * Cycle check over current constrained-lineage rows. Traversal follows the
+   * canonical source -> derivative direction from the proposed target. The
+   * visited set and limit make corrupted persisted graphs safe to inspect.
+   */
+  private async wouldCreateLineageCycle(
+    relations: RelationRepository,
+    proposed: Relation,
+  ): Promise<boolean> {
+    const identity = (type: CoreEntityType, id: EntityId) => `${type}:${id}`;
+    const wanted = identity(proposed.sourceType, proposed.sourceId);
+    const pending: Array<{ type: CoreEntityType; id: EntityId }> = [
+      { type: proposed.targetType, id: proposed.targetId },
+    ];
+    const visited = new Set<string>();
+    const MAX_VISITED = 1_000;
+    while (pending.length > 0 && visited.size < MAX_VISITED) {
+      const current = pending.shift()!;
+      const currentIdentity = identity(current.type, current.id);
+      if (currentIdentity === wanted) return true;
+      if (visited.has(currentIdentity)) continue;
+      visited.add(currentIdentity);
+      const outgoing = await relations.listCurrent({ source: current, limit: MAX_VISITED });
+      for (const edge of outgoing) {
+        if (LINEAGE_RELATION_TYPES.includes(edge.relationType as typeof LINEAGE_RELATION_TYPES[number])) {
+          pending.push({ type: edge.targetType, id: edge.targetId });
+        }
+      }
+    }
+    // A bounded traversal must fail closed: accepting an edge after the limit
+    // could allow a cycle hidden beyond it.
+    return pending.length > 0;
   }
 
   private async endInContext(

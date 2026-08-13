@@ -49,6 +49,19 @@ export const DEFAULT_RELATION_METADATA_SELECTION_POLICY: RelationMetadataSelecti
     redacted: [],
   });
 
+/**
+ * Conservative provenance view of versioned lineage context. The relation
+ * itself retains the complete transformation description; potentially
+ * sensitive rationale, free-form context, and source excerpts/fragments are
+ * not copied into append-only audit Records unless an owning boundary opts in
+ * with a narrower, explicit selection policy.
+ */
+export const DEFAULT_LINEAGE_METADATA_SELECTION_POLICY: RelationMetadataSelectionPolicy =
+  Object.freeze({
+    allowlist: ['schema_version', 'transformation_kind', 'actor', 'tool'],
+    redacted: ['rationale', 'context', 'source_fragments'],
+  });
+
 /** The JSON payload carried by exactly one provenance Record per change. */
 export interface RelationChangePayload {
   action: RelationChangeAction;
