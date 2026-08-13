@@ -15,6 +15,7 @@ import {
 } from '../src/domain/relationPolicy';
 import type { RelationPolicy } from '../src/domain/relationPolicy';
 import { PROVENANCE_RECORD_TYPE } from '../src/domain/mutationProvenance';
+import { RecordRelationProvenancePort } from '../src/application/relationProvenanceService';
 import {
   DuplicateActiveRelationError,
   RelationDirectionNotPermittedError,
@@ -694,6 +695,67 @@ describe('RelationService end', () => {
     expect(endedRow?.metadata).toEqual({ constraint_type: 'deadline' });
   });
 
+  it('replaces atomically and appends end then create provenance Records', async () => {
+    const original = await createActive();
+    let auditId = 0;
+    const provenance = new RecordRelationProvenancePort<SqliteDatabase>({
+      records: (context) => new SqliteRecordRepository(context),
+      clock: { now: () => RECORDED_AT },
+      ids: { newId: () => `audit-${++auditId}` },
+    });
+    const audited = makeService(db, { provenance });
+
+    const result = await audited.replaceRelation({
+      relationId: original.id,
+      actor: 'user-2',
+      endedAt: ENDED_AT,
+      replacement: {
+        sourceType: 'goal',
+        sourceId: goalId,
+        relationType: 'constrained_by',
+        targetType: 'resource',
+        targetId: resourceId,
+        metadata: { constraint_type: 'budget cap', ignored: 'not audited' },
+        occurredAt: ENDED_AT,
+      },
+    });
+
+    expect(result.ended).toEqual({ ...original, endedAt: ENDED_AT });
+    expect(result.replacement.endedAt).toBeNull();
+    expect(await relationCount(db)).toBe(2);
+    const records = await new SqliteRecordRepository(db).list({ status: 'all' });
+    expect(records).toHaveLength(3); // original create, then replacement's end/create
+    const replacementAudits = records.filter((record) =>
+      typeof record.payload === 'object' &&
+      record.payload !== null &&
+      !Array.isArray(record.payload) &&
+      typeof record.payload.action === 'string',
+    );
+    expect(replacementAudits.map((record) => (record.payload as { action: string }).action))
+      .toEqual(['relation_ended', 'relation_created']);
+    expect((replacementAudits.at(-1)?.payload as { metadata: unknown }).metadata)
+      .toEqual({ constraint_type: 'budget cap' });
+  });
+
+  it('uses the ending time as the replacement creation time by default', async () => {
+    const original = await createActive();
+    const result = await service.replaceRelation({
+      relationId: original.id,
+      actor: 'user-2',
+      endedAt: ENDED_AT,
+      replacement: {
+        sourceType: 'goal',
+        sourceId: goalId,
+        relationType: 'constrained_by',
+        targetType: 'resource',
+        targetId: resourceId,
+      },
+    });
+
+    expect(result.ended.endedAt).toBe(ENDED_AT);
+    expect(result.replacement.createdAt).toBe(ENDED_AT);
+  });
+
   it('forbids ordinary hard deletion; an ended relation stays stored', async () => {
     const relation = await createActive();
     const ended = await service.endRelation({
@@ -816,6 +878,29 @@ describe('RelationService transactions', () => {
     const stored = await new SqliteRelationRepository(db).getById(relation.id);
     expect(stored?.endedAt).toBeNull();
     expect(await activeRelationCount(db)).toBe(1);
+    expect(await recordCount(db)).toBe(0);
+  });
+
+  it('rolls back both relation changes when replacement provenance fails', async () => {
+    const service = makeService(db);
+    const relation = await service.createRelation(createCommand());
+    const failing = makeService(db, {
+      provenance: provenanceAppender([], { fail: true }),
+    });
+
+    await expect(
+      failing.replaceRelation({
+        relationId: relation.id,
+        actor: 'user-1',
+        endedAt: ENDED_AT,
+        replacement: { ...createCommand(), occurredAt: ENDED_AT },
+      }),
+    ).rejects.toThrow(RelationProvenancePersistenceError);
+
+    expect(await relationCount(db)).toBe(1);
+    expect(await activeRelationCount(db)).toBe(1);
+    expect((await new SqliteRelationRepository(db).getById(relation.id))?.endedAt)
+      .toBeNull();
     expect(await recordCount(db)).toBe(0);
   });
 });

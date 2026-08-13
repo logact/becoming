@@ -108,6 +108,14 @@ export class RelationNotFoundError extends Error {
   }
 }
 
+/** Replacements require an active old relation; retries must be explicit. */
+export class RelationAlreadyEndedError extends Error {
+  constructor(id: EntityId) {
+    super(`Relation ${id} is already ended and cannot be replaced`);
+    this.name = 'RelationAlreadyEndedError';
+  }
+}
+
 /**
  * Thrown when the Relation write fails inside the unit of work. The
  * transaction rolls back; the underlying error is preserved as `cause`.
@@ -198,6 +206,18 @@ export interface EndRelationCommand {
   endedAt?: IsoTimestamp;
 }
 
+/**
+ * Atomically end one active Relation and create its successor.  The same
+ * actor is recorded for both changes, while each temporal fact remains on its
+ * own Relation: `endedAt` on the old row and `createdAt` on the new row.
+ */
+export interface ReplaceRelationCommand {
+  relationId: EntityId;
+  actor: string;
+  endedAt?: IsoTimestamp;
+  replacement: Omit<CreateRelationCommand, 'actor'>;
+}
+
 export interface RelationServicePorts<TContext> {
   unitOfWork: UnitOfWork<TContext>;
   /** Bind a Relation repository to the unit-of-work context. */
@@ -249,8 +269,70 @@ export class RelationService<TContext> {
    */
   async createRelation(command: CreateRelationCommand): Promise<Relation> {
     const actor = requireActor(command.actor);
-    // Pure validation runs before the transaction starts, so invalid
-    // commands never reach a repository.
+    const relation = this.buildNewRelation(command);
+
+    return this.unitOfWork.run(async (context) => {
+      return this.createInContext(context, relation, actor);
+    });
+  }
+
+  /**
+   * End an active Relation, returning the ended Relation. Throws
+   * `RelationNotFoundError` when the id is unknown. Ending an already-ended
+   * Relation is an idempotent no-op: the stored Relation is returned
+   * unchanged and no provenance is appended (see `endRelation` in
+   * `src/domain/relation`).
+   */
+  async endRelation(command: EndRelationCommand): Promise<Relation> {
+    const actor = requireActor(command.actor);
+    return this.unitOfWork.run(async (context) => {
+      return this.endInContext(
+        context,
+        command.relationId,
+        actor,
+        command.endedAt ?? this.clock.now(),
+        true,
+      );
+    });
+  }
+
+  /**
+   * Replace an active relationship as one unit of work.  It appends exactly
+   * two audit Records in order — `relation_ended`, then `relation_created`.
+   * If either relation write or either append fails, the old Relation remains
+   * active and the replacement and both Records are rolled back.
+   */
+  async replaceRelation(command: ReplaceRelationCommand): Promise<{
+    ended: Relation;
+    replacement: Relation;
+  }> {
+    const actor = requireActor(command.actor);
+    const endedAt = command.endedAt ?? this.clock.now();
+    const replacement = this.buildNewRelation({
+      ...command.replacement,
+      actor,
+      // A replacement becomes active when the old relation ends unless the
+      // caller deliberately provides a later event time.
+      occurredAt: command.replacement.occurredAt ?? endedAt,
+    });
+    if (Date.parse(replacement.createdAt) < Date.parse(endedAt)) {
+      throw new Error('Replacement Relation createdAt must not precede endedAt');
+    }
+    return this.unitOfWork.run(async (context) => {
+      const ended = await this.endInContext(
+        context,
+        command.relationId,
+        actor,
+        endedAt,
+        false,
+      );
+      const created = await this.createInContext(context, replacement, actor);
+      return { ended, replacement: created };
+    });
+  }
+
+  /** Validate and construct a new Relation before persistence. */
+  private buildNewRelation(command: CreateRelationCommand): Relation {
     const relation = createRelation(
       {
         sourceType: command.sourceType,
@@ -278,73 +360,83 @@ export class RelationService<TContext> {
       );
     }
     policy.validateMetadata(relation.metadata);
-
-    return this.unitOfWork.run(async (context) => {
-      const relations = this.relations(context);
-      const endpoints = this.endpoints(context);
-      if (!(await endpoints.exists(relation.sourceType, relation.sourceId))) {
-        throw new RelationEndpointNotFoundError(
-          'source',
-          relation.sourceType,
-          relation.sourceId,
-        );
-      }
-      if (!(await endpoints.exists(relation.targetType, relation.targetId))) {
-        throw new RelationEndpointNotFoundError(
-          'target',
-          relation.targetType,
-          relation.targetId,
-        );
-      }
-      if (!policy.allowsMultipleActive) {
-        const existing = await relations.findActiveByIdentity(
-          relation.sourceType,
-          relation.sourceId,
-          relation.relationType,
-          relation.targetType,
-          relation.targetId,
-        );
-        if (existing !== null) {
-          throw new DuplicateActiveRelationError(existing);
-        }
-      }
-      try {
-        await relations.add(relation);
-      } catch (error) {
-        throw new RelationPersistenceError('create', relation.id, error);
-      }
-      await this.appendProvenance(context, 'created', relation, actor);
-      return relation;
-    });
+    return relation;
   }
 
-  /**
-   * End an active Relation, returning the ended Relation. Throws
-   * `RelationNotFoundError` when the id is unknown. Ending an already-ended
-   * Relation is an idempotent no-op: the stored Relation is returned
-   * unchanged and no provenance is appended (see `endRelation` in
-   * `src/domain/relation`).
-   */
-  async endRelation(command: EndRelationCommand): Promise<Relation> {
-    const actor = requireActor(command.actor);
-    return this.unitOfWork.run(async (context) => {
-      const relations = this.relations(context);
-      const existing = await relations.getById(command.relationId);
-      if (existing === null) {
-        throw new RelationNotFoundError(command.relationId);
+  private async createInContext(
+    context: TContext,
+    relation: Relation,
+    actor: string,
+  ): Promise<Relation> {
+    const policy = resolveRelationPolicy(relation.relationType, this.policies);
+    // `buildNewRelation` already resolved it, but retain the guard at the
+    // persistence boundary for callers composing a larger unit of work.
+    if (policy === null) {
+      throw new RelationPolicyNotFoundError(relation.relationType);
+    }
+    const relations = this.relations(context);
+    const endpoints = this.endpoints(context);
+    if (!(await endpoints.exists(relation.sourceType, relation.sourceId))) {
+      throw new RelationEndpointNotFoundError(
+        'source',
+        relation.sourceType,
+        relation.sourceId,
+      );
+    }
+    if (!(await endpoints.exists(relation.targetType, relation.targetId))) {
+      throw new RelationEndpointNotFoundError(
+        'target',
+        relation.targetType,
+        relation.targetId,
+      );
+    }
+    if (!policy.allowsMultipleActive) {
+      const existing = await relations.findActiveByIdentity(
+        relation.sourceType,
+        relation.sourceId,
+        relation.relationType,
+        relation.targetType,
+        relation.targetId,
+      );
+      if (existing !== null) {
+        throw new DuplicateActiveRelationError(existing);
       }
-      if (existing.endedAt !== null) {
+    }
+    try {
+      await relations.add(relation);
+    } catch (error) {
+      throw new RelationPersistenceError('create', relation.id, error);
+    }
+    await this.appendProvenance(context, 'created', relation, actor);
+    return relation;
+  }
+
+  private async endInContext(
+    context: TContext,
+    relationId: EntityId,
+    actor: string,
+    endedAt: IsoTimestamp,
+    permitRepeatedEnd: boolean,
+  ): Promise<Relation> {
+    const relations = this.relations(context);
+    const existing = await relations.getById(relationId);
+    if (existing === null) {
+      throw new RelationNotFoundError(relationId);
+    }
+    if (existing.endedAt !== null) {
+      if (permitRepeatedEnd) {
         return existing;
       }
-      const ended = endRelation(existing, command.endedAt ?? this.clock.now());
-      try {
-        await relations.save(ended);
-      } catch (error) {
-        throw new RelationPersistenceError('end', ended.id, error);
-      }
-      await this.appendProvenance(context, 'ended', ended, actor);
-      return ended;
-    });
+      throw new RelationAlreadyEndedError(relationId);
+    }
+    const ended = endRelation(existing, endedAt);
+    try {
+      await relations.save(ended);
+    } catch (error) {
+      throw new RelationPersistenceError('end', ended.id, error);
+    }
+    await this.appendProvenance(context, 'ended', ended, actor);
+    return ended;
   }
 
   /**
