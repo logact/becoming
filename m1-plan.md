@@ -154,7 +154,7 @@ Exit gate: lifecycle transitions and relation changes are atomic with audit data
 - [x] [#66](https://github.com/logact/becoming/issues/66) — Query endpoint relationship history and replacements (Feature #5) **(done)**
 - [x] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8) **(done)**
 - [x] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10) **(done)**
-- [ ] [#92](https://github.com/logact/becoming/issues/92) — Implement Project-to-Goal pursuit relations (Feature #20)
+- [ ] [#92](https://github.com/logact/becoming/issues/92) — Implement Project-to-Goal pursuit relations (Feature #20) **(processing)**
 - [ ] [#95](https://github.com/logact/becoming/issues/95) — Implement Task-to-Project membership relations (Feature #18)
 
 ### Wave 7 — Resolution, safeguards, and historical queries
@@ -185,7 +185,7 @@ Exit gate: applied Workflow behavior, temporal allocation/consumption, unified t
 
 - [x] [#45](https://github.com/logact/becoming/issues/45) — Complete workflow application errors, provenance, and acceptance tests (Feature #27) **(done)**
 - [x] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13) **(done)**
-- [ ] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14) **(processing)**
+- [x] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14) **(done)**
 - [ ] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15)
 - [x] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10) **(done)**
 - [ ] [#101](https://github.com/logact/becoming/issues/101) — Implement cycle-safe decomposition mutations (Feature #21)
@@ -195,7 +195,7 @@ Exit gate: applied Workflow behavior, temporal allocation/consumption, unified t
 Exit gate: allocation/usage histories reconcile, timeline pagination is stable, planned-versus-actual policy is explicit, and hierarchy traversal is bounded and deterministic.
 
 - [x] [#69](https://github.com/logact/becoming/issues/69) — Query allocation totals, history, and policy status (Feature #13) **(done)**
-- [ ] [#80](https://github.com/logact/becoming/issues/80) — Query and reconcile resource usage history (Feature #14)
+- [ ] [#80](https://github.com/logact/becoming/issues/80) — Query and reconcile resource usage history (Feature #14) **(processing)**
 - [x] [#87](https://github.com/logact/becoming/issues/87) — Add stable cursor pagination to entity timelines (Feature #10) **(done)**
 - [ ] [#97](https://github.com/logact/becoming/issues/97) — Define planned-versus-actual exception semantics (Feature #16)
 - [ ] [#102](https://github.com/logact/becoming/issues/102) — Query bounded Goal and Task hierarchies (Feature #21)
@@ -282,6 +282,7 @@ Before closing M1:
 | [#86](https://github.com/logact/becoming/issues/86) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`c97e638`](https://github.com/logact/becoming/commit/c97e638) |
 | [#87](https://github.com/logact/becoming/issues/87) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`917d2b1`](https://github.com/logact/becoming/commit/917d2b1) |
 | [#76](https://github.com/logact/becoming/issues/76) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`fcbf94d`](https://github.com/logact/becoming/commit/fcbf94d) |
+| [#78](https://github.com/logact/becoming/issues/78) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`5b9cd15`](https://github.com/logact/becoming/commit/5b9cd15) |
 
 ## Maintaining the plan
 
