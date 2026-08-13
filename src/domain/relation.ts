@@ -59,6 +59,8 @@ export const RELATION_TYPES = [
   'allocated',
   /** A Project-scoped, temporal selection of a reusable Workflow definition. */
   'workflow_applies_to',
+  /** A Project-contextual parent -> child Goal/Task hierarchy edge. */
+  'decomposes',
   /** The source is the immediate origin from which the target was derived. */
   'origin_of',
   /** The source was transformed to produce the target. */
