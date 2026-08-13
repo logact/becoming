@@ -17,6 +17,11 @@ import type { RelationPolicy } from '../src/domain/relationPolicy';
 import { PROVENANCE_RECORD_TYPE } from '../src/domain/mutationProvenance';
 import { RecordRelationProvenancePort } from '../src/application/relationProvenanceService';
 import {
+  RelationHistoryEndpointNotFoundError,
+  RelationHistoryQueryValidationError,
+  RelationQueryService,
+} from '../src/application/relationQueryService';
+import {
   DuplicateActiveRelationError,
   RelationDirectionNotPermittedError,
   RelationEndpointNotFoundError,
@@ -739,6 +744,96 @@ describe('RelationService end', () => {
       .toEqual(['relation_ended', 'relation_created']);
     expect((replacementAudits.at(-1)?.payload as { metadata: unknown }).metadata)
       .toEqual({ constraint_type: 'budget cap' });
+  });
+
+  it('queries an atomic replacement from each endpoint with its matching audit references', async () => {
+    let auditId = 0;
+    const audited = makeService(db, {
+      provenance: new RecordRelationProvenancePort<SqliteDatabase>({
+        records: (context) => new SqliteRecordRepository(context),
+        clock: { now: () => RECORDED_AT },
+        ids: { newId: () => `history-audit-${++auditId}` },
+      }),
+    });
+    const original = await audited.createRelation({
+      sourceType: 'goal',
+      sourceId: goalId,
+      relationType: 'constrained_by',
+      targetType: 'resource',
+      targetId: resourceId,
+      metadata: { constraint_type: 'deadline' },
+      actor: 'user-1',
+    });
+    const successorResource = createResource({
+      title: 'Operations time', resourceType: 'time',
+    });
+    await new SqliteResourceRepository(db).add(successorResource);
+    const replacement = await audited.replaceRelation({
+      relationId: original.id,
+      actor: 'user-2',
+      endedAt: ENDED_AT,
+      replacement: {
+        sourceType: 'goal',
+        sourceId: goalId,
+        relationType: 'constrained_by',
+        targetType: 'resource',
+        targetId: successorResource.id,
+        metadata: { constraint_type: 'budget cap' },
+      },
+    });
+    const queries = new RelationQueryService(
+      new SqliteRelationRepository(db),
+      undefined,
+      {
+        endpoints: endpointLookup(db, new Set()),
+        records: new SqliteRecordRepository(db),
+      },
+    );
+
+    const oldTarget = await queries.listEndpointHistory({
+      target: { type: 'resource', id: resourceId },
+      relationType: 'constrained_by',
+      status: 'ended',
+      overlaps: {
+        start: CLOCK_NOW,
+        end: '2026-08-12T14:00:00.000Z',
+      },
+    });
+    const newTarget = await queries.listEndpointHistory({
+      target: { type: 'resource', id: successorResource.id },
+      status: 'active',
+    });
+
+    expect(oldTarget).toEqual([{
+      relation: replacement.ended,
+      auditReferences: [
+        { recordId: expect.any(String), action: 'relation_created', occurredAt: CLOCK_NOW, actor: 'user-1' },
+        { recordId: expect.any(String), action: 'relation_ended', occurredAt: ENDED_AT, actor: 'user-2' },
+      ],
+    }]);
+    expect(newTarget).toEqual([{
+      relation: replacement.replacement,
+      auditReferences: [
+        { recordId: expect.any(String), action: 'relation_created', occurredAt: ENDED_AT, actor: 'user-2' },
+      ],
+    }]);
+  });
+
+  it('rejects invalid and unknown endpoint history filters explicitly', async () => {
+    const queries = new RelationQueryService(
+      new SqliteRelationRepository(db),
+      undefined,
+      {
+        endpoints: endpointLookup(db, new Set()),
+        records: new SqliteRecordRepository(db),
+      },
+    );
+
+    await expect(queries.listEndpointHistory({}))
+      .rejects.toBeInstanceOf(RelationHistoryQueryValidationError);
+    await expect(queries.listEndpointHistory({
+      source: { type: 'goal', id: 'not-a-goal' },
+    })).rejects.toBeInstanceOf(RelationHistoryEndpointNotFoundError);
   });
 
   it('uses the ending time as the replacement creation time by default', async () => {
