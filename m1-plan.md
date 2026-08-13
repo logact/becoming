@@ -116,7 +116,7 @@ Exit gate: workflow versioning/state storage, label assignment, Project State st
 Exit gate: core mutation paths have application-level validation, explicit transactions, durable persistence, and required provenance hooks.
 
 - [x] [#33](https://github.com/logact/becoming/issues/33) — Expose workflow discovery and provenance-aware mutation services (Feature #23)
-- [ ] [#36](https://github.com/logact/becoming/issues/36) — Add label queries, lifecycle boundaries, and provenance (Feature #24)
+- [ ] [#36](https://github.com/logact/becoming/issues/36) — Add label queries, lifecycle boundaries, and provenance (Feature #24) **(processing)**
 - [ ] [#38](https://github.com/logact/becoming/issues/38) — Enforce workflow state machine integrity and mutation rules (Feature #25)
 - [ ] [#40](https://github.com/logact/becoming/issues/40) — Persist workflow transition templates and machine queries (Feature #26)
 - [ ] [#47](https://github.com/logact/becoming/issues/47) — Implement Project transition management and independence (Feature #28)
@@ -234,6 +234,12 @@ Before closing M1:
 - [ ] Verify no database foreign keys and no shared `entities` table exist.
 - [ ] Update repository structure and contributor guidance to match the implemented architecture.
 - [ ] Record deferred work explicitly rather than expanding M1 into billing, general accounting, scheduling, automated budget remediation, or a full audit UI.
+
+## Task execution log
+
+| Task | Started (UTC) | Completed (UTC) | Elapsed | Worker token usage | Commit |
+| --- | --- | --- | --- | --- | --- |
+| [#33](https://github.com/logact/becoming/issues/33) | 2026-08-13T03:30:03Z | 2026-08-13T03:32:17Z | 2m 14s | Unavailable (worker runtime did not expose it) | [`23a8e72`](https://github.com/logact/becoming/commit/23a8e7289112146394d1ee303ab7bad7b6b0ba27) |
 
 ## Maintaining the plan
 
