@@ -105,6 +105,27 @@ export interface RelationPolicy {
   validateMetadata(metadata: JsonValue | null): void;
 }
 
+/**
+ * Canonical relation used for a Project's active work toward a Goal.  The
+ * direction is intentional: `Project -> contributes_to -> Goal`.  A Project
+ * is a management context and a Goal is the outcome it pursues.
+ */
+export const PROJECT_GOAL_PURSUIT_RELATION_TYPE = 'contributes_to' as const;
+
+/**
+ * The Feature #20 policy is deliberately kept separate from the open default
+ * `contributes_to` policy.  Other semantic uses of that general relation
+ * type remain possible, while the pursuit command has one canonical,
+ * directional interpretation and one active row per Project/Goal pair.
+ */
+export const PROJECT_GOAL_PURSUIT_POLICY: RelationPolicy = Object.freeze({
+  relationType: PROJECT_GOAL_PURSUIT_RELATION_TYPE,
+  allowsMultipleActive: false,
+  allowsDirection: (sourceType, targetType) =>
+    sourceType === 'project' && targetType === 'goal',
+  validateMetadata: () => undefined,
+});
+
 function requireNonBlankMetadataString(field: string, value: unknown): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new RelationMetadataPolicyError('lineage', `${field} must be a non-blank string`);
