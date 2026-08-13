@@ -138,10 +138,10 @@ Exit gate: topology, transition validation, Record queries, mutation history, in
 - [x] [#41](https://github.com/logact/becoming/issues/41) — Enforce workflow transition topology and duplicate policies (Feature #26) **(done)**
 - [x] [#52](https://github.com/logact/becoming/issues/52) — Build the Project transition validation engine (Feature #29) **(done)**
 - [x] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6) **(done)**
-- [ ] [#60](https://github.com/logact/becoming/issues/60) — Capture update, archive, and restoration provenance (Feature #30) **(processing)**
+- [x] [#60](https://github.com/logact/becoming/issues/60) — Capture update, archive, and restoration provenance (Feature #30) **(done)**
 - [x] [#61](https://github.com/logact/becoming/issues/61) — Define project budget relation contracts (Feature #12) **(done)**
 - [ ] [#65](https://github.com/logact/becoming/issues/65) — Audit relation creation and ending atomically (Feature #5)
-- [ ] [#70](https://github.com/logact/becoming/issues/70) — Define origin and transformation relation policies (Feature #8)
+- [ ] [#70](https://github.com/logact/becoming/issues/70) — Define origin and transformation relation policies (Feature #8) **(processing)**
 - [x] [#90](https://github.com/logact/becoming/issues/90) — Query active and archived Goals (Feature #17) **(done)**
 
 ### Wave 6 — Atomic lifecycle and semantic joins
@@ -165,7 +165,7 @@ Exit gate: workflow resolution is deterministic; occupied states, capacity polic
 - [x] [#48](https://github.com/logact/becoming/issues/48) — Protect occupied Project States during archival and migration (Feature #28) **(done)**
 - [x] [#63](https://github.com/logact/becoming/issues/63) — Query budget history and enforce capacity policy (Feature #12) **(done)**
 - [ ] [#72](https://github.com/logact/becoming/issues/72) — Query immediate sources and derivatives safely (Feature #8)
-- [ ] [#79](https://github.com/logact/becoming/issues/79) — Commit state history and transition audit atomically (Feature #9) **(processing)**
+- [x] [#79](https://github.com/logact/becoming/issues/79) — Commit state history and transition audit atomically (Feature #9) **(done)**
 - [ ] [#93](https://github.com/logact/becoming/issues/93) — Query current and historical Goal pursuit (Feature #20)
 - [ ] [#96](https://github.com/logact/becoming/issues/96) — Query Task membership and Project contexts (Feature #18)
 
@@ -265,6 +265,8 @@ Before closing M1:
 | [#43](https://github.com/logact/becoming/issues/43) | Approximate (worker did not capture boundaries) | Approximate | ~12m | Unavailable (worker runtime did not expose it) | [`098e352`](https://github.com/logact/becoming/commit/098e352fe78f6c98ec661f0d16441cd1182b3386) |
 | [#48](https://github.com/logact/becoming/issues/48) | Approximate (worker did not capture boundaries) | Approximate | ~15m | Unavailable (worker runtime did not expose it) | [`7d97c7e`](https://github.com/logact/becoming/commit/7d97c7e) |
 | [#63](https://github.com/logact/becoming/issues/63) | Approximate (worker did not capture boundaries) | Approximate | ~18m | Unavailable (worker runtime did not expose it) | [`f9aacdd`](https://github.com/logact/becoming/commit/f9aacdd) |
+| [#60](https://github.com/logact/becoming/issues/60) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`d673388`](https://github.com/logact/becoming/commit/d673388) |
+| [#79](https://github.com/logact/becoming/issues/79) | Approximate (worker did not capture boundaries) | Approximate | Unavailable | Unavailable (worker runtime did not expose it) | [`82b79de`](https://github.com/logact/becoming/commit/82b79de) |
 
 ## Maintaining the plan
 
