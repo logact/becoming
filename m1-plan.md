@@ -115,7 +115,7 @@ Exit gate: workflow versioning/state storage, label assignment, Project State st
 
 Exit gate: core mutation paths have application-level validation, explicit transactions, durable persistence, and required provenance hooks.
 
-- [ ] [#33](https://github.com/logact/becoming/issues/33) — Expose workflow discovery and provenance-aware mutation services (Feature #23)
+- [ ] [#33](https://github.com/logact/becoming/issues/33) — Expose workflow discovery and provenance-aware mutation services (Feature #23) **(processing)**
 - [ ] [#36](https://github.com/logact/becoming/issues/36) — Add label queries, lifecycle boundaries, and provenance (Feature #24)
 - [ ] [#38](https://github.com/logact/becoming/issues/38) — Enforce workflow state machine integrity and mutation rules (Feature #25)
 - [ ] [#40](https://github.com/logact/becoming/issues/40) — Persist workflow transition templates and machine queries (Feature #26)
