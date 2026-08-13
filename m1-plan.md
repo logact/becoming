@@ -188,7 +188,7 @@ Exit gate: applied Workflow behavior, temporal allocation/consumption, unified t
 - [x] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14) **(done)**
 - [x] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15) **(done)**
 - [x] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10) **(done)**
-- [ ] [#101](https://github.com/logact/becoming/issues/101) — Implement cycle-safe decomposition mutations (Feature #21) **(processing)**
+- [x] [#101](https://github.com/logact/becoming/issues/101) — Implement cycle-safe decomposition mutations (Feature #21) **(done)**
 
 ### Wave 10 — Historical planning and exception contracts
 
