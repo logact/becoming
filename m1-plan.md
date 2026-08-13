@@ -121,7 +121,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [x] [#40](https://github.com/logact/becoming/issues/40) — Persist workflow transition templates and machine queries (Feature #26) **(done)**
 - [x] [#47](https://github.com/logact/becoming/issues/47) — Implement Project transition management and independence (Feature #28) **(done)**
 - [x] [#50](https://github.com/logact/becoming/issues/50) — Persist entity state history and initialize current state safely (Feature #29) **(done)**
-- [ ] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11)
+- [ ] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11) **(processing)**
 - [ ] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6)
 - [ ] [#59](https://github.com/logact/becoming/issues/59) — Capture creation provenance for all core concepts (Feature #30)
 - [ ] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5)
@@ -244,6 +244,7 @@ Before closing M1:
 | [#38](https://github.com/logact/becoming/issues/38) | 2026-08-13T03:49:06Z | 2026-08-13T03:57:38Z | 8m 32s | Unavailable (worker runtime did not expose it) | [`a337f3a`](https://github.com/logact/becoming/commit/a337f3a10e80e8e6b9cdbefa0c21270138b520e3) |
 | [#40](https://github.com/logact/becoming/issues/40) | ~2026-08-13T03:57:38Z (inferred) | 2026-08-13T04:06:53Z | ~9m 15s | Unavailable (worker runtime did not expose it) | [`dc746cb`](https://github.com/logact/becoming/commit/dc746cb1e537c8724fbcb9b2423681a7f6d08b2d) |
 | [#47](https://github.com/logact/becoming/issues/47) | 2026-08-13T04:10:02Z | 2026-08-13T05:28:31Z | 1h 18m 29s | Unavailable (worker runtime did not expose it) | [`0515459`](https://github.com/logact/becoming/commit/051545911cd5194d7b3cd2da1d4ec5785c2302c7) |
+| [#50](https://github.com/logact/becoming/issues/50) | 2026-08-13T06:04:36Z | 2026-08-13T06:10:21Z | 5m 45s | Unavailable (worker runtime did not expose it) | [`045d518`](https://github.com/logact/becoming/commit/045d51891de44339f0de34dd757c43bfc324c51d) |
 
 ## Maintaining the plan
 
