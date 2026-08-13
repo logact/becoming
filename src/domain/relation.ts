@@ -55,6 +55,8 @@ export const RELATION_TYPES = [
   'constrained_by',
   'consumes',
   'budgeted_by',
+  /** A Task's temporal plan to draw a Project budgeted Resource. */
+  'allocated',
   /** A Project-scoped, temporal selection of a reusable Workflow definition. */
   'workflow_applies_to',
   /** The source is the immediate origin from which the target was derived. */
