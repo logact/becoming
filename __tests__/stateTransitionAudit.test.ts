@@ -609,8 +609,10 @@ describe('LifecycleAuditService (contract)', () => {
   ): Promise<void> {
     return (async () => {
       await context.runAsync(
-        `UPDATE project_entity_states SET ended_at = ? WHERE id = ?`,
-        [TRANSITION_TIME, CURRENT_ROW_ID],
+        `UPDATE project_entity_states SET ended_at = ?
+         WHERE project_id = ? AND entity_type = ? AND entity_id = ?
+           AND label_id = ? AND ended_at IS NULL`,
+        [TRANSITION_TIME, PROJECT_ID, entityType, entityId, LABEL_ID],
       );
       await context.runAsync(
         `INSERT INTO project_entity_states (

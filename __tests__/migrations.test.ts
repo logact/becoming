@@ -26,7 +26,7 @@ describe('migrations', () => {
     const db = new NodeSqliteDatabase(':memory:');
     const applied = await migrate(db);
 
-    expect(applied).toEqual([1, 2]);
+    expect(applied).toEqual([1, 2, 3]);
     expect(await listTables(db)).toEqual(
       [...CORE_TABLES, 'schema_migrations'].sort(),
     );
@@ -59,6 +59,7 @@ describe('migrations', () => {
     expect(rows).toEqual([
       { version: 1, name: 'initial_schema' },
       { version: 2, name: 'workflow_version_lineage' },
+      { version: 3, name: 'project_entity_state_current_invariant' },
     ]);
     await db.closeAsync();
   });
