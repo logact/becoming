@@ -54,6 +54,7 @@ export const RELATION_TYPES = [
   'requires',
   'constrained_by',
   'consumes',
+  'budgeted_by',
   'related_to',
 ] as const;
 
