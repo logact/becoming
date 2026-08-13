@@ -1,5 +1,10 @@
 # CI/CD
 
+> **Currently disabled.** The GitHub Actions pipeline (`.github/workflows/pipeline.yml`)
+> was removed to speed up the M1 implementation loop; validation runs locally via
+> `npm run typecheck` and `npm test` before each task commit. The notes below
+> describe the pipeline to restore after M1.
+
 The project uses one GitHub Actions pipeline for continuous integration and
 continuous delivery.
 
@@ -65,7 +70,7 @@ builds do not collide; the marketing version comes from `app.json`.
    npx eas-cli@21.8.0 init
    ```
 
-   This writes your real `extra.eas.projectId` UUID into `app.json`.
+   This rewrites `extra.eas.projectId` in `app.json`.
 2. In the Apple Developer portal, register the App ID `com.logact.becoming`
    under
    [Certificates, Identifiers & Profiles → Identifiers](https://developer.apple.com/account/resources/identifiers/list)

@@ -239,3 +239,227 @@ describe('ResourceRepository contract', () => {
     await closeQuietly(db);
   });
 });
+
+describe('ResourceRepository catalog queries', () => {
+  /** Create a Resource with explicit timestamps so ordering is testable. */
+  function catalogEntry(
+    input: Parameters<typeof createResource>[0],
+    createdAt: string,
+  ) {
+    return { ...createResource(input), createdAt, updatedAt: createdAt };
+  }
+
+  /** A mixed catalog: four active entries across types, one archived. */
+  async function seedCatalog(repository: SqliteResourceRepository) {
+    const devTime = catalogEntry(
+      {
+        title: 'Development Time',
+        resourceType: 'time',
+        unit: 'hour',
+        behavior: 'perishable',
+        capacity: '40',
+      },
+      '2026-08-01T00:00:00.000Z',
+    );
+    const budget = catalogEntry(
+      {
+        title: 'Operating Budget',
+        resourceType: 'money',
+        unit: 'JPY',
+        behavior: 'storable',
+        capacity: '12500.50',
+      },
+      '2026-08-02T00:00:00.000Z',
+    );
+    const tokens = catalogEntry(
+      {
+        title: 'API Tokens',
+        resourceType: 'token',
+        unit: 'token',
+        behavior: 'renewable',
+        capacity: '1000000',
+      },
+      '2026-08-03T00:00:00.000Z',
+    );
+    const gpu = catalogEntry(
+      {
+        title: 'GPU Compute',
+        resourceType: 'compute',
+        unit: 'GPU-hour',
+        capacity: '0.000001',
+      },
+      '2026-08-04T00:00:00.000Z',
+    );
+    const archivedTime = archiveResource(
+      catalogEntry(
+        { title: 'Legacy Time', resourceType: 'time', unit: 'hour' },
+        '2026-08-05T00:00:00.000Z',
+      ),
+      '2026-08-10T00:00:00.000Z',
+    );
+    for (const resource of [gpu, archivedTime, devTime, tokens, budget]) {
+      await repository.add(resource);
+    }
+    return { devTime, budget, tokens, gpu, archivedTime };
+  }
+
+  it('lists the whole catalog ordered by createdAt regardless of insert order', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    const seeded = await seedCatalog(repository);
+
+    const listed = await repository.list();
+
+    expect(listed.map((resource) => resource.id)).toEqual([
+      seeded.devTime.id,
+      seeded.budget.id,
+      seeded.tokens.id,
+      seeded.gpu.id,
+      seeded.archivedTime.id,
+    ]);
+    expect(listed).toEqual([
+      seeded.devTime,
+      seeded.budget,
+      seeded.tokens,
+      seeded.gpu,
+      seeded.archivedTime,
+    ]);
+    await closeQuietly(db);
+  });
+
+  it('breaks createdAt ties by id', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    const sameMoment = '2026-08-01T00:00:00.000Z';
+    const first = catalogEntry(
+      { title: 'Development Time', resourceType: 'time' },
+      sameMoment,
+    );
+    const second = catalogEntry(
+      { title: 'Focus', resourceType: 'attention' },
+      sameMoment,
+    );
+    await repository.add(first);
+    await repository.add(second);
+
+    const listed = await repository.list();
+
+    const expected = [first, second].sort((a, b) =>
+      a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
+    );
+    expect(listed.map((resource) => resource.id)).toEqual(
+      expected.map((resource) => resource.id),
+    );
+    await closeQuietly(db);
+  });
+
+  it('filters by resourceType', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    const seeded = await seedCatalog(repository);
+
+    const timeEntries = await repository.list({ resourceType: 'time' });
+
+    expect(timeEntries).toEqual([seeded.devTime, seeded.archivedTime]);
+    await closeQuietly(db);
+  });
+
+  it('active status excludes archived entries but keeps them readable', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    const seeded = await seedCatalog(repository);
+
+    const active = await repository.list({ status: 'active' });
+
+    expect(active).toEqual([
+      seeded.devTime,
+      seeded.budget,
+      seeded.tokens,
+      seeded.gpu,
+    ]);
+    expect(await repository.getById(seeded.archivedTime.id)).toEqual(
+      seeded.archivedTime,
+    );
+    await closeQuietly(db);
+  });
+
+  it('archived status returns only archived entries', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    const seeded = await seedCatalog(repository);
+
+    expect(await repository.list({ status: 'archived' })).toEqual([
+      seeded.archivedTime,
+    ]);
+    await closeQuietly(db);
+  });
+
+  it('all status matches the unfiltered catalog', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    await seedCatalog(repository);
+
+    expect(await repository.list({ status: 'all' })).toEqual(
+      await repository.list(),
+    );
+    await closeQuietly(db);
+  });
+
+  it('combines resourceType and status filters', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    const seeded = await seedCatalog(repository);
+
+    expect(
+      await repository.list({ resourceType: 'time', status: 'active' }),
+    ).toEqual([seeded.devTime]);
+    expect(
+      await repository.list({ resourceType: 'time', status: 'archived' }),
+    ).toEqual([seeded.archivedTime]);
+    await closeQuietly(db);
+  });
+
+  it('keeps fractional capacities and units exact through list queries', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    await seedCatalog(repository);
+
+    const listed = await repository.list({ status: 'active' });
+    const byType = new Map(
+      listed.map((resource) => [resource.resourceType, resource]),
+    );
+
+    expect(byType.get('money')?.capacity?.toString()).toBe('12500.5');
+    expect(byType.get('money')?.unit).toBe('JPY');
+    expect(byType.get('compute')?.capacity?.toString()).toBe('0.000001');
+    expect(byType.get('compute')?.unit).toBe('GPU-hour');
+    expect(byType.get('token')?.capacity?.toString()).toBe('1000000');
+    for (const resource of listed) {
+      if (resource.capacity !== null) {
+        expect(resource.capacity).toBeInstanceOf(Decimal);
+      }
+    }
+    await closeQuietly(db);
+  });
+
+  it('returns empty results when nothing matches', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+    await seedCatalog(repository);
+
+    expect(await repository.list({ resourceType: 'equipment' })).toEqual([]);
+    expect(
+      await repository.list({ resourceType: 'money', status: 'archived' }),
+    ).toEqual([]);
+    await closeQuietly(db);
+  });
+
+  it('returns empty results from an empty catalog', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteResourceRepository(db);
+
+    expect(await repository.list()).toEqual([]);
+    expect(await repository.list({ status: 'archived' })).toEqual([]);
+    await closeQuietly(db);
+  });
+});

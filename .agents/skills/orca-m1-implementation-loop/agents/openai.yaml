@@ -1,4 +1,0 @@
-interface:
-  display_name: "Orca M1 Implementation Loop"
-  short_description: "Ship M1 tasks serially through merged PRs"
-  default_prompt: "Use $orca-m1-implementation-loop to execute the local M1 implementation waves one task at a time with supervised Kimi workers, completing each task only after its PR merges into main."

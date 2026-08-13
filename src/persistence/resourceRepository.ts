@@ -22,6 +22,11 @@ import type { SqliteDatabase } from './database';
  * column; it never passes through binary floating point in either direction.
  * `getById` resolves active and archived Resources alike so history that
  * references an archived Resource stays resolvable.
+ *
+ * Catalog queries (`list`) filter by semantic `resourceType` and by
+ * active/archived status, and are deterministically ordered by `created_at`
+ * then `id`; the project foundation has no pagination convention, so `list`
+ * returns every match.
  */
 export interface ResourceRepository {
   /** Insert a new Resource. Throws if the id already exists. */
@@ -30,8 +35,25 @@ export interface ResourceRepository {
   /** Return the Resource with this id (active or archived), or null. */
   getById(id: EntityId): Promise<Resource | null>;
 
+  /**
+   * Return every Resource matching the filter, ordered by `createdAt` then
+   * id. `resourceType` restricts to one semantic type; `status` selects
+   * active-only, archived-only, or all entries (the default). With no filter
+   * the full catalog is returned — archived Resources stay readable.
+   */
+  list(filter?: ResourceFilter): Promise<Resource[]>;
+
   /** Persist changes to an existing Resource. Throws if the id is unknown. */
   save(resource: Resource): Promise<void>;
+}
+
+/** Active/archived status selector for catalog queries. */
+export type ResourceStatusFilter = 'active' | 'archived' | 'all';
+
+/** Filter for catalog queries; omitted fields match everything. */
+export interface ResourceFilter {
+  resourceType?: string;
+  status?: ResourceStatusFilter;
 }
 
 interface ResourceRow {
@@ -112,6 +134,31 @@ export class SqliteResourceRepository implements ResourceRepository {
       [id],
     );
     return row === null ? null : toDomain(row);
+  }
+
+  async list(filter: ResourceFilter = {}): Promise<Resource[]> {
+    const conditions: string[] = [];
+    const params: string[] = [];
+    if (filter.resourceType !== undefined) {
+      conditions.push('resource_type = ?');
+      params.push(filter.resourceType);
+    }
+    const status = filter.status ?? 'all';
+    if (status === 'active') {
+      conditions.push('archived_at IS NULL');
+    } else if (status === 'archived') {
+      conditions.push('archived_at IS NOT NULL');
+    }
+    const where =
+      conditions.length === 0 ? '' : ` WHERE ${conditions.join(' AND ')}`;
+    const rows = await this.db.getAllAsync<ResourceRow>(
+      `SELECT id, title, description, resource_type, unit, behavior, capacity,
+              created_at, updated_at, archived_at
+       FROM resources${where}
+       ORDER BY created_at, id`,
+      params,
+    );
+    return rows.map(toDomain);
   }
 
   async save(resource: Resource): Promise<void> {
