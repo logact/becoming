@@ -128,7 +128,7 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [ ] [#75](https://github.com/logact/becoming/issues/75) — Query current and historical semantic relations (Feature #19)
 - [ ] [#89](https://github.com/logact/becoming/issues/89) — Implement Goal mutation commands with provenance (Feature #17) **(processing)**
 - [ ] [#91](https://github.com/logact/becoming/issues/91) — Implement Project domain, persistence, and mutations (Feature #20) **(processing)**
-- [ ] [#94](https://github.com/logact/becoming/issues/94) — Implement Task domain, persistence, and mutations (Feature #18) **(processing)**
+- [x] [#94](https://github.com/logact/becoming/issues/94) — Implement Task domain, persistence, and mutations (Feature #18) **(done)**
 
 ### Wave 5 — Integrity and history
 
@@ -247,6 +247,7 @@ Before closing M1:
 | [#50](https://github.com/logact/becoming/issues/50) | 2026-08-13T06:04:36Z | 2026-08-13T06:10:21Z | 5m 45s | Unavailable (worker runtime did not expose it) | [`045d518`](https://github.com/logact/becoming/commit/045d51891de44339f0de34dd757c43bfc324c51d) |
 | [#54](https://github.com/logact/becoming/issues/54) | 2026-08-13T06:18:48Z | 2026-08-13T06:20:09Z | ~1m 21s | Unavailable (worker runtime did not expose it) | [`69f3296`](https://github.com/logact/becoming/commit/69f32964fffe04c24a7d5cf2387f43f46d9232c8) |
 | [#56](https://github.com/logact/becoming/issues/56) | 2026-08-13T06:12:27Z | 2026-08-13T06:19:27Z | ~7m | Unavailable (worker runtime did not expose it) | [`abdf59c`](https://github.com/logact/becoming/commit/abdf59c2282ef3432aeab314ee06608c95ff0ffc) |
+| [#94](https://github.com/logact/becoming/issues/94) | ~2026-08-13T06:12Z | 2026-08-13T06:22:15Z | ~10m total (including 1m 20s integration fix) | Unavailable (worker runtime did not expose it) | [`888193e`](https://github.com/logact/becoming/commit/888193e673eaf371983a5b74b9ec09b9c53068a1), [`92929ba`](https://github.com/logact/becoming/commit/92929ba4123389ef44c1d69ea586010af246658b) |
 
 ## Maintaining the plan
 
