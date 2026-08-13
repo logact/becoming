@@ -65,7 +65,7 @@ builds do not collide; the marketing version comes from `app.json`.
    npx eas-cli@21.8.0 init
    ```
 
-   This rewrites `extra.eas.projectId` in `app.json`.
+   This writes your real `extra.eas.projectId` UUID into `app.json`.
 2. In the Apple Developer portal, register the App ID `com.logact.becoming`
    under
    [Certificates, Identifiers & Profiles → Identifiers](https://developer.apple.com/account/resources/identifiers/list)
