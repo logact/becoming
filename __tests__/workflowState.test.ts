@@ -25,6 +25,7 @@ import { withTransaction } from '../src/persistence/transactions';
 import { sqliteUnitOfWork } from '../src/persistence/transactions';
 import { SqliteRecordRepository } from '../src/persistence/recordRepository';
 import { PROVENANCE_RECORD_TYPE } from '../src/domain/mutationProvenance';
+import type { SqliteDatabase } from '../src/persistence/database';
 import {
   LabelArchivedError,
   LabelNotFoundError,
