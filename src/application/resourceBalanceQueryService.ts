@@ -101,6 +101,33 @@ export class ResourceBalanceQueryService {
     return this.listTaskBalances(taskId, { asOf: this.clock.now() });
   }
 
+  /**
+   * A Task/Project partition used by resource-exception history.  A Task can
+   * be funded by more than one Project, so its exception view must never add
+   * allocations or usage from another funding context.
+   */
+  async listTaskBalancesForProject(
+    projectId: EntityId,
+    taskId: EntityId,
+    options: ResourceBalanceReadOptions = {},
+  ): Promise<TaskResourceBalance[]> {
+    assertId('projectId', projectId);
+    assertId('taskId', taskId);
+    const { asOf, occurredAt } = this.selection(options);
+    const [allocations, usage] = await Promise.all([
+      this.ports.taskAllocations.listActiveAllocationsForTask(taskId, { asOf }),
+      this.listAllUsage({ projectId, taskId }),
+    ]);
+    return calculateTaskResourceBalances({
+      allocations: allocations.filter((allocation) => allocation.fundingProjectId === projectId).map((allocation) => ({
+        relationId: allocation.relationId, taskId: allocation.taskId,
+        fundingProjectId: allocation.fundingProjectId, resourceId: allocation.resourceId,
+        amount: allocation.amount,
+      })),
+      usage: usage.flatMap((item) => toUsageContributors(item, asOf, occurredAt)),
+    }).filter((balance) => options.resourceId === undefined || balance.resourceId === options.resourceId);
+  }
+
   /** Historical Task balance with the same temporal rules as Project balances. */
   async listTaskBalances(
     taskId: EntityId,
