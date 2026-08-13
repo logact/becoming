@@ -226,14 +226,14 @@ Exit gate: users can query active/resolved resource exceptions and inspect expla
 
 Before closing M1:
 
-- [ ] Confirm every task above is closed and every Feature has no remaining open sub-issues.
-- [ ] Run the full clean-checkout validation suite, including migrations, unit tests, repository contracts, integration tests, concurrency tests, and acceptance tests.
-- [ ] Demonstrate the core flow from Goal through Project/work decomposition, workflow execution, resource consumption, and history inspection.
-- [ ] Verify current-state tables reconcile with append-oriented histories and that anomaly queries expose inconsistent data.
-- [ ] Verify archived Workflows, Project machines, relations, assignments, Records, and core entities remain historically resolvable.
-- [ ] Verify no database foreign keys and no shared `entities` table exist.
-- [ ] Update repository structure and contributor guidance to match the implemented architecture.
-- [ ] Record deferred work explicitly rather than expanding M1 into billing, general accounting, scheduling, automated budget remediation, or a full audit UI.
+- [x] Confirm every task above is closed and every Feature has no remaining open sub-issues.
+- [x] Run the full clean-checkout validation suite, including migrations, unit tests, repository contracts, integration tests, concurrency tests, and acceptance tests.
+- [x] Demonstrate the core flow from Goal through Project/work decomposition, workflow execution, resource consumption, and history inspection.
+- [x] Verify current-state tables reconcile with append-oriented histories and that anomaly queries expose inconsistent data.
+- [x] Verify archived Workflows, Project machines, relations, assignments, Records, and core entities remain historically resolvable.
+- [x] Verify no database foreign keys and no shared `entities` table exist.
+- [x] Update repository structure and contributor guidance to match the implemented architecture.
+- [x] Record deferred work explicitly rather than expanding M1 into billing, general accounting, scheduling, automated budget remediation, or a full audit UI.
 
 ## Task execution log
 
@@ -255,7 +255,7 @@ Before closing M1:
 | [#75](https://github.com/logact/becoming/issues/75) | Approx. 2026-08-13T06:25:34Z | 2026-08-13T06:33:34Z | ~8m | Unavailable (worker runtime did not expose it) | [`357643a`](https://github.com/logact/becoming/commit/357643a) |
 | [#57](https://github.com/logact/becoming/issues/57) | Approx. 2026-08-13T06:33Z | 2026-08-13T06:43:44Z | ~11m | Unavailable (worker runtime did not expose it) | [`a51d97f`](https://github.com/logact/becoming/commit/a51d97fdf56a2a10e91b66cd18951e59fddfef21) |
 | [#59](https://github.com/logact/becoming/issues/59) | Approx. 2026-08-13T06:44Z | 2026-08-13T06:51:03Z | ~7m | Unavailable (worker runtime did not expose it) | [`e8be159`](https://github.com/logact/becoming/commit/e8be159a85b79ec6531c3d815d04305e69286098) |
-| [#39](https://github.com/logact/becoming/issues/39) | Approx. 2026-08-13T06:34Z | Approx. 2026-08-13T06:52Z | ~18m | Unavailable (worker runtime did not expose it) | [`1714ca3`](https://github.com/logact/becoming/commit/1714ca3) |
+| [#39](https://github.com/logact/becoming/issues/39) | Approx. 2026-08-13T06:34Z | Approx. 2026-08-13T06:52Z | ~19m 40s total (including 1m 40s closeout stability fix) | Unavailable (worker runtime did not expose it) | [`1714ca3`](https://github.com/logact/becoming/commit/1714ca3), [`4fead35`](https://github.com/logact/becoming/commit/4fead35) |
 | [#52](https://github.com/logact/becoming/issues/52) | Approximate (worker did not capture boundaries) | Approximate | ~8m | Unavailable (worker runtime did not expose it) | [`d6ae64d`](https://github.com/logact/becoming/commit/d6ae64d) |
 | [#61](https://github.com/logact/becoming/issues/61) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`9fd6a54`](https://github.com/logact/becoming/commit/9fd6a542131220225b29dff8cf59f6d205aa6e2b) |
 | [#41](https://github.com/logact/becoming/issues/41) | Approximate (worker did not capture boundaries) | Approximate | ~20m | Unavailable (worker runtime did not expose it) | [`fca2cc3`](https://github.com/logact/becoming/commit/fca2cc3f1ff11e7f54014c1a1845c188c8d9f345) |
@@ -299,6 +299,7 @@ Before closing M1:
 | [#102](https://github.com/logact/becoming/issues/102) | Approximate (worker did not capture boundaries) | Approximate | ~7m | Unavailable (worker runtime did not expose it) | [`56bcf39`](https://github.com/logact/becoming/commit/56bcf39) |
 | [#103](https://github.com/logact/becoming/issues/103) | Approximate (worker did not capture boundaries) | Approximate | ~7m | Unavailable (worker runtime did not expose it) | [`a223069`](https://github.com/logact/becoming/commit/a223069) |
 | [#104](https://github.com/logact/becoming/issues/104) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`bc3e6a0`](https://github.com/logact/becoming/commit/bc3e6a0) |
+| [#105](https://github.com/logact/becoming/issues/105) | Approximate (worker did not capture boundaries) | Approximate | ~20m | Unavailable (worker runtime did not expose it) | [`1330dde`](https://github.com/logact/becoming/commit/1330dde) |
 
 ## Maintaining the plan
 
