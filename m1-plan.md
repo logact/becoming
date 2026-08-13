@@ -140,8 +140,8 @@ Exit gate: topology, transition validation, Record queries, mutation history, in
 - [x] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6) **(done)**
 - [x] [#60](https://github.com/logact/becoming/issues/60) — Capture update, archive, and restoration provenance (Feature #30) **(done)**
 - [x] [#61](https://github.com/logact/becoming/issues/61) — Define project budget relation contracts (Feature #12) **(done)**
-- [ ] [#65](https://github.com/logact/becoming/issues/65) — Audit relation creation and ending atomically (Feature #5)
-- [ ] [#70](https://github.com/logact/becoming/issues/70) — Define origin and transformation relation policies (Feature #8) **(processing)**
+- [ ] [#65](https://github.com/logact/becoming/issues/65) — Audit relation creation and ending atomically (Feature #5) **(processing)**
+- [x] [#70](https://github.com/logact/becoming/issues/70) — Define origin and transformation relation policies (Feature #8) **(done)**
 - [x] [#90](https://github.com/logact/becoming/issues/90) — Query active and archived Goals (Feature #17) **(done)**
 
 ### Wave 6 — Atomic lifecycle and semantic joins
@@ -176,14 +176,14 @@ Exit gate: Project machines initialize atomically; resource allocation/usage con
 - [x] [#44](https://github.com/logact/becoming/issues/44) — Atomically initialize independent Project machines from templates (Feature #27) **(done)**
 - [ ] [#67](https://github.com/logact/becoming/issues/67) — Define project-funded task allocation contracts (Feature #13)
 - [ ] [#76](https://github.com/logact/becoming/issues/76) — Define append-oriented resource usage records (Feature #14)
-- [ ] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9)
+- [ ] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9) **(processing)**
 - [ ] [#100](https://github.com/logact/becoming/issues/100) — Define project-scoped decomposition policies (Feature #21)
 
 ### Wave 9 — Applied workflows, allocations, consumption, and timelines
 
 Exit gate: applied Workflow behavior, temporal allocation/consumption, unified timelines, and cycle-safe decomposition pass acceptance and rollback tests.
 
-- [ ] [#45](https://github.com/logact/becoming/issues/45) — Complete workflow application errors, provenance, and acceptance tests (Feature #27) **(processing)**
+- [x] [#45](https://github.com/logact/becoming/issues/45) — Complete workflow application errors, provenance, and acceptance tests (Feature #27) **(done)**
 - [ ] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13)
 - [ ] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14)
 - [ ] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15)
@@ -268,6 +268,8 @@ Before closing M1:
 | [#60](https://github.com/logact/becoming/issues/60) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`d673388`](https://github.com/logact/becoming/commit/d673388) |
 | [#79](https://github.com/logact/becoming/issues/79) | Approximate (worker did not capture boundaries) | Approximate | Unavailable | Unavailable (worker runtime did not expose it) | [`82b79de`](https://github.com/logact/becoming/commit/82b79de) |
 | [#44](https://github.com/logact/becoming/issues/44) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`47f4a36`](https://github.com/logact/becoming/commit/47f4a36) |
+| [#45](https://github.com/logact/becoming/issues/45) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`bccbbe9`](https://github.com/logact/becoming/commit/bccbbe9) |
+| [#70](https://github.com/logact/becoming/issues/70) | Approx. 2026-08-13T07:29Z | Approx. 2026-08-13T07:37Z | ~8m | Unavailable (worker runtime did not expose it) | [`75636bc`](https://github.com/logact/becoming/commit/75636bc) |
 
 ## Maintaining the plan
 
