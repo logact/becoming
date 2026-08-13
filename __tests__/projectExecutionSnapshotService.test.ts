@@ -56,7 +56,10 @@ describe('ProjectExecutionSnapshotService', () => {
   afterEach(async () => closeQuietly(db));
 
   it('returns a defined empty current snapshot', async () => {
-    await expect(snapshot.getSnapshot('project')).resolves.toMatchObject({ projectId: 'project', pursuedRoots: [], activeTasks: [], nodes: [], edges: [], findings: [] });
+    await expect(snapshot.getSnapshot('project')).resolves.toMatchObject({
+      projectId: 'project', pursuedRoots: [], activeTasks: [], nodes: [], edges: [], findings: [],
+      progress: { scope: 'current', numerator: 0, denominator: 0, percentage: null, counts: { complete: 0, incomplete: 0, blocked: 0, unmanaged: 0, no_machine: 0, uninitialized: 0, invalid: 0 } },
+    });
   });
 
   it('composes roots, nested hierarchy, and disconnected active tasks without intrinsic membership fields', async () => {
@@ -152,6 +155,46 @@ describe('ProjectExecutionSnapshotService', () => {
       .toEqual([['flow', 'anomalous', ['project_state_machine_mismatch']], ['missing-label', 'anomalous', ['orphan_label']]]);
   });
 
+  it('derives each shared node once with terminal/category completion and a blocked denominator', async () => {
+    await pursuit('p-a', 'a', T0); await pursuit('p-b', 'b', T0); await membership('m-x', 'x', T0);
+    // x is visible through both direct Project membership and decomposition,
+    // but must still be counted once.
+    await edge('a', 'x', T0, 'goal', 'task');
+    await label('flow', 'Flow');
+    for (const [type, id] of [['goal', 'a'], ['goal', 'b'], ['task', 'x']] as const) await assign(type, id, 'flow');
+    await machine('goal', 'flow', 'done', { isTerminal: true });
+    await machine('goal', 'flow', 'complete-category', { category: ' completed ', isInitial: false });
+    await machine('task', 'flow', 'blocked', { category: 'BLOCKED' });
+    await current('goal', 'a', 'flow', 'done', 'a-period');
+    await current('goal', 'b', 'flow', 'complete-category', 'b-period');
+    await current('task', 'x', 'flow', 'blocked', 'x-period');
+    const progress = (await snapshot.getSnapshot('project')).progress;
+    expect(progress).toMatchObject({ numerator: 2, denominator: 3, counts: { complete: 2, blocked: 1 } });
+    expect(progress.percentage).toBeCloseTo(100 * 2 / 3);
+    expect(progress.findings.map(({ node, status }) => [`${node.type}:${node.id}`, status]))
+      .toEqual([['goal:a', 'complete'], ['goal:b', 'complete'], ['task:x', 'blocked']]);
+  });
+
+  it('qualifies anomalous, unmanaged, no-machine, and uninitialized nodes without inventing completion', async () => {
+    await pursuit('p-a', 'a', T0); await pursuit('p-b', 'b', T0); await membership('m-x', 'x', T0); await membership('m-y', 'y', T0);
+    await label('flow', 'Flow'); await label('missing-machine', 'Missing');
+    await assign('goal', 'a', 'flow'); await assign('goal', 'b', 'missing-machine'); await assign('task', 'x', 'flow');
+    await machine('goal', 'flow', 'ready'); await machine('task', 'flow', 'ready-task');
+    await db.runAsync(`INSERT INTO project_entity_states (id, project_id, entity_type, entity_id, label_id, project_state_id, entered_at, ended_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)`, ['bad', 'project', 'goal', 'a', 'flow', 'missing-state', T1, T1]);
+    const progress = (await snapshot.getSnapshot('project')).progress;
+    expect(progress).toMatchObject({ numerator: 0, denominator: 0, percentage: null, counts: { invalid: 1, no_machine: 1, uninitialized: 1, unmanaged: 1 } });
+    expect(progress.findings.map(({ node, status }) => [`${node.type}:${node.id}`, status]))
+      .toEqual([['goal:a', 'invalid'], ['goal:b', 'no_machine'], ['task:x', 'uninitialized'], ['task:y', 'unmanaged']]);
+  });
+
+  it('uses the explicitly historical snapshot scope for ended/archive-inclusive progress', async () => {
+    await pursuit('p-a', 'a', T0, T1); await label('flow', 'Flow'); await assign('goal', 'a', 'flow'); await machine('goal', 'flow', 'done', { isTerminal: true }); await current('goal', 'a', 'flow', 'done', 'period');
+    const currentSnapshot = await snapshot.getSnapshot('project');
+    const historical = await snapshot.getSnapshot('project', { includeEnded: true });
+    expect(currentSnapshot.progress).toMatchObject({ scope: 'current', denominator: 0, percentage: null });
+    expect(historical.progress).toMatchObject({ scope: 'historical', numerator: 1, denominator: 1, percentage: 100 });
+  });
+
   async function pursuit(id: string, goalId: string, createdAt: string, endedAt: string | null = null) {
     await relations.add({ id, sourceType: 'project', sourceId: 'project', relationType: 'contributes_to', targetType: 'goal', targetId: goalId, metadata: null, createdAt, endedAt });
   }
@@ -163,6 +206,6 @@ describe('ProjectExecutionSnapshotService', () => {
   }
   async function label(id: string, name: string) { await labels.add({ ...createLabel({ name }), id, createdAt: T0, updatedAt: T0 }); }
   async function assign(entityType: 'goal' | 'task', entityId: string, labelId: string) { await assignments.add(createEntityLabelAssignment({ entityType, entityId, labelId }, { id: `${entityType}-${entityId}-${labelId}`, now: T0 })); }
-  async function machine(entityType: 'goal' | 'task', labelId: string, stateId: string) { await states.add(createProjectState({ projectId: 'project', entityType, labelId, title: stateId, isInitial: true }, { id: stateId, now: T0 })); }
+  async function machine(entityType: 'goal' | 'task', labelId: string, stateId: string, settings: { isTerminal?: boolean; category?: string; isInitial?: boolean } = {}) { await states.add(createProjectState({ projectId: 'project', entityType, labelId, title: stateId, isInitial: settings.isInitial ?? !settings.isTerminal, ...settings }, { id: stateId, now: T0 })); }
   async function current(entityType: 'goal' | 'task', entityId: string, labelId: string, projectStateId: string, id: string) { await periods.add(createProjectEntityState({ projectId: 'project', entityType, entityId, labelId, projectStateId, enteredAt: T1 }, { id, now: T1 })); }
 });

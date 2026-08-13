@@ -51,4 +51,11 @@ describe('schema integrity rules', () => {
     }
     await db.closeAsync();
   });
+
+  it('does not persist derived Project progress', async () => {
+    const db = await createTestDatabase();
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(projects)');
+    expect(columns.map(({ name }) => name)).not.toContain('progress');
+    await db.closeAsync();
+  });
 });

@@ -27,6 +27,7 @@ import {
   TaskProjectMembershipQueryService,
   type TaskProjectMembershipView,
 } from './taskProjectMembershipQueryService';
+import { deriveProjectProgress, type ProjectProgress } from './projectProgress';
 
 /** A typed intrinsic endpoint carried by the execution projection. */
 export type ProjectExecutionLifecycle =
@@ -89,6 +90,8 @@ export interface ProjectExecutionSnapshot {
   nodes: ProjectExecutionNode[];
   edges: DecompositionHierarchyEdge[];
   findings: ProjectExecutionIntegrityFinding[];
+  /** V1 lifecycle-derived progress; this read model is never persisted on Project. */
+  progress: ProjectProgress;
 }
 
 export interface ProjectExecutionSnapshotServicePorts {
@@ -164,7 +167,8 @@ export class ProjectExecutionSnapshotService {
       const task = node('task', view.taskId);
       if (visible.has(nodeKey(task)) && !connected.has(nodeKey(task))) findings.push({ kind: 'disconnected_active_task', projectId, task });
     }
-    return { projectId, project, scope: { asOf: options.asOf ?? null, includeEnded: historical, includeArchived }, pursuedRoots: roots, activeTasks, nodes, edges, findings: sortFindings(findings) };
+    const snapshot = { projectId, project, scope: { asOf: options.asOf ?? null, includeEnded: historical, includeArchived }, pursuedRoots: roots, activeTasks, nodes, edges, findings: sortFindings(findings) };
+    return { ...snapshot, progress: deriveProjectProgress(snapshot) };
   }
 
   private async resolveNode(projectId: EntityId, value: DecompositionNode): Promise<ProjectExecutionNode> {
