@@ -33,9 +33,10 @@ import type { JsonValue } from './json';
  *   must be a valid ISO 8601 timestamp not earlier than `createdAt`, so every
  *   Relation's active interval stays historically resolvable.
  *
- * Ending a Relation and recording provenance for relation mutations are
- * added by later (Wave 3) tasks; this aggregate defines creation and the
- * invariants every stored Relation must satisfy.
+ * Ending a Relation (`endRelation`) sets `endedAt` without touching any other
+ * field; provenance for relation mutations is wired by the application layer
+ * (`src/application/relationService.ts`), and the per-type direction,
+ * metadata, and active-cardinality rules live in `./relationPolicy`.
  */
 
 /**
@@ -188,4 +189,27 @@ export function createRelation(
   };
   validateRelation(relation, supportedRelationTypes);
   return relation;
+}
+
+/**
+ * End an active Relation: it stops being active at `endedAt`. Returns a new
+ * aggregate; the input is not mutated. Ending never deletes the row and never
+ * touches endpoints, direction, metadata, or `createdAt` — only `endedAt` is
+ * set, so relationship history stays intact.
+ *
+ * Idempotency contract: ending an already-ended Relation is a deterministic
+ * no-op that returns the Relation unchanged. The first end wins; `endedAt` is
+ * never rewritten by a repeated end. Callers can therefore retry an end
+ * operation safely and always observe the same stored state.
+ */
+export function endRelation(
+  relation: Relation,
+  endedAt: IsoTimestamp = nowIso(),
+): Relation {
+  if (relation.endedAt !== null) {
+    return relation;
+  }
+  const ended: Relation = { ...relation, endedAt };
+  validateRelation(ended);
+  return ended;
 }

@@ -1,4 +1,5 @@
 import type { EntityId } from '../domain/ids';
+import type { CoreEntityType } from '../domain/entityTypes';
 import type { JsonValue } from '../domain/json';
 import type { Relation } from '../domain/relation';
 import { validateRelation } from '../domain/relation';
@@ -22,9 +23,14 @@ import type { SqliteDatabase } from './database';
  * `getById` resolves active and ended Relations alike so history that
  * references a Relation stays resolvable.
  *
- * Ending Relations (setting `ended_at`) and the provenance for relation
- * mutations are added by later (Wave 3) tasks; this boundary covers
- * persistence of newly created Relations and id-based resolution.
+ * Relations are immutable once created except for ending: `save` persists only
+ * the `ended_at` column, so endpoints, direction, metadata, and `created_at`
+ * can never be rewritten through this boundary. There is deliberately no
+ * delete operation — hard deletion of Relations is forbidden; history is
+ * preserved by ending, and replacing a relationship is end-old/create-new.
+ * Active-cardinality rules are relation-type policies enforced by the
+ * application service (see `src/domain/relationPolicy.ts`), which queries
+ * `findActiveByIdentity` inside its unit of work.
  */
 export interface RelationRepository {
   /** Insert a new Relation. Throws if the id already exists. */
@@ -32,6 +38,25 @@ export interface RelationRepository {
 
   /** Return the Relation with this id (active or ended), or null. */
   getById(id: EntityId): Promise<Relation | null>;
+
+  /**
+   * Return the currently active Relation with this exact active-duplicate
+   * identity — `(sourceType, sourceId, relationType, targetType, targetId)` —
+   * or null. Ended rows never match.
+   */
+  findActiveByIdentity(
+    sourceType: CoreEntityType,
+    sourceId: EntityId,
+    relationType: string,
+    targetType: CoreEntityType,
+    targetId: EntityId,
+  ): Promise<Relation | null>;
+
+  /**
+   * End an existing Relation: persists only `ended_at`. Throws if the id is
+   * unknown. Every other column is immutable through this boundary.
+   */
+  save(relation: Relation): Promise<void>;
 }
 
 interface RelationRow {
@@ -109,5 +134,38 @@ export class SqliteRelationRepository implements RelationRepository {
       [id],
     );
     return row === null ? null : toDomain(row);
+  }
+
+  async findActiveByIdentity(
+    sourceType: CoreEntityType,
+    sourceId: EntityId,
+    relationType: string,
+    targetType: CoreEntityType,
+    targetId: EntityId,
+  ): Promise<Relation | null> {
+    const row = await this.db.getFirstAsync<RelationRow>(
+      `SELECT id, source_type, source_id, relation_type, target_type, target_id,
+              metadata, created_at, ended_at
+       FROM relations
+       WHERE source_type = ? AND source_id = ? AND relation_type = ?
+         AND target_type = ? AND target_id = ?
+         AND ended_at IS NULL`,
+      [sourceType, sourceId, relationType, targetType, targetId],
+    );
+    return row === null ? null : toDomain(row);
+  }
+
+  async save(relation: Relation): Promise<void> {
+    validateRelation(relation);
+    // Relations are immutable once created except for ending: only ended_at
+    // is ever updated, so history (endpoints, direction, metadata,
+    // created_at) can never be rewritten through this boundary.
+    const result = await this.db.runAsync(
+      `UPDATE relations SET ended_at = ? WHERE id = ?`,
+      [relation.endedAt, relation.id],
+    );
+    if (result.changes === 0) {
+      throw new Error(`Cannot save unknown Relation ${relation.id}`);
+    }
   }
 }
