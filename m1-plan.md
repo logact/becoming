@@ -177,7 +177,7 @@ Exit gate: Project machines initialize atomically; resource allocation/usage con
 - [x] [#67](https://github.com/logact/becoming/issues/67) — Define project-funded task allocation contracts (Feature #13) **(done)**
 - [x] [#76](https://github.com/logact/becoming/issues/76) — Define append-oriented resource usage records (Feature #14) **(done)**
 - [x] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9) **(done)**
-- [ ] [#100](https://github.com/logact/becoming/issues/100) — Define project-scoped decomposition policies (Feature #21) **(processing)**
+- [x] [#100](https://github.com/logact/becoming/issues/100) — Define project-scoped decomposition policies (Feature #21) **(done)**
 
 ### Wave 9 — Applied workflows, allocations, consumption, and timelines
 
@@ -188,7 +188,7 @@ Exit gate: applied Workflow behavior, temporal allocation/consumption, unified t
 - [x] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14) **(done)**
 - [x] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15) **(done)**
 - [x] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10) **(done)**
-- [ ] [#101](https://github.com/logact/becoming/issues/101) — Implement cycle-safe decomposition mutations (Feature #21)
+- [ ] [#101](https://github.com/logact/becoming/issues/101) — Implement cycle-safe decomposition mutations (Feature #21) **(processing)**
 
 ### Wave 10 — Historical planning and exception contracts
 
@@ -294,6 +294,7 @@ Before closing M1:
 | [#97](https://github.com/logact/becoming/issues/97) | Approximate (worker did not capture boundaries) | Approximate | ~6m | Unavailable (worker runtime did not expose it) | [`488538c`](https://github.com/logact/becoming/commit/488538c) |
 | [#98](https://github.com/logact/becoming/issues/98) | Approximate (worker did not capture boundaries) | Approximate | ~7m | Unavailable (worker runtime did not expose it) | [`4af3b4c`](https://github.com/logact/becoming/commit/4af3b4c) |
 | [#99](https://github.com/logact/becoming/issues/99) | Approximate (worker did not capture boundaries) | Approximate | ~14m | Unavailable (worker runtime did not expose it) | [`684b172`](https://github.com/logact/becoming/commit/684b172) |
+| [#100](https://github.com/logact/becoming/issues/100) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`fa8c8bd`](https://github.com/logact/becoming/commit/fa8c8bd) |
 
 ## Maintaining the plan
 
