@@ -167,7 +167,7 @@ Exit gate: workflow resolution is deterministic; occupied states, capacity polic
 - [x] [#72](https://github.com/logact/becoming/issues/72) — Query immediate sources and derivatives safely (Feature #8) **(done)**
 - [x] [#79](https://github.com/logact/becoming/issues/79) — Commit state history and transition audit atomically (Feature #9) **(done)**
 - [x] [#93](https://github.com/logact/becoming/issues/93) — Query current and historical Goal pursuit (Feature #20) **(done)**
-- [ ] [#96](https://github.com/logact/becoming/issues/96) — Query Task membership and Project contexts (Feature #18) **(processing)**
+- [x] [#96](https://github.com/logact/becoming/issues/96) — Query Task membership and Project contexts (Feature #18) **(done)**
 
 ### Wave 8 — Project machine and resource planning
 
@@ -289,6 +289,7 @@ Before closing M1:
 | [#93](https://github.com/logact/becoming/issues/93) | Approximate (worker did not capture boundaries) | Approximate | ~8m | Unavailable (worker runtime did not expose it) | [`30f56a6`](https://github.com/logact/becoming/commit/30f56a6) |
 | [#83](https://github.com/logact/becoming/issues/83) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`89ac60d`](https://github.com/logact/becoming/commit/89ac60d) |
 | [#95](https://github.com/logact/becoming/issues/95) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`68dae53`](https://github.com/logact/becoming/commit/68dae53) |
+| [#96](https://github.com/logact/becoming/issues/96) | Approximate (worker did not capture boundaries) | Approximate | ~5m | Unavailable (worker runtime did not expose it) | [`a3c9c93`](https://github.com/logact/becoming/commit/a3c9c93) |
 
 ## Maintaining the plan
 
