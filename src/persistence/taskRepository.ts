@@ -7,7 +7,12 @@ import type { SqliteDatabase } from './database';
 export interface TaskRepository {
   add(task: Task): Promise<void>;
   getById(id: EntityId): Promise<Task | null>;
-  /** Active Tasks by default; set includeArchived for explicit history. */
+  /**
+   * Active Tasks by default; set includeArchived for explicit history.
+   * Results are ordered by creation time. When Tasks share a creation instant,
+   * archived history precedes still-active work, then update time and id make
+   * the order total and stable for pagination.
+   */
   list(options?: TaskListOptions): Promise<Task[]>;
   save(task: Task): Promise<void>;
 }
@@ -94,7 +99,7 @@ export class SqliteTaskRepository implements TaskRepository {
               created_at, updated_at, archived_at
        FROM tasks
        WHERE (? = 1 OR archived_at IS NULL)
-       ORDER BY created_at, id
+       ORDER BY created_at, archived_at IS NULL, updated_at, id
        LIMIT ? OFFSET ?`,
       [includeArchived ? 1 : 0, limit, offset],
     );

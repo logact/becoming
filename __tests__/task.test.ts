@@ -79,11 +79,17 @@ describe('TaskRepository contract', () => {
   it('round-trips minimal and full Tasks and separates active from explicit history', async () => {
     const db = await createTestDatabase();
     const repository = new SqliteTaskRepository(db);
-    const minimal = createTask({ title: 'First', targetDescription: 'First target' });
-    const full = createTask({
-      title: 'Second', targetDescription: 'Second target', description: 'Context',
-      exitCriteria: 'Exit', priority: 3,
-    });
+    const minimal = {
+      ...createTask({ title: 'First', targetDescription: 'First target' }),
+      id: 'task-minimal', createdAt: NOW, updatedAt: NOW,
+    };
+    const full = {
+      ...createTask({
+        title: 'Second', targetDescription: 'Second target', description: 'Context',
+        exitCriteria: 'Exit', priority: 3,
+      }),
+      id: 'task-full', createdAt: NOW, updatedAt: NOW,
+    };
     await repository.add(minimal);
     await repository.add(full);
     const archived = archiveTask(minimal, LATER);
@@ -92,6 +98,28 @@ describe('TaskRepository contract', () => {
     expect(await repository.getById(archived.id)).toEqual(archived);
     expect(await repository.list()).toEqual([full]);
     expect(await repository.list({ includeArchived: true })).toEqual([archived, full]);
+    await closeQuietly(db);
+  });
+
+  it('uses a total historical ordering when timestamps tie', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteTaskRepository(db);
+    const sameCreatedAt = '2026-08-13T07:00:00.000Z';
+    const active = {
+      ...createTask({ title: 'Active', targetDescription: 'Current work' }),
+      id: 'task-active', createdAt: sameCreatedAt, updatedAt: sameCreatedAt,
+    };
+    const toArchive = {
+      ...createTask({ title: 'Archived', targetDescription: 'Historical work' }),
+      id: 'task-archived', createdAt: sameCreatedAt, updatedAt: sameCreatedAt,
+    };
+    await repository.add(active);
+    await repository.add(toArchive);
+    const archived = archiveTask(toArchive, LATER);
+    await repository.save(archived);
+
+    expect((await repository.list({ includeArchived: true })).map((task) => task.id))
+      .toEqual(['task-archived', 'task-active']);
     await closeQuietly(db);
   });
 
