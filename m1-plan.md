@@ -155,7 +155,7 @@ Exit gate: lifecycle transitions and relation changes are atomic with audit data
 - [x] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8) **(done)**
 - [x] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10) **(done)**
 - [x] [#92](https://github.com/logact/becoming/issues/92) — Implement Project-to-Goal pursuit relations (Feature #20) **(done)**
-- [ ] [#95](https://github.com/logact/becoming/issues/95) — Implement Task-to-Project membership relations (Feature #18)
+- [ ] [#95](https://github.com/logact/becoming/issues/95) — Implement Task-to-Project membership relations (Feature #18) **(processing)**
 
 ### Wave 7 — Resolution, safeguards, and historical queries
 
@@ -166,7 +166,7 @@ Exit gate: workflow resolution is deterministic; occupied states, capacity polic
 - [x] [#63](https://github.com/logact/becoming/issues/63) — Query budget history and enforce capacity policy (Feature #12) **(done)**
 - [x] [#72](https://github.com/logact/becoming/issues/72) — Query immediate sources and derivatives safely (Feature #8) **(done)**
 - [x] [#79](https://github.com/logact/becoming/issues/79) — Commit state history and transition audit atomically (Feature #9) **(done)**
-- [ ] [#93](https://github.com/logact/becoming/issues/93) — Query current and historical Goal pursuit (Feature #20) **(processing)**
+- [x] [#93](https://github.com/logact/becoming/issues/93) — Query current and historical Goal pursuit (Feature #20) **(done)**
 - [ ] [#96](https://github.com/logact/becoming/issues/96) — Query Task membership and Project contexts (Feature #18)
 
 ### Wave 8 — Project machine and resource planning
@@ -186,7 +186,7 @@ Exit gate: applied Workflow behavior, temporal allocation/consumption, unified t
 - [x] [#45](https://github.com/logact/becoming/issues/45) — Complete workflow application errors, provenance, and acceptance tests (Feature #27) **(done)**
 - [x] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13) **(done)**
 - [x] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14) **(done)**
-- [ ] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15) **(processing)**
+- [x] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15) **(done)**
 - [x] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10) **(done)**
 - [ ] [#101](https://github.com/logact/becoming/issues/101) — Implement cycle-safe decomposition mutations (Feature #21)
 
@@ -204,7 +204,7 @@ Exit gate: allocation/usage histories reconcile, timeline pagination is stable, 
 
 Exit gate: current Project/Task balances and current/historical execution snapshots reconcile with their underlying histories.
 
-- [ ] [#83](https://github.com/logact/becoming/issues/83) — Calculate project and task resource balances (Feature #15)
+- [ ] [#83](https://github.com/logact/becoming/issues/83) — Calculate project and task resource balances (Feature #15) **(processing)**
 - [ ] [#103](https://github.com/logact/becoming/issues/103) — Compose current and historical Project execution snapshots (Feature #22)
 
 ### Wave 12 — Historical reconciliation and derived views
@@ -285,6 +285,8 @@ Before closing M1:
 | [#78](https://github.com/logact/becoming/issues/78) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`5b9cd15`](https://github.com/logact/becoming/commit/5b9cd15) |
 | [#80](https://github.com/logact/becoming/issues/80) | Approximate (worker did not capture boundaries) | Approximate | ~9m | Unavailable (worker runtime did not expose it) | [`21a4c11`](https://github.com/logact/becoming/commit/21a4c11) |
 | [#92](https://github.com/logact/becoming/issues/92) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`d34bc02`](https://github.com/logact/becoming/commit/d34bc02) |
+| [#82](https://github.com/logact/becoming/issues/82) | Approx. 2026-08-13T08:42Z | Approx. 2026-08-13T08:46Z | ~4m | Unavailable (worker runtime did not expose it) | [`f998d7c`](https://github.com/logact/becoming/commit/f998d7c) |
+| [#93](https://github.com/logact/becoming/issues/93) | Approximate (worker did not capture boundaries) | Approximate | ~8m | Unavailable (worker runtime did not expose it) | [`30f56a6`](https://github.com/logact/becoming/commit/30f56a6) |
 
 ## Maintaining the plan
 
