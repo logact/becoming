@@ -122,13 +122,13 @@ Exit gate: core mutation paths have application-level validation, explicit trans
 - [x] [#47](https://github.com/logact/becoming/issues/47) — Implement Project transition management and independence (Feature #28) **(done)**
 - [x] [#50](https://github.com/logact/becoming/issues/50) — Persist entity state history and initialize current state safely (Feature #29) **(done)**
 - [ ] [#54](https://github.com/logact/becoming/issues/54) — Implement the resource catalog mutation lifecycle (Feature #11) **(processing)**
-- [ ] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6)
+- [ ] [#56](https://github.com/logact/becoming/issues/56) — Preserve Record corrections and archival history (Feature #6) **(processing)**
 - [ ] [#59](https://github.com/logact/becoming/issues/59) — Capture creation provenance for all core concepts (Feature #30)
 - [ ] [#64](https://github.com/logact/becoming/issues/64) — Define the relation-change provenance contract (Feature #5)
 - [ ] [#75](https://github.com/logact/becoming/issues/75) — Query current and historical semantic relations (Feature #19)
 - [ ] [#89](https://github.com/logact/becoming/issues/89) — Implement Goal mutation commands with provenance (Feature #17)
 - [ ] [#91](https://github.com/logact/becoming/issues/91) — Implement Project domain, persistence, and mutations (Feature #20)
-- [ ] [#94](https://github.com/logact/becoming/issues/94) — Implement Task domain, persistence, and mutations (Feature #18)
+- [ ] [#94](https://github.com/logact/becoming/issues/94) — Implement Task domain, persistence, and mutations (Feature #18) **(processing)**
 
 ### Wave 5 — Integrity and history
 
