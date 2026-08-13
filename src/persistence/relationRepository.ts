@@ -1,5 +1,7 @@
 import type { EntityId } from '../domain/ids';
+import type { IsoTimestamp } from '../domain/ids';
 import type { CoreEntityType } from '../domain/entityTypes';
+import { isCoreEntityType } from '../domain/entityTypes';
 import type { JsonValue } from '../domain/json';
 import type { Relation } from '../domain/relation';
 import { validateRelation } from '../domain/relation';
@@ -59,10 +61,63 @@ export interface RelationRepository {
   ): Promise<Relation[]>;
 
   /**
+   * Query active and ended relations with composable endpoint, type, status,
+   * and temporal predicates. Results use the total `created_at, id` order so
+   * offset pages have a repeatable traversal order.
+   */
+  list(query?: RelationQuery): Promise<Relation[]>;
+
+  /** A named current-state helper; it always selects `ended_at IS NULL`. */
+  listCurrent(query?: RelationListQuery): Promise<Relation[]>;
+
+  /** A named history helper; it retains both active and ended rows. */
+  listHistory(query?: RelationListQuery): Promise<Relation[]>;
+
+  /**
    * End an existing Relation: persists only `ended_at`. Throws if the id is
    * unknown. Every other column is immutable through this boundary.
    */
   save(relation: Relation): Promise<void>;
+}
+
+/** A typed endpoint constraint. Relation direction is never reversed by a query. */
+export interface RelationEndpointFilter {
+  type: CoreEntityType;
+  id: EntityId;
+}
+
+export type RelationStatus = 'active' | 'ended';
+
+/**
+ * A half-open interval `[start, end)`. A relation is selected when its active
+ * interval `[createdAt, endedAt)` overlaps this interval. `end` is required
+ * to make the open-ended active relation predicate unambiguous.
+ */
+export interface RelationTimeRange {
+  start: IsoTimestamp;
+  end: IsoTimestamp;
+}
+
+/** Filters shared by current and historical relation listings. */
+export interface RelationListQuery {
+  source?: RelationEndpointFilter;
+  target?: RelationEndpointFilter;
+  relationType?: string;
+  /**
+   * Select a relation active at this exact instant. Intervals are half-open:
+   * createdAt is included, while endedAt is excluded.
+   */
+  at?: IsoTimestamp;
+  /** Select relations whose `[createdAt, endedAt)` interval overlaps this range. */
+  overlaps?: RelationTimeRange;
+  /** Offset pagination over the deterministic `created_at ASC, id ASC` order. */
+  limit?: number;
+  offset?: number;
+}
+
+/** Full relation query. Omitted `status` retains history (active and ended). */
+export interface RelationQuery extends RelationListQuery {
+  status?: RelationStatus;
 }
 
 interface RelationRow {
@@ -176,6 +231,58 @@ export class SqliteRelationRepository implements RelationRepository {
     return rows.map(toDomain);
   }
 
+  async list(query: RelationQuery = {}): Promise<Relation[]> {
+    assertRelationQuery(query);
+    const conditions: string[] = [];
+    const params: (string | number | null)[] = [];
+    if (query.source !== undefined) {
+      conditions.push('source_type = ? AND source_id = ?');
+      params.push(query.source.type, query.source.id);
+    }
+    if (query.target !== undefined) {
+      conditions.push('target_type = ? AND target_id = ?');
+      params.push(query.target.type, query.target.id);
+    }
+    if (query.relationType !== undefined) {
+      conditions.push('relation_type = ?');
+      params.push(query.relationType);
+    }
+    if (query.status === 'active') {
+      conditions.push('ended_at IS NULL');
+    } else if (query.status === 'ended') {
+      conditions.push('ended_at IS NOT NULL');
+    }
+    if (query.at !== undefined) {
+      conditions.push('created_at <= ? AND (ended_at IS NULL OR ended_at > ?)');
+      params.push(query.at, query.at);
+    }
+    if (query.overlaps !== undefined) {
+      conditions.push('created_at < ? AND (ended_at IS NULL OR ended_at > ?)');
+      params.push(query.overlaps.end, query.overlaps.start);
+    }
+    const limit = query.limit ?? 100;
+    const offset = query.offset ?? 0;
+    const where = conditions.length === 0 ? '' : `WHERE ${conditions.join(' AND ')}`;
+    const rows = await this.db.getAllAsync<RelationRow>(
+      `SELECT id, source_type, source_id, relation_type, target_type, target_id,
+              metadata, created_at, ended_at
+       FROM relations
+       ${where}
+       ORDER BY created_at ASC, id ASC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
+    return rows.map(toDomain);
+  }
+
+  async listCurrent(query: RelationListQuery = {}): Promise<Relation[]> {
+    return this.list({ ...query, status: 'active' });
+  }
+
+  async listHistory(query: RelationListQuery = {}): Promise<Relation[]> {
+    return this.list(query);
+  }
+
   async save(relation: Relation): Promise<void> {
     validateRelation(relation);
     // Relations are immutable once created except for ending: only ended_at
@@ -188,5 +295,45 @@ export class SqliteRelationRepository implements RelationRepository {
     if (result.changes === 0) {
       throw new Error(`Cannot save unknown Relation ${relation.id}`);
     }
+  }
+}
+
+function assertRelationQuery(query: RelationQuery): void {
+  assertEndpoint('source', query.source);
+  assertEndpoint('target', query.target);
+  if (query.relationType !== undefined && query.relationType.trim().length === 0) {
+    throw new Error('Relation query relationType must not be blank');
+  }
+  if (query.at !== undefined) assertTimestamp('at', query.at);
+  if (query.overlaps !== undefined) {
+    assertTimestamp('overlaps.start', query.overlaps.start);
+    assertTimestamp('overlaps.end', query.overlaps.end);
+    if (Date.parse(query.overlaps.start) >= Date.parse(query.overlaps.end)) {
+      throw new Error('Relation query overlaps must have start before end');
+    }
+  }
+  const limit = query.limit ?? 100;
+  const offset = query.offset ?? 0;
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error('Relation query limit must be a positive integer');
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new Error('Relation query offset must be a non-negative integer');
+  }
+}
+
+function assertEndpoint(name: string, endpoint: RelationEndpointFilter | undefined): void {
+  if (endpoint === undefined) return;
+  if (!isCoreEntityType(endpoint.type)) {
+    throw new Error(`Relation query ${name} endpoint type must be a core entity type`);
+  }
+  if (endpoint.id.trim().length === 0) {
+    throw new Error(`Relation query ${name} endpoint id must not be blank`);
+  }
+}
+
+function assertTimestamp(name: string, value: IsoTimestamp): void {
+  if (value.trim().length === 0 || Number.isNaN(Date.parse(value))) {
+    throw new Error(`Relation query ${name} must be a valid ISO 8601 timestamp`);
   }
 }

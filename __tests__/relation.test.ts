@@ -6,6 +6,7 @@ import {
 import type { Relation } from '../src/domain/relation';
 import { CORE_ENTITY_TYPES } from '../src/domain/entityTypes';
 import { SqliteRelationRepository } from '../src/persistence/relationRepository';
+import { RelationQueryService } from '../src/application/relationQueryService';
 import { closeQuietly, createTestDatabase } from './helpers/testDatabase';
 
 const CREATED_AT = '2026-08-12T14:00:00.000Z';
@@ -274,6 +275,84 @@ describe('relations schema shape', () => {
     );
     expect(ddl?.sql.toUpperCase()).not.toMatch(/FOREIGN\s+KEY/);
     expect(ddl?.sql.toUpperCase()).not.toMatch(/REFERENCES/);
+    await closeQuietly(db);
+  });
+});
+
+describe('RelationRepository queries', () => {
+  it('combines directional, status, and temporal filters with half-open boundaries', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteRelationRepository(db);
+    const first = createRelation(
+      { ...validInput(), metadata: { position: 1 } },
+      { id: 'a', now: '2026-08-12T10:00:00.000Z' },
+    );
+    const ended = { ...first, endedAt: '2026-08-12T11:00:00.000Z' };
+    const second = createRelation(
+      { ...validInput(), metadata: { position: 2 } },
+      { id: 'b', now: '2026-08-12T11:00:00.000Z' },
+    );
+    const reverse = createRelation(
+      {
+        sourceType: 'resource', sourceId: RESOURCE_ID, relationType: 'uses',
+        targetType: 'task', targetId: TASK_ID,
+      },
+      { id: 'c', now: '2026-08-12T11:00:00.000Z' },
+    );
+    await repository.add(ended);
+    await repository.add(second);
+    await repository.add(reverse);
+
+    expect(await repository.listCurrent({ source: { type: 'task', id: TASK_ID } }))
+      .toEqual([second]);
+    expect(await repository.listHistory({ target: { type: 'resource', id: RESOURCE_ID } }))
+      .toEqual([ended, second]);
+    expect(await repository.list({
+      source: { type: 'task', id: TASK_ID },
+      target: { type: 'resource', id: RESOURCE_ID },
+      relationType: 'constrained_by', status: 'ended',
+      overlaps: { start: '2026-08-12T10:30:00.000Z', end: '2026-08-12T11:00:00.000Z' },
+    })).toEqual([ended]);
+    expect(await repository.list({ at: '2026-08-12T10:00:00.000Z' })).toEqual([ended]);
+    expect(await repository.list({ at: '2026-08-12T11:00:00.000Z' }))
+      .toEqual([second, reverse]);
+    await closeQuietly(db);
+  });
+
+  it('uses created_at and id as a stable total order for offset pages', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteRelationRepository(db);
+    for (const id of ['c', 'a', 'b']) {
+      await repository.add(createRelation(validInput(), {
+        id, now: '2026-08-12T10:00:00.000Z',
+      }));
+    }
+    expect((await repository.list({ limit: 2 })).map((relation) => relation.id))
+      .toEqual(['a', 'b']);
+    expect((await repository.list({ limit: 2, offset: 2 })).map((relation) => relation.id))
+      .toEqual(['c']);
+    await closeQuietly(db);
+  });
+
+  it('reports missing logical endpoints during requested hydration without changing direction', async () => {
+    const db = await createTestDatabase();
+    const repository = new SqliteRelationRepository(db);
+    const relation = createRelation(validInput(), { id: 'dangling', now: CREATED_AT });
+    await repository.add(relation);
+    const service = new RelationQueryService(repository, {
+      async resolve(endpoint) {
+        return endpoint.id === TASK_ID ? { title: 'Task' } : null;
+      },
+    });
+
+    const [result] = await service.listHydrated({ target: { type: 'resource', id: RESOURCE_ID } });
+
+    expect(result.relation).toEqual(relation);
+    expect(result.source).toEqual({ title: 'Task' });
+    expect(result.target).toBeNull();
+    expect(result.anomalies).toEqual([{
+      kind: 'missing_endpoint', endpoint: 'target', entityType: 'resource', entityId: RESOURCE_ID,
+    }]);
     await closeQuietly(db);
   });
 });
