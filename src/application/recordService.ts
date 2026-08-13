@@ -2,7 +2,10 @@ import { newId, nowIso } from '../domain/ids';
 import type { EntityId, IsoTimestamp } from '../domain/ids';
 import { createRecord } from '../domain/record';
 import type { Record } from '../domain/record';
-import type { RecordRepository } from '../persistence/recordRepository';
+import type {
+  RecordHistoryRepository,
+  RecordListOptions,
+} from '../persistence/recordRepository';
 
 /**
  * Application boundary for creating and retrieving Records.
@@ -52,7 +55,7 @@ export interface CreateRecordCommand {
 }
 
 export interface RecordServicePorts {
-  repository: RecordRepository;
+  repository: RecordHistoryRepository;
   clock?: Clock;
   ids?: IdGenerator;
   /** Extends or replaces the default record-type policy. */
@@ -60,7 +63,7 @@ export interface RecordServicePorts {
 }
 
 export class RecordService {
-  private readonly repository: RecordRepository;
+  private readonly repository: RecordHistoryRepository;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
   private readonly supportedRecordTypes?: readonly string[];
@@ -101,5 +104,17 @@ export class RecordService {
       throw new RecordNotFoundError(id);
     }
     return record;
+  }
+
+  /** Active Records by default; explicit filters preserve independent time axes. */
+  async listRecords(options?: RecordListOptions): Promise<Record[]> {
+    return this.repository.list(options);
+  }
+
+  /** Authorized history view: include archived Records unless the caller narrows it. */
+  async listRecordHistory(
+    options?: Omit<RecordListOptions, 'status'>,
+  ): Promise<Record[]> {
+    return this.repository.list({ ...options, status: 'all' });
   }
 }

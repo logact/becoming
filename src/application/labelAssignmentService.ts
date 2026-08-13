@@ -7,6 +7,7 @@ import {
 import type { EntityLabelAssignment } from '../domain/entityLabel';
 import type { LabelRepository } from '../persistence/labelRepository';
 import type { EntityLabelRepository } from '../persistence/entityLabelRepository';
+import type { CoreEntityLookup } from './coreEntityLookup';
 import { systemClock, uuidGenerator } from './recordService';
 import type { Clock, IdGenerator } from './recordService';
 
@@ -56,6 +57,14 @@ export class LabelAssignmentNotFoundError extends Error {
   }
 }
 
+/** Thrown when a classification target has no row in its typed core table. */
+export class LabelAssignmentEntityNotFoundError extends Error {
+  constructor(entityType: CoreEntityType, id: EntityId) {
+    super(`Label assignment entity ${entityType} ${id} not found`);
+    this.name = 'LabelAssignmentEntityNotFoundError';
+  }
+}
+
 /**
  * Command for assigning a Label to a core entity. `assignedAt` defaults to
  * the clock's current time (the moment the Label becomes active).
@@ -70,6 +79,8 @@ export interface AssignLabelCommand {
 export interface LabelAssignmentServicePorts {
   labels: LabelRepository;
   assignments: EntityLabelRepository;
+  /** Optional only for legacy callers; new composition must supply it. */
+  entities?: CoreEntityLookup;
   clock?: Clock;
   ids?: IdGenerator;
 }
@@ -77,12 +88,14 @@ export interface LabelAssignmentServicePorts {
 export class LabelAssignmentService {
   private readonly labels: LabelRepository;
   private readonly assignments: EntityLabelRepository;
+  private readonly entities?: CoreEntityLookup;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
 
   constructor(ports: LabelAssignmentServicePorts) {
     this.labels = ports.labels;
     this.assignments = ports.assignments;
+    this.entities = ports.entities;
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
   }
@@ -94,13 +107,9 @@ export class LabelAssignmentService {
    * an active assignment of the same Label.
    */
   async assignLabel(command: AssignLabelCommand): Promise<EntityLabelAssignment> {
-    const label = await this.labels.getById(command.labelId);
-    if (label === null) {
-      throw new LabelNotFoundError(command.labelId);
-    }
-    if (label.archivedAt !== null) {
-      throw new LabelArchivedError(command.labelId);
-    }
+    const entityType = command.entityType as CoreEntityType;
+    // Construct first so malformed entity types/ids retain the domain error
+    // contract, then validate the logical reference before any assignment row.
     const assignment = createEntityLabelAssignment(
       {
         entityType: command.entityType,
@@ -112,6 +121,16 @@ export class LabelAssignmentService {
         now: command.assignedAt ?? this.clock.now(),
       },
     );
+    const label = await this.labels.getById(command.labelId);
+    if (label === null) {
+      throw new LabelNotFoundError(command.labelId);
+    }
+    if (label.archivedAt !== null) {
+      throw new LabelArchivedError(command.labelId);
+    }
+    if (this.entities !== undefined && !(await this.entities.exists(entityType, command.entityId))) {
+      throw new LabelAssignmentEntityNotFoundError(entityType, command.entityId);
+    }
     await this.assignments.add(assignment);
     return assignment;
   }

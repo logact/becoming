@@ -16,11 +16,13 @@ import { MutationProvenanceService } from './mutationProvenanceService';
 import {
   LabelArchivedError,
   LabelAssignmentNotFoundError,
+  LabelAssignmentEntityNotFoundError,
   LabelNotFoundError,
 } from './labelAssignmentService';
 import { systemClock, uuidGenerator } from './recordService';
 import type { Clock, IdGenerator } from './recordService';
 import type { UnitOfWork } from './unitOfWork';
+import type { CoreEntityLookup } from './coreEntityLookup';
 import type { RecordRepository } from '../persistence/recordRepository';
 import type {
   LabelListOptions,
@@ -56,6 +58,8 @@ export interface LabelServicePorts<TContext> {
   unitOfWork: UnitOfWork<TContext>;
   labels: (context: TContext) => LabelRepository;
   assignments: (context: TContext) => EntityLabelRepository;
+  /** Logical core-table resolver; no shared entity table or foreign keys. */
+  entities?: (context: TContext) => CoreEntityLookup;
   records: (context: TContext) => RecordRepository;
   /** Read repositories are intentionally separate from transaction factories. */
   readLabels: LabelRepository;
@@ -92,6 +96,7 @@ export class LabelService<TContext> {
   private readonly assignments: (context: TContext) => EntityLabelRepository;
   private readonly readLabels: LabelRepository;
   private readonly readAssignments: EntityLabelRepository;
+  private readonly entities?: (context: TContext) => CoreEntityLookup;
   private readonly clock: Clock;
   private readonly ids: IdGenerator;
   private readonly provenance: MutationProvenanceService<TContext>;
@@ -101,6 +106,7 @@ export class LabelService<TContext> {
     this.assignments = ports.assignments;
     this.readLabels = ports.readLabels;
     this.readAssignments = ports.readAssignments;
+    this.entities = ports.entities;
     this.clock = ports.clock ?? systemClock;
     this.ids = ports.ids ?? uuidGenerator;
     this.provenance = new MutationProvenanceService({
@@ -168,6 +174,15 @@ export class LabelService<TContext> {
         const currentLabel = await this.labels(context).getById(command.labelId);
         if (currentLabel === null) throw new LabelNotFoundError(command.labelId);
         if (currentLabel.archivedAt !== null) throw new LabelArchivedError(command.labelId);
+        if (
+          this.entities !== undefined &&
+          !(await this.entities(context).exists(assignment.entityType, assignment.entityId))
+        ) {
+          throw new LabelAssignmentEntityNotFoundError(
+            assignment.entityType,
+            assignment.entityId,
+          );
+        }
         await this.assignments(context).add(assignment);
         return assignment;
       },

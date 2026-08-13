@@ -1,4 +1,4 @@
-import type { EntityId } from '../domain/ids';
+import type { EntityId, IsoTimestamp } from '../domain/ids';
 import type { JsonValue, Record } from '../domain/record';
 import { validateRecord } from '../domain/record';
 import type { SqliteDatabase } from './database';
@@ -31,10 +31,38 @@ export interface RecordRepository {
 
 }
 
-/** Extended Record boundary consumed only by the correction/archive feature. */
+/** A closed or open timestamp interval used to filter one Record time axis. */
+export interface RecordTimeRange {
+  /** Inclusive lower bound. Omit to select from the beginning of history. */
+  start?: IsoTimestamp;
+  /** Inclusive upper bound. Omit to select through the end of history. */
+  end?: IsoTimestamp;
+}
+
+/** Explicit archive visibility and independently composable Record filters. */
+export interface RecordListOptions {
+  /** Active Records are the operational default; history callers name `all`. */
+  status?: 'active' | 'archived' | 'all';
+  /** Filter by when the occurrence happened, independently of entry time. */
+  occurredAt?: RecordTimeRange;
+  /** Filter by when the occurrence was recorded, independently of event time. */
+  recordedAt?: RecordTimeRange;
+  recordType?: string;
+  /** Exact-match actor filter. `null` deliberately selects unattributed Records. */
+  actor?: string | null;
+  /** Offset pagination over the stable recordedAt, occurredAt, id order. */
+  limit?: number;
+  offset?: number;
+}
+
+/** Extended Record boundary consumed by history and record-query features. */
 export interface RecordHistoryRepository extends RecordRepository {
-  /** `all` is intended for authorized history readers; ordinary views use active. */
-  list(options?: { status?: 'active' | 'archived' | 'all' }): Promise<Record[]>;
+  /**
+   * List Records in total, stable `recordedAt ASC, occurredAt ASC, id ASC`
+   * order. Event and entry ranges are independently composable; `all` is
+   * intended for authorized history readers while ordinary views use active.
+   */
+  list(options?: RecordListOptions): Promise<Record[]>;
   /** Persists archival only; occurrence facts are immutable and there is no delete. */
   save(record: Record): Promise<void>;
 }
@@ -123,20 +151,37 @@ export class SqliteRecordRepository implements RecordHistoryRepository {
     return row === null ? null : toDomain(row);
   }
 
-  async list(
-    options: { status?: 'active' | 'archived' | 'all' } = {},
-  ): Promise<Record[]> {
+  async list(options: RecordListOptions = {}): Promise<Record[]> {
+    assertRecordListOptions(options);
     const status = options.status ?? 'active';
-    const where =
-      status === 'active'
-        ? 'WHERE archived_at IS NULL'
-        : status === 'archived'
-          ? 'WHERE archived_at IS NOT NULL'
-          : '';
+    const conditions: string[] = [];
+    const params: (string | number | null)[] = [];
+    if (status === 'active') conditions.push('archived_at IS NULL');
+    if (status === 'archived') conditions.push('archived_at IS NOT NULL');
+    appendRange(conditions, params, 'occurred_at', options.occurredAt);
+    appendRange(conditions, params, 'recorded_at', options.recordedAt);
+    if (options.recordType !== undefined) {
+      conditions.push('record_type = ?');
+      params.push(options.recordType);
+    }
+    if (options.actor !== undefined) {
+      if (options.actor === null) {
+        conditions.push('actor IS NULL');
+      } else {
+        conditions.push('actor = ?');
+        params.push(options.actor);
+      }
+    }
+    const where = conditions.length === 0 ? '' : `WHERE ${conditions.join(' AND ')}`;
+    const limit = options.limit ?? 100;
+    const offset = options.offset ?? 0;
     const rows = await this.db.getAllAsync<RecordRow>(
       `SELECT id, title, description, record_type, occurred_at, recorded_at,
               actor, payload, created_at, updated_at, archived_at
-       FROM records ${where} ORDER BY recorded_at ASC, id ASC`,
+       FROM records ${where}
+       ORDER BY recorded_at ASC, occurred_at ASC, id ASC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
     );
     return rows.map(toDomain);
   }
@@ -176,5 +221,58 @@ export class SqliteRecordRepository implements RecordHistoryRepository {
     if (result.changes === 0) {
       throw new Error(`Cannot save unknown Record ${record.id}`);
     }
+  }
+}
+
+function appendRange(
+  conditions: string[],
+  params: (string | number | null)[],
+  column: 'occurred_at' | 'recorded_at',
+  range: RecordTimeRange | undefined,
+): void {
+  if (range?.start !== undefined) {
+    conditions.push(`${column} >= ?`);
+    params.push(range.start);
+  }
+  if (range?.end !== undefined) {
+    conditions.push(`${column} <= ?`);
+    params.push(range.end);
+  }
+}
+
+function assertRecordListOptions(options: RecordListOptions): void {
+  if (options.status !== undefined && !['active', 'archived', 'all'].includes(options.status)) {
+    throw new Error('Record list status must be active, archived, or all');
+  }
+  assertRange('occurredAt', options.occurredAt);
+  assertRange('recordedAt', options.recordedAt);
+  if (options.recordType !== undefined && options.recordType.trim().length === 0) {
+    throw new Error('Record list recordType must not be blank');
+  }
+  if (typeof options.actor === 'string' && options.actor.trim().length === 0) {
+    throw new Error('Record list actor must not be blank when specified');
+  }
+  const limit = options.limit ?? 100;
+  const offset = options.offset ?? 0;
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error('Record list limit must be a positive integer');
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new Error('Record list offset must be a non-negative integer');
+  }
+}
+
+function assertRange(name: string, range: RecordTimeRange | undefined): void {
+  if (range === undefined) return;
+  if (range.start !== undefined) assertTimestamp(`${name}.start`, range.start);
+  if (range.end !== undefined) assertTimestamp(`${name}.end`, range.end);
+  if (range.start !== undefined && range.end !== undefined && Date.parse(range.start) > Date.parse(range.end)) {
+    throw new Error(`Record list ${name} start must not be after end`);
+  }
+}
+
+function assertTimestamp(name: string, value: IsoTimestamp): void {
+  if (value.trim().length === 0 || Number.isNaN(Date.parse(value))) {
+    throw new Error(`Record list ${name} must be a valid ISO 8601 timestamp`);
   }
 }

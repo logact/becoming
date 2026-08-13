@@ -8,6 +8,7 @@ import type { RelationRepository } from '../persistence/relationRepository';
 import { systemClock, uuidGenerator } from './recordService';
 import type { Clock, IdGenerator } from './recordService';
 import type { UnitOfWork } from './unitOfWork';
+import type { CoreEntityLookup } from './coreEntityLookup';
 
 /**
  * Application boundary for policy-validated Relation create and end
@@ -151,9 +152,7 @@ export class RelationProvenancePersistenceError extends Error {
  * Logical-reference lookup for typed Relation endpoints. Implemented over the
  * per-aggregate repository boundaries; the database never enforces it.
  */
-export interface RelationEndpointLookup {
-  exists(entityType: CoreEntityType, id: EntityId): Promise<boolean>;
-}
+export type RelationEndpointLookup = CoreEntityLookup;
 
 /**
  * The audit notice handed to the provenance port for one Relation mutation.
