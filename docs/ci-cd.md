@@ -71,21 +71,27 @@ builds do not collide; the marketing version comes from `app.json`.
    ```
 
    This rewrites `extra.eas.projectId` in `app.json`.
+
 2. In the Apple Developer portal, register the App ID `com.logact.becoming`
    under
    [Certificates, Identifiers & Profiles → Identifiers](https://developer.apple.com/account/resources/identifiers/list)
-   (use **+** → App IDs → App), then create the app under
+   (use **+** → App IDs → App). This only registers the bundle identifier; it
+   does not create an app that can receive builds.
+3. Create a separate app record under
    [App Store Connect → Apps](https://appstoreconnect.apple.com/apps)
-   (use **+** → New App) with that bundle ID.
-3. In App Store Connect, create an API key under
+   (use **+** → New App). Choose **iOS**, enter `Becoming` as the name, select
+   `com.logact.becoming` as the bundle ID, and enter a unique internal SKU such
+   as `becoming-ios`. After creating it, open **App Information** and copy the
+   numeric **Apple ID** for the `ASC_APP_ID` repository variable.
+4. In App Store Connect, create an API key under
    [Users and Access → Integrations → App Store Connect API](https://appstoreconnect.apple.com/access/integrations/api)
    with the **Admin** role. EAS Submit only needs App Manager access, but EAS
    Build needs Admin access to validate and repair signing credentials in CI.
    Download the `.p8` file once — Apple does not let you download it again.
-4. Put the key's **Issuer ID** and **Key ID** (both shown on the same page,
+5. Put the key's **Issuer ID** and **Key ID** (both shown on the same page,
    not secret) into `eas.json` under `submit.production.ios`, replacing the
    placeholders.
-5. Install the project dependencies, then run one interactive build locally so
+6. Install the project dependencies, then run one interactive build locally so
    EAS can create and store the distribution certificate and provisioning
    profile:
 
@@ -101,9 +107,9 @@ builds do not collide; the marketing version comes from `app.json`.
    followed by `Credentials are not set up` means this bootstrap has not been
    completed for the app's Apple team. After a successful interactive setup,
    CI reuses the credentials stored on EAS.
-6. Add the GitHub repository secrets under
-   [Settings → Secrets and variables → Actions](https://github.com/logact/becoming/settings/secrets/actions):
 
+7. Add the GitHub repository secrets under
+   [Settings → Secrets and variables → Actions](https://github.com/logact/becoming/settings/secrets/actions):
    - `EXPO_TOKEN` — a robot access token created under
      [Expo account settings → Access tokens](https://expo.dev/settings/access-tokens).
    - `ASC_API_KEY_P8` — the base64-encoded contents of the `.p8` key
@@ -111,15 +117,19 @@ builds do not collide; the marketing version comes from `app.json`.
 
    Add these non-secret repository variables on the **Variables** tab of the
    same page:
-
    - `APPLE_TEAM_ID` — the 10-character Team ID shown in the Apple Developer
      membership details.
    - `APPLE_TEAM_TYPE` — `INDIVIDUAL`, `COMPANY_OR_ORGANIZATION`, or `IN_HOUSE`.
+   - `ASC_APP_ID` — the numeric Apple ID shown in App Store Connect under
+     **Apps → Becoming → App Information → General Information**. This is not
+     the bundle ID or the API key ID. The workflow writes it to
+     `submit.production.ios.ascAppId` before running EAS Submit.
 
    The workflow passes these values to EAS Build so it can authenticate with
    Apple and repair an expired or invalid provisioning profile without an
-   interactive login. The initial distribution certificate must still be
-   bootstrapped in step 5.
+   interactive login, and uses `ASC_APP_ID` to select the existing App Store
+   Connect app during non-interactive submission. The initial distribution
+   certificate must still be bootstrapped in step 6.
 
 To publish, open
 [Actions → Publish iOS → Run workflow](https://github.com/logact/becoming/actions/workflows/publish.yml),
