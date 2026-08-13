@@ -1,4 +1,6 @@
 import {
+  ENTITY_TIMELINE_MAX_PAGE_SIZE,
+  EntityTimelineCursorError,
   EntityTimelineQueryService,
   EntityTimelineQueryValidationError,
 } from '../src/application/entityTimelineQueryService';
@@ -115,6 +117,45 @@ describe('EntityTimelineQueryService (#86)', () => {
       .rejects.toBeInstanceOf(EntityTimelineQueryValidationError);
     await expect(service.list({ type: 'goal', id: 'goal-1' }, { occurredAt: { start: SECOND, end: FIRST } }))
       .rejects.toBeInstanceOf(EntityTimelineQueryValidationError);
+  });
+
+  it('pages the composed timeline with scope-bound bidirectional keyset cursors (#87)', async () => {
+    const db = await createTestDatabase();
+    const records = new SqliteRecordRepository(db);
+    await insertCoreEntity(db, 'goals', 'goal-1');
+    const same = '2026-08-13T12:00:00.000Z';
+    for (const [id, type, archivedAt] of [
+      ['a', 'mutation', null], ['b', 'mutation', null], ['c', 'mutation', null], ['d', 'mutation', SECOND],
+    ] as const) {
+      const record = event(id, type, same, { entityType: 'goal', entityId: 'goal-1', action: 'updated', actor: 'agent:test', occurredAt: same });
+      await records.add(record);
+      if (archivedAt !== null) await records.save({ ...record, archivedAt, updatedAt: archivedAt });
+    }
+    const service = new EntityTimelineQueryService({ entities: new SqliteCoreEntityLookup(db), records });
+    const first = await service.listPage({ type: 'goal', id: 'goal-1' }, { first: 1, status: 'all' });
+    const second = await service.listPage({ type: 'goal', id: 'goal-1' }, { first: 1, status: 'all', after: first.pageInfo.nextCursor! });
+    const third = await service.listTimelinePage({ type: 'goal', id: 'goal-1' }, { first: 2, status: 'all', after: second.pageInfo.nextCursor! });
+    expect([...first.events, ...second.events, ...third.events].map((entry) => entry.recordId)).toEqual(['a', 'b', 'c', 'd']);
+    expect(first.pageInfo.hasPreviousPage).toBe(false);
+    expect(third.pageInfo.hasNextPage).toBe(false);
+
+    const tail = await service.listPage({ type: 'goal', id: 'goal-1' }, { last: 1, status: 'all' });
+    const beforeTail = await service.listPage({ type: 'goal', id: 'goal-1' }, { last: 2, status: 'all', before: tail.pageInfo.previousCursor! });
+    expect([...beforeTail.events, ...tail.events].map((entry) => entry.recordId)).toEqual(['b', 'c', 'd']);
+
+    await expect(service.listPage({ type: 'goal', id: 'goal-1' }, {
+      first: 1, status: 'active', after: first.pageInfo.nextCursor!,
+    })).rejects.toBeInstanceOf(EntityTimelineCursorError);
+    await expect(service.listPage({ type: 'goal', id: 'missing' }, {
+      first: 1, status: 'all', after: first.pageInfo.nextCursor!,
+    })).rejects.toBeInstanceOf(TimelineEntityNotFoundError);
+    await expect(service.listPage({ type: 'goal', id: 'goal-1' }, {
+      last: 1, status: 'all', before: first.pageInfo.nextCursor!,
+    })).rejects.toBeInstanceOf(EntityTimelineCursorError);
+    await expect(service.listPage({ type: 'goal', id: 'goal-1' }, { first: ENTITY_TIMELINE_MAX_PAGE_SIZE + 1 }))
+      .rejects.toBeInstanceOf(EntityTimelineQueryValidationError);
+    await expect(service.listPage({ type: 'goal', id: 'goal-1' }, { first: 1, after: 'not-a-cursor' }))
+      .rejects.toBeInstanceOf(EntityTimelineCursorError);
   });
 });
 

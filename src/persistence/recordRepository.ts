@@ -53,6 +53,17 @@ export interface RecordListOptions {
   /** Offset pagination over the stable recordedAt, occurredAt, id order. */
   limit?: number;
   offset?: number;
+  /**
+   * Exclusive keyset boundary in the repository's stable order. New timeline
+   * pagination uses this rather than offsets while it composes Record data.
+   */
+  after?: RecordListCursor;
+}
+
+export interface RecordListCursor {
+  recordedAt: IsoTimestamp;
+  occurredAt: IsoTimestamp;
+  id: EntityId;
 }
 
 /** Extended Record boundary consumed by history and record-query features. */
@@ -172,6 +183,16 @@ export class SqliteRecordRepository implements RecordHistoryRepository {
         params.push(options.actor);
       }
     }
+    if (options.after !== undefined) {
+      conditions.push(`(recorded_at > ? OR
+        (recorded_at = ? AND occurred_at > ?) OR
+        (recorded_at = ? AND occurred_at = ? AND id > ?))`);
+      params.push(
+        options.after.recordedAt,
+        options.after.recordedAt, options.after.occurredAt,
+        options.after.recordedAt, options.after.occurredAt, options.after.id,
+      );
+    }
     const where = conditions.length === 0 ? '' : `WHERE ${conditions.join(' AND ')}`;
     const limit = options.limit ?? 100;
     const offset = options.offset ?? 0;
@@ -260,6 +281,14 @@ function assertRecordListOptions(options: RecordListOptions): void {
   if (!Number.isInteger(offset) || offset < 0) {
     throw new Error('Record list offset must be a non-negative integer');
   }
+  if (options.after !== undefined && (!isTimestamp(options.after.recordedAt) ||
+    !isTimestamp(options.after.occurredAt) || options.after.id.trim().length === 0)) {
+    throw new Error('Record list after cursor must contain recordedAt, occurredAt, and id');
+  }
+}
+
+function isTimestamp(value: IsoTimestamp): boolean {
+  return value.trim().length > 0 && !Number.isNaN(Date.parse(value));
 }
 
 function assertRange(name: string, range: RecordTimeRange | undefined): void {
