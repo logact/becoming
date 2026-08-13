@@ -173,7 +173,7 @@ Exit gate: workflow resolution is deterministic; occupied states, capacity polic
 
 Exit gate: Project machines initialize atomically; resource allocation/usage contracts and lifecycle history queries are stable; decomposition policies are explicit.
 
-- [ ] [#44](https://github.com/logact/becoming/issues/44) — Atomically initialize independent Project machines from templates (Feature #27) **(processing)**
+- [x] [#44](https://github.com/logact/becoming/issues/44) — Atomically initialize independent Project machines from templates (Feature #27) **(done)**
 - [ ] [#67](https://github.com/logact/becoming/issues/67) — Define project-funded task allocation contracts (Feature #13)
 - [ ] [#76](https://github.com/logact/becoming/issues/76) — Define append-oriented resource usage records (Feature #14)
 - [ ] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9)
@@ -183,7 +183,7 @@ Exit gate: Project machines initialize atomically; resource allocation/usage con
 
 Exit gate: applied Workflow behavior, temporal allocation/consumption, unified timelines, and cycle-safe decomposition pass acceptance and rollback tests.
 
-- [ ] [#45](https://github.com/logact/becoming/issues/45) — Complete workflow application errors, provenance, and acceptance tests (Feature #27)
+- [ ] [#45](https://github.com/logact/becoming/issues/45) — Complete workflow application errors, provenance, and acceptance tests (Feature #27) **(processing)**
 - [ ] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13)
 - [ ] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14)
 - [ ] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15)
@@ -267,6 +267,7 @@ Before closing M1:
 | [#63](https://github.com/logact/becoming/issues/63) | Approximate (worker did not capture boundaries) | Approximate | ~18m | Unavailable (worker runtime did not expose it) | [`f9aacdd`](https://github.com/logact/becoming/commit/f9aacdd) |
 | [#60](https://github.com/logact/becoming/issues/60) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`d673388`](https://github.com/logact/becoming/commit/d673388) |
 | [#79](https://github.com/logact/becoming/issues/79) | Approximate (worker did not capture boundaries) | Approximate | Unavailable | Unavailable (worker runtime did not expose it) | [`82b79de`](https://github.com/logact/becoming/commit/82b79de) |
+| [#44](https://github.com/logact/becoming/issues/44) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`47f4a36`](https://github.com/logact/becoming/commit/47f4a36) |
 
 ## Maintaining the plan
 
