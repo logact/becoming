@@ -177,7 +177,7 @@ Exit gate: Project machines initialize atomically; resource allocation/usage con
 - [x] [#67](https://github.com/logact/becoming/issues/67) — Define project-funded task allocation contracts (Feature #13) **(done)**
 - [x] [#76](https://github.com/logact/becoming/issues/76) — Define append-oriented resource usage records (Feature #14) **(done)**
 - [x] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9) **(done)**
-- [ ] [#100](https://github.com/logact/becoming/issues/100) — Define project-scoped decomposition policies (Feature #21)
+- [ ] [#100](https://github.com/logact/becoming/issues/100) — Define project-scoped decomposition policies (Feature #21) **(processing)**
 
 ### Wave 9 — Applied workflows, allocations, consumption, and timelines
 
@@ -219,7 +219,7 @@ Exit gate: as-of balances, resource exceptions, and lifecycle-enriched Project s
 
 Exit gate: users can query active/resolved resource exceptions and inspect explainable Project progress; all milestone acceptance scenarios pass.
 
-- [ ] [#99](https://github.com/logact/becoming/issues/99) — Query active and resolved resource exceptions (Feature #16) **(processing)**
+- [x] [#99](https://github.com/logact/becoming/issues/99) — Query active and resolved resource exceptions (Feature #16) **(done)**
 - [ ] [#105](https://github.com/logact/becoming/issues/105) — Derive and explain Project progress (Feature #22)
 
 ## Milestone closeout
@@ -293,6 +293,7 @@ Before closing M1:
 | [#84](https://github.com/logact/becoming/issues/84) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`9535cb4`](https://github.com/logact/becoming/commit/9535cb4) |
 | [#97](https://github.com/logact/becoming/issues/97) | Approximate (worker did not capture boundaries) | Approximate | ~6m | Unavailable (worker runtime did not expose it) | [`488538c`](https://github.com/logact/becoming/commit/488538c) |
 | [#98](https://github.com/logact/becoming/issues/98) | Approximate (worker did not capture boundaries) | Approximate | ~7m | Unavailable (worker runtime did not expose it) | [`4af3b4c`](https://github.com/logact/becoming/commit/4af3b4c) |
+| [#99](https://github.com/logact/becoming/issues/99) | Approximate (worker did not capture boundaries) | Approximate | ~14m | Unavailable (worker runtime did not expose it) | [`684b172`](https://github.com/logact/becoming/commit/684b172) |
 
 ## Maintaining the plan
 
