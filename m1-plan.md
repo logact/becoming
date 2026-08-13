@@ -140,7 +140,7 @@ Exit gate: topology, transition validation, Record queries, mutation history, in
 - [x] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6) **(done)**
 - [x] [#60](https://github.com/logact/becoming/issues/60) — Capture update, archive, and restoration provenance (Feature #30) **(done)**
 - [x] [#61](https://github.com/logact/becoming/issues/61) — Define project budget relation contracts (Feature #12) **(done)**
-- [ ] [#65](https://github.com/logact/becoming/issues/65) — Audit relation creation and ending atomically (Feature #5) **(processing)**
+- [x] [#65](https://github.com/logact/becoming/issues/65) — Audit relation creation and ending atomically (Feature #5) **(done)**
 - [x] [#70](https://github.com/logact/becoming/issues/70) — Define origin and transformation relation policies (Feature #8) **(done)**
 - [x] [#90](https://github.com/logact/becoming/issues/90) — Query active and archived Goals (Feature #17) **(done)**
 
@@ -152,7 +152,7 @@ Exit gate: lifecycle transitions and relation changes are atomic with audit data
 - [x] [#55](https://github.com/logact/becoming/issues/55) — Commit lifecycle transitions atomically with concurrency controls (Feature #29) **(done)**
 - [x] [#62](https://github.com/logact/becoming/issues/62) — Create and supersede project resource budgets (Feature #12) **(done)**
 - [ ] [#66](https://github.com/logact/becoming/issues/66) — Query endpoint relationship history and replacements (Feature #5)
-- [ ] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8)
+- [ ] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8) **(processing)**
 - [ ] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10)
 - [ ] [#92](https://github.com/logact/becoming/issues/92) — Implement Project-to-Goal pursuit relations (Feature #20)
 - [ ] [#95](https://github.com/logact/becoming/issues/95) — Implement Task-to-Project membership relations (Feature #18)
@@ -270,6 +270,7 @@ Before closing M1:
 | [#44](https://github.com/logact/becoming/issues/44) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`47f4a36`](https://github.com/logact/becoming/commit/47f4a36) |
 | [#45](https://github.com/logact/becoming/issues/45) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`bccbbe9`](https://github.com/logact/becoming/commit/bccbbe9) |
 | [#70](https://github.com/logact/becoming/issues/70) | Approx. 2026-08-13T07:29Z | Approx. 2026-08-13T07:37Z | ~8m | Unavailable (worker runtime did not expose it) | [`75636bc`](https://github.com/logact/becoming/commit/75636bc) |
+| [#65](https://github.com/logact/becoming/issues/65) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`ccbd0c9`](https://github.com/logact/becoming/commit/ccbd0c9) |
 
 ## Maintaining the plan
 
