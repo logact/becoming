@@ -1,5 +1,10 @@
 # CI/CD
 
+> **Currently disabled.** The GitHub Actions pipeline (`.github/workflows/pipeline.yml`)
+> was removed to speed up the M1 implementation loop; validation runs locally via
+> `npm run typecheck` and `npm test` before each task commit. The notes below
+> describe the pipeline to restore after M1.
+
 The project uses one GitHub Actions pipeline for continuous integration and
 continuous delivery.
 
