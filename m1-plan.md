@@ -104,7 +104,7 @@ Exit gate: workflow versioning/state storage, label assignment, Project State st
 
 - [x] [#32](https://github.com/logact/becoming/issues/32) — Publish immutable workflow versions with explicit lineage (Feature #23)
 - [x] [#35](https://github.com/logact/becoming/issues/35) — Manage temporal label assignments for every core entity type (Feature #24)
-- [ ] [#37](https://github.com/logact/becoming/issues/37) — Persist workflow state templates and machine-scoped queries (Feature #25)
+- [ ] [#37](https://github.com/logact/becoming/issues/37) — Persist workflow state templates and machine-scoped queries (Feature #25) **(processing)**
 - [ ] [#46](https://github.com/logact/becoming/issues/46) — Implement independent Project State management (Feature #28)
 - [ ] [#51](https://github.com/logact/becoming/issues/51) — Persist and query resource catalog entries (Feature #11)
 - [ ] [#58](https://github.com/logact/becoming/issues/58) — Define the atomic core-mutation provenance contract (Feature #30)
