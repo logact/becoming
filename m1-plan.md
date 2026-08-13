@@ -174,7 +174,7 @@ Exit gate: workflow resolution is deterministic; occupied states, capacity polic
 Exit gate: Project machines initialize atomically; resource allocation/usage contracts and lifecycle history queries are stable; decomposition policies are explicit.
 
 - [x] [#44](https://github.com/logact/becoming/issues/44) — Atomically initialize independent Project machines from templates (Feature #27) **(done)**
-- [ ] [#67](https://github.com/logact/becoming/issues/67) — Define project-funded task allocation contracts (Feature #13) **(processing)**
+- [x] [#67](https://github.com/logact/becoming/issues/67) — Define project-funded task allocation contracts (Feature #13) **(done)**
 - [ ] [#76](https://github.com/logact/becoming/issues/76) — Define append-oriented resource usage records (Feature #14)
 - [x] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9) **(done)**
 - [ ] [#100](https://github.com/logact/becoming/issues/100) — Define project-scoped decomposition policies (Feature #21)
@@ -184,7 +184,7 @@ Exit gate: Project machines initialize atomically; resource allocation/usage con
 Exit gate: applied Workflow behavior, temporal allocation/consumption, unified timelines, and cycle-safe decomposition pass acceptance and rollback tests.
 
 - [x] [#45](https://github.com/logact/becoming/issues/45) — Complete workflow application errors, provenance, and acceptance tests (Feature #27) **(done)**
-- [ ] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13)
+- [ ] [#68](https://github.com/logact/becoming/issues/68) — Create and supersede task resource allocations (Feature #13) **(processing)**
 - [ ] [#78](https://github.com/logact/becoming/issues/78) — Record and correct actual resource consumption (Feature #14)
 - [ ] [#82](https://github.com/logact/becoming/issues/82) — Specify unit-safe resource balance semantics (Feature #15)
 - [ ] [#86](https://github.com/logact/becoming/issues/86) — Compose complete entity timeline queries (Feature #10)
@@ -274,6 +274,7 @@ Before closing M1:
 | [#81](https://github.com/logact/becoming/issues/81) | Approximate (worker did not capture boundaries) | Approximate | ~16m | Unavailable (worker runtime did not expose it) | [`d25d4b9`](https://github.com/logact/becoming/commit/d25d4b9) |
 | [#71](https://github.com/logact/becoming/issues/71) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`d280218`](https://github.com/logact/becoming/commit/d280218) |
 | [#66](https://github.com/logact/becoming/issues/66) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`ed4d247`](https://github.com/logact/becoming/commit/ed4d247) |
+| [#67](https://github.com/logact/becoming/issues/67) | Unavailable | Unavailable | Unavailable | Unavailable (worker runtime did not expose it) | [`ac2dced`](https://github.com/logact/becoming/commit/ac2dced) |
 
 ## Maintaining the plan
 
