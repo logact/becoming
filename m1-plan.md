@@ -151,7 +151,7 @@ Exit gate: lifecycle transitions and relation changes are atomic with audit data
 - [x] [#42](https://github.com/logact/becoming/issues/42) — Add transition lifecycle services and provenance coverage (Feature #26) **(done)**
 - [x] [#55](https://github.com/logact/becoming/issues/55) — Commit lifecycle transitions atomically with concurrency controls (Feature #29) **(done)**
 - [x] [#62](https://github.com/logact/becoming/issues/62) — Create and supersede project resource budgets (Feature #12) **(done)**
-- [ ] [#66](https://github.com/logact/becoming/issues/66) — Query endpoint relationship history and replacements (Feature #5)
+- [ ] [#66](https://github.com/logact/becoming/issues/66) — Query endpoint relationship history and replacements (Feature #5) **(processing)**
 - [ ] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8) **(processing)**
 - [ ] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10)
 - [ ] [#92](https://github.com/logact/becoming/issues/92) — Implement Project-to-Goal pursuit relations (Feature #20)
@@ -176,7 +176,7 @@ Exit gate: Project machines initialize atomically; resource allocation/usage con
 - [x] [#44](https://github.com/logact/becoming/issues/44) — Atomically initialize independent Project machines from templates (Feature #27) **(done)**
 - [ ] [#67](https://github.com/logact/becoming/issues/67) — Define project-funded task allocation contracts (Feature #13)
 - [ ] [#76](https://github.com/logact/becoming/issues/76) — Define append-oriented resource usage records (Feature #14)
-- [ ] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9) **(processing)**
+- [x] [#81](https://github.com/logact/becoming/issues/81) — Query durable lifecycle audit history (Feature #9) **(done)**
 - [ ] [#100](https://github.com/logact/becoming/issues/100) — Define project-scoped decomposition policies (Feature #21)
 
 ### Wave 9 — Applied workflows, allocations, consumption, and timelines
@@ -271,6 +271,7 @@ Before closing M1:
 | [#45](https://github.com/logact/becoming/issues/45) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`bccbbe9`](https://github.com/logact/becoming/commit/bccbbe9) |
 | [#70](https://github.com/logact/becoming/issues/70) | Approx. 2026-08-13T07:29Z | Approx. 2026-08-13T07:37Z | ~8m | Unavailable (worker runtime did not expose it) | [`75636bc`](https://github.com/logact/becoming/commit/75636bc) |
 | [#65](https://github.com/logact/becoming/issues/65) | Approximate (worker did not capture boundaries) | Approximate | ~10m | Unavailable (worker runtime did not expose it) | [`ccbd0c9`](https://github.com/logact/becoming/commit/ccbd0c9) |
+| [#81](https://github.com/logact/becoming/issues/81) | Approximate (worker did not capture boundaries) | Approximate | ~16m | Unavailable (worker runtime did not expose it) | [`d25d4b9`](https://github.com/logact/becoming/commit/d25d4b9) |
 
 ## Maintaining the plan
 
