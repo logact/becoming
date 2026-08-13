@@ -109,7 +109,7 @@ Exit gate: workflow versioning/state storage, label assignment, Project State st
 - [x] [#51](https://github.com/logact/becoming/issues/51) — Persist and query resource catalog entries (Feature #11)
 - [x] [#58](https://github.com/logact/becoming/issues/58) — Define the atomic core-mutation provenance contract (Feature #30)
 - [x] [#74](https://github.com/logact/becoming/issues/74) — Implement policy-validated relation create and end operations (Feature #19)
-- [ ] [#77](https://github.com/logact/becoming/issues/77) — Define the lifecycle-transition audit payload (Feature #9) **(processing)**
+- [x] [#77](https://github.com/logact/becoming/issues/77) — Define the lifecycle-transition audit payload (Feature #9)
 
 ### Wave 4 — Core mutation services
 
