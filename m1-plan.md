@@ -150,7 +150,7 @@ Exit gate: lifecycle transitions and relation changes are atomic with audit data
 
 - [x] [#42](https://github.com/logact/becoming/issues/42) — Add transition lifecycle services and provenance coverage (Feature #26) **(done)**
 - [x] [#55](https://github.com/logact/becoming/issues/55) — Commit lifecycle transitions atomically with concurrency controls (Feature #29) **(done)**
-- [ ] [#62](https://github.com/logact/becoming/issues/62) — Create and supersede project resource budgets (Feature #12) **(processing)**
+- [x] [#62](https://github.com/logact/becoming/issues/62) — Create and supersede project resource budgets (Feature #12) **(done)**
 - [ ] [#66](https://github.com/logact/becoming/issues/66) — Query endpoint relationship history and replacements (Feature #5)
 - [ ] [#71](https://github.com/logact/becoming/issues/71) — Create and end lineage links with provenance (Feature #8)
 - [ ] [#85](https://github.com/logact/becoming/issues/85) — Define the unified entity timeline event contract (Feature #10)
@@ -163,7 +163,7 @@ Exit gate: workflow resolution is deterministic; occupied states, capacity polic
 
 - [ ] [#43](https://github.com/logact/becoming/issues/43) — Model workflow applicability and deterministic resolution (Feature #27) **(processing)**
 - [ ] [#48](https://github.com/logact/becoming/issues/48) — Protect occupied Project States during archival and migration (Feature #28) **(processing)**
-- [ ] [#63](https://github.com/logact/becoming/issues/63) — Query budget history and enforce capacity policy (Feature #12)
+- [ ] [#63](https://github.com/logact/becoming/issues/63) — Query budget history and enforce capacity policy (Feature #12) **(processing)**
 - [ ] [#72](https://github.com/logact/becoming/issues/72) — Query immediate sources and derivatives safely (Feature #8)
 - [ ] [#79](https://github.com/logact/becoming/issues/79) — Commit state history and transition audit atomically (Feature #9)
 - [ ] [#93](https://github.com/logact/becoming/issues/93) — Query current and historical Goal pursuit (Feature #20)
@@ -261,6 +261,7 @@ Before closing M1:
 | [#41](https://github.com/logact/becoming/issues/41) | Approximate (worker did not capture boundaries) | Approximate | ~20m | Unavailable (worker runtime did not expose it) | [`fca2cc3`](https://github.com/logact/becoming/commit/fca2cc3f1ff11e7f54014c1a1845c188c8d9f345) |
 | [#42](https://github.com/logact/becoming/issues/42) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`d3ce6d4`](https://github.com/logact/becoming/commit/d3ce6d463f6f372c6e71386f0e54a3b240c2fcd3) |
 | [#55](https://github.com/logact/becoming/issues/55) | Approximate (worker did not capture boundaries) | Approximate | ~12m | Unavailable (worker runtime did not expose it) | [`b76f713`](https://github.com/logact/becoming/commit/b76f713) |
+| [#62](https://github.com/logact/becoming/issues/62) | Approximate (worker did not capture boundaries) | Approximate | ~12m | Unavailable (worker runtime did not expose it) | [`dcfdbda`](https://github.com/logact/becoming/commit/dcfdbda48e92274c0e3d3c8a5dbf347052ba2f95) |
 
 ## Maintaining the plan
 
