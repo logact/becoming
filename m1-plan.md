@@ -137,12 +137,12 @@ Exit gate: topology, transition validation, Record queries, mutation history, in
 - [ ] [#39](https://github.com/logact/becoming/issues/39) — Complete workflow state history and provenance coverage (Feature #25) **(processing)**
 - [ ] [#41](https://github.com/logact/becoming/issues/41) — Enforce workflow transition topology and duplicate policies (Feature #26)
 - [ ] [#52](https://github.com/logact/becoming/issues/52) — Build the Project transition validation engine (Feature #29)
-- [ ] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6)
+- [ ] [#57](https://github.com/logact/becoming/issues/57) — Query, classify, and link occurrence Records (Feature #6) **(processing)**
 - [ ] [#60](https://github.com/logact/becoming/issues/60) — Capture update, archive, and restoration provenance (Feature #30)
 - [ ] [#61](https://github.com/logact/becoming/issues/61) — Define project budget relation contracts (Feature #12)
 - [ ] [#65](https://github.com/logact/becoming/issues/65) — Audit relation creation and ending atomically (Feature #5)
 - [ ] [#70](https://github.com/logact/becoming/issues/70) — Define origin and transformation relation policies (Feature #8)
-- [ ] [#90](https://github.com/logact/becoming/issues/90) — Query active and archived Goals (Feature #17) **(processing)**
+- [x] [#90](https://github.com/logact/becoming/issues/90) — Query active and archived Goals (Feature #17) **(done)**
 
 ### Wave 6 — Atomic lifecycle and semantic joins
 
@@ -251,6 +251,7 @@ Before closing M1:
 | [#89](https://github.com/logact/becoming/issues/89) | ~2026-08-13T06:18Z | 2026-08-13T06:26:28Z | ~8m | Unavailable (worker runtime did not expose it) | [`457d9e0`](https://github.com/logact/becoming/commit/457d9e033d43c2ee730c9c2cb41bdc09b323d65d) |
 | [#91](https://github.com/logact/becoming/issues/91) | ~2026-08-13T06:27Z | ~2026-08-13T06:35Z | ~8m | Unavailable (worker runtime did not expose it) | [`140d714`](https://github.com/logact/becoming/commit/140d714) |
 | [#64](https://github.com/logact/becoming/issues/64) | Approximate (worker did not capture boundaries) | Approximate | ~11m | Unavailable (worker runtime did not expose it) | [`c1ae076`](https://github.com/logact/becoming/commit/c1ae076e8d8461f3a9a7608bc363e5cc5398e5f4) |
+| [#90](https://github.com/logact/becoming/issues/90) | Approx. 2026-08-13T06:27Z | 2026-08-13T06:32:51Z | ~6m | Unavailable (worker runtime did not expose it) | [`861b683`](https://github.com/logact/becoming/commit/861b6832c98a2d78e57bc465ac9be4235f21825d) |
 
 ## Maintaining the plan
 
