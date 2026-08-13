@@ -17,6 +17,13 @@ export type ResourceExceptionType =
 /** Active means the threshold holds at `asOf`; otherwise that identity is resolved. */
 export type ResourceExceptionStatus = 'active' | 'resolved';
 
+/**
+ * V1 severity is a presentation and ordering hint, not an automated action.
+ * An exhausted Project cannot fund further consumption, while the two strict
+ * overage conditions remain warnings for an explicit command policy to handle.
+ */
+export type ResourceExceptionSeverity = 'critical' | 'warning';
+
 /** Stable, deterministic source trace retained with every derived exception. */
 export interface ResourceExceptionContributorIds {
   budgetRelationIds: readonly EntityId[];
@@ -33,6 +40,7 @@ export interface ResourceException {
   /** Stable across current and historical evaluations; it excludes amounts and timestamps. */
   identity: string;
   type: ResourceExceptionType;
+  severity: ResourceExceptionSeverity;
   status: ResourceExceptionStatus;
   resourceId: EntityId;
   unit: string;
@@ -101,6 +109,11 @@ export function resourceExceptionStatus(
   return isResourceExceptionActive(type, planned, comparison) ? 'active' : 'resolved';
 }
 
+/** Severity stays stable for an exception identity across current and as-of views. */
+export function resourceExceptionSeverity(type: ResourceExceptionType): ResourceExceptionSeverity {
+  return type === 'project_exhausted' ? 'critical' : 'warning';
+}
+
 /**
  * The identity names the affected planning scope, not a transient amount or
  * contributor set. Thus an exception stays identifiable through corrections,
@@ -134,6 +147,7 @@ export function createResourceException(input: NewResourceException): ResourceEx
   return {
     identity,
     type: input.type,
+    severity: resourceExceptionSeverity(input.type),
     status: resourceExceptionStatus(input.type, input.planned, input.comparison),
     resourceId: input.resourceId,
     unit: input.planned.unit,
