@@ -58,9 +58,10 @@ export interface ProjectDetailScreenProps {
  * Overview segment (facts, pursued Goals, member Tasks, persisted activity);
  * edit and confirmed archive. #134 owns the shell and Overview only —
  * Structure and Progress render as clearly-labeled placeholder panes until
- * #135/#136 inject their content through `ProjectDetailSlots`. Presentation
- * translates service read models; it never re-derives pursuit, membership,
- * archive, or progress rules.
+ * #135/#136 inject their content through `ProjectDetailSlots`, and #132
+ * injects the Overview's membership actions through the same slots.
+ * Presentation translates service read models; it never re-derives pursuit,
+ * membership, archive, or progress rules.
  */
 export function ProjectDetailScreen({ entityId, slots }: ProjectDetailScreenProps) {
   const services = useAppServices();
@@ -266,6 +267,7 @@ export function ProjectDetailScreen({ entityId, slots }: ProjectDetailScreenProp
           memberTasks={memberTasks}
           activity={activity}
           refresh={reload}
+          renderMembershipActions={slots?.renderMembershipActions}
         />
       )}
       {segment === 'structure' &&

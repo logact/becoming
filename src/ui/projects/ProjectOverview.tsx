@@ -1,4 +1,5 @@
 import React from 'react';
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Project } from '../../domain/project';
@@ -10,6 +11,7 @@ import { useShellNavigation } from '../navigation/NavigationShell';
 import { StatusBadge } from '../shared/StatusBadge';
 import { colors, radius, spacing } from '../shared/theme';
 import { describeProjectActivity } from './projectActivity';
+import type { ProjectMembershipSlotContext } from './projectDetailSlots';
 import { requestCrossDestinationDetail } from './crossDestinationDetail';
 import { ProjectPursuitActions } from './pursuit/ProjectPursuitActions';
 
@@ -23,6 +25,12 @@ export interface ProjectOverviewProps {
   activity: TimelineEvent[];
   /** Re-run the detail queries after a committed mutation. */
   refresh: () => void;
+  /**
+   * Optional membership actions slot (#132): rendered in the Member tasks
+   * section header for active Projects. When absent, membership stays
+   * display-only.
+   */
+  renderMembershipActions?: (context: ProjectMembershipSlotContext) => ReactNode;
 }
 
 /**
@@ -38,6 +46,7 @@ export function ProjectOverview({
   memberTasks,
   activity,
   refresh,
+  renderMembershipActions,
 }: ProjectOverviewProps) {
   const navigation = useShellNavigation();
   const archived = project.archivedAt !== null;
@@ -112,6 +121,8 @@ export function ProjectOverview({
         <Text style={styles.sectionTitle} maxFontSizeMultiplier={2}>
           Member tasks
         </Text>
+        {!archived && renderMembershipActions !== undefined &&
+          renderMembershipActions({ project, memberTasks, refresh })}
       </View>
       {memberTasks.length === 0 ? (
         <View style={styles.emptySection}>
@@ -119,7 +130,9 @@ export function ProjectOverview({
             No member Tasks
           </Text>
           <Text style={styles.emptyMessage} maxFontSizeMultiplier={2}>
-            Tasks join this Project through membership, added by the Task planning flow.
+            {renderMembershipActions !== undefined
+              ? 'Add an existing Task to organize its execution here.'
+              : 'Tasks join this Project through membership, added by the Task planning flow.'}
           </Text>
         </View>
       ) : (

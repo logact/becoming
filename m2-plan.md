@@ -78,7 +78,7 @@ A task is done when:
 
 - **Gate A — Planning foundations ✅ (2026-08-15):** #131 and #133 are merged; Goal planning and reusable relation feedback pass component and application-integration tests.
 - **Gate B — Goal pursuit ✅ (2026-08-15):** #134 is merged; Projects can be managed from Project or Goal context and active pursuit history remains intact.
-- **Gate C — Task membership:** #132 is merged; Task CRUD, Project-context selection, membership changes, archive behavior, and duplicate feedback pass integration tests.
+- **Gate C — Task membership ✅ (2026-08-15):** #132 is merged; Task CRUD, Project-context selection, membership changes, archive behavior, and duplicate feedback pass integration tests.
 - **Gate D — Decomposition:** #135 is merged; the indented Project hierarchy supports all valid child types and exposes rejected structures and traversal findings.
 - **Gate E — Execution insight:** #136 is merged; execution snapshots drive all progress categories, zero-denominator behavior, lifecycle display, and integrity findings.
 - **Gate F — Milestone acceptance:** the complete native loop works across Goal, Project, Task, decomposition, and progress screens; all six tasks and Features #17–#22 are ready to close.
@@ -165,23 +165,23 @@ Task acceptance scenarios:
 
 Exit gate: Task CRUD/archive flows, priority validation, Project-context selection, and membership start/end actions pass refresh and persistence tests.
 
-#### [#132](https://github.com/logact/becoming/issues/132) — Build Task and Project membership UI (Feature #18)
+#### [#132](https://github.com/logact/becoming/issues/132) — Build Task and Project membership UI (Feature #18) ✅ implemented 2026-08-15
 
 Prototype-aligned delivery:
 
-- [ ] Build the Tasks destination using the shared list scaffold: planning hero, title search, Active/Archived filter, target/priority context, lifecycle-status badge, populated/empty/loading/error states, and active-only New Task action.
-- [ ] Build New Task and Edit Task sheets for title, target description, description, exit criteria, and optional whole-number priority 1–5. Show required-field and priority errors inline without discarding the draft.
-- [ ] Build Task detail with executable-work heading, target, lifecycle-status and priority badges, current Project fact, read-only lifecycle fact, recent persisted activity, edit, and confirmed archive. Keep the prototype's explicit note that lifecycle transition actions belong to Feature #29.
-- [ ] Provide Add to a Project from an unassigned Task and Add an existing Task from Project Overview. Candidate rows explain archived, duplicate, or already-belongs-to-another-Project rejection using #133.
-- [ ] Provide confirmed Remove from Project for an active membership. Explain that the active membership ends while the Task, Project, and prior association remain; never implement this by persisting a Project field on Task as the prototype mock does.
-- [ ] Refresh Task detail/list, Project Overview counts/rows, activity, hierarchy eligibility, and execution snapshot after successful Task or membership mutations.
+- [x] Build the Tasks destination using the shared list scaffold: planning hero, title search, Active/Archived filter, target/priority context, lifecycle-status badge, populated/empty/loading/error states, and active-only New Task action.
+- [x] Build New Task and Edit Task sheets for title, target description, description, exit criteria, and optional whole-number priority 1–5. Show required-field and priority errors inline without discarding the draft.
+- [x] Build Task detail with executable-work heading, target, lifecycle-status and priority badges, current Project fact, read-only lifecycle fact, recent persisted activity, edit, and confirmed archive. Keep the prototype's explicit note that lifecycle transition actions belong to Feature #29.
+- [x] Provide Add to a Project from an unassigned Task and Add an existing Task from Project Overview. Candidate rows explain archived, duplicate, or already-belongs-to-another-Project rejection using #133.
+- [x] Provide confirmed Remove from Project for an active membership. Explain that the active membership ends while the Task, Project, and prior association remain; never implement this by persisting a Project field on Task as the prototype mock does.
+- [x] Refresh Task detail/list, Project Overview counts/rows, activity, hierarchy eligibility, and execution snapshot after successful Task or membership mutations.
 
 Task acceptance scenarios:
 
-- [ ] Field round trips include description and exit criteria; priority accepts blank, 1, and 5 and rejects fractions, non-numbers, 0, and 6.
-- [ ] Membership start/end, duplicate/cardinality rejection, archived endpoints, cancellation, recoverable retry, and retained history pass integration tests.
-- [ ] Archive removes a Task from Active, retains Archived/history access, and prevents forbidden endpoint selection.
-- [ ] Task values and semantic memberships survive screen refresh and application reinitialization through SQLite.
+- [x] Field round trips include description and exit criteria; priority accepts blank, 1, and 5 and rejects fractions, non-numbers, 0, and 6.
+- [x] Membership start/end, duplicate/cardinality rejection, archived endpoints, cancellation, recoverable retry, and retained history pass integration tests.
+- [x] Archive removes a Task from Active, retains Archived/history access, and prevents forbidden endpoint selection.
+- [x] Task values and semantic memberships survive screen refresh and application reinitialization through SQLite.
 
 ### Wave 4 — Project-scoped decomposition
 
@@ -249,7 +249,7 @@ Before closing M2:
 | [#131](https://github.com/logact/becoming/issues/131) | 2026-08-15 | 2026-08-15 | — | — | 963a437 |
 | [#133](https://github.com/logact/becoming/issues/133) | 2026-08-15 | 2026-08-15 | — | — | 963a437 |
 | [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 | 2026-08-15 | — | — | 218e463 |
-| [#132](https://github.com/logact/becoming/issues/132) | — | — | — | — | — |
+| [#132](https://github.com/logact/becoming/issues/132) | 2026-08-15 | 2026-08-15 | — | — | see wave-3 commit |
 | [#135](https://github.com/logact/becoming/issues/135) | — | — | — | — | — |
 | [#136](https://github.com/logact/becoming/issues/136) | — | — | — | — | — |
 
