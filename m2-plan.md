@@ -79,7 +79,7 @@ A task is done when:
 - **Gate A — Planning foundations ✅ (2026-08-15):** #131 and #133 are merged; Goal planning and reusable relation feedback pass component and application-integration tests.
 - **Gate B — Goal pursuit ✅ (2026-08-15):** #134 is merged; Projects can be managed from Project or Goal context and active pursuit history remains intact.
 - **Gate C — Task membership ✅ (2026-08-15):** #132 is merged; Task CRUD, Project-context selection, membership changes, archive behavior, and duplicate feedback pass integration tests.
-- **Gate D — Decomposition:** #135 is merged; the indented Project hierarchy supports all valid child types and exposes rejected structures and traversal findings.
+- **Gate D — Decomposition ✅ (2026-08-15):** #135 is merged; the indented Project hierarchy supports all valid child types and exposes rejected structures and traversal findings.
 - **Gate E — Execution insight:** #136 is merged; execution snapshots drive all progress categories, zero-denominator behavior, lifecycle display, and integrity findings.
 - **Gate F — Milestone acceptance:** the complete native loop works across Goal, Project, Task, decomposition, and progress screens; all six tasks and Features #17–#22 are ready to close.
 
@@ -187,23 +187,23 @@ Task acceptance scenarios:
 
 Exit gate: the indented Goal/Task hierarchy renders deterministically, supports every valid child mutation, preserves expansion state, and exposes cycles, invalid structures, and traversal truncation.
 
-#### [#135](https://github.com/logact/becoming/issues/135) — Build Goal and Task decomposition UI (Feature #21)
+#### [#135](https://github.com/logact/becoming/issues/135) — Build Goal and Task decomposition UI (Feature #21) ✅ implemented 2026-08-15
 
 Prototype-aligned delivery:
 
-- [ ] Fill the Project detail Structure segment with a deterministic, accessible indented tree. Each row exposes expand/collapse, Goal or Task type text, entity title, Task lifecycle status when available, and a contextual add-child action.
-- [ ] For a Project with no root structure, show the prototype's explicit No structure yet state and route Pursue a Goal through #134. Do not fabricate a hierarchy root in presentation code.
-- [ ] Explain the valid directions in context: Goal -> Goal or Task, and Task -> Task. The add-child sheet combines eligible Goals and Tasks and keeps rejected candidates visible with distinct #133 reasons where useful.
-- [ ] Commit Goal->Goal, Goal->Task, and Task->Task additions through decomposition services. Add a contextual, confirmed end-edge action that removes only the active edge and preserves both entities and historical relation; this required action extends the current prototype.
-- [ ] Preserve expansion state by stable typed node identity after add/end/refresh operations. A collapsed branch remains collapsed when its node still exists.
-- [ ] Render loading, bounded-query error/retry, missing endpoint, cycle/integrity, and traversal-truncated states. Show truncation guidance only when reported by the query, including enough context to prevent a partial tree from looking complete.
+- [x] Fill the Project detail Structure segment with a deterministic, accessible indented tree. Each row exposes expand/collapse, Goal or Task type text, entity title, Task lifecycle status when available, and a contextual add-child action.
+- [x] For a Project with no root structure, show the prototype's explicit No structure yet state and route Pursue a Goal through #134. Do not fabricate a hierarchy root in presentation code.
+- [x] Explain the valid directions in context: Goal -> Goal or Task, and Task -> Task. The add-child sheet combines eligible Goals and Tasks and keeps rejected candidates visible with distinct #133 reasons where useful.
+- [x] Commit Goal->Goal, Goal->Task, and Task->Task additions through decomposition services. Add a contextual, confirmed end-edge action that removes only the active edge and preserves both entities and historical relation; this required action extends the current prototype.
+- [x] Preserve expansion state by stable typed node identity after add/end/refresh operations. A collapsed branch remains collapsed when its node still exists.
+- [x] Render loading, bounded-query error/retry, missing endpoint, cycle/integrity, and traversal-truncated states. Show truncation guidance only when reported by the query, including enough context to prevent a partial tree from looking complete.
 
 Task acceptance scenarios:
 
-- [ ] Empty, root-only, deeply nested, mixed Goal/Task, collapsed, and deterministically ordered structures pass accessible rendering tests.
-- [ ] Every supported add-child and end-edge mutation refreshes the tree, affected entity/activity views, and later execution projections without deleting endpoints.
-- [ ] Invalid direction/type, duplicate placement, cycle, cardinality, missing endpoint, archived endpoint, cross-Project structure, truncation, retry, and state preservation are covered.
-- [ ] The result remains an indented planning structure, not a generic relation editor or graph visualization.
+- [x] Empty, root-only, deeply nested, mixed Goal/Task, collapsed, and deterministically ordered structures pass accessible rendering tests.
+- [x] Every supported add-child and end-edge mutation refreshes the tree, affected entity/activity views, and later execution projections without deleting endpoints.
+- [x] Invalid direction/type, duplicate placement, cycle, cardinality, missing endpoint, archived endpoint, cross-Project structure, truncation, retry, and state preservation are covered.
+- [x] The result remains an indented planning structure, not a generic relation editor or graph visualization.
 
 ### Wave 5 — Execution and derived progress
 
@@ -250,10 +250,10 @@ Before closing M2:
 | [#133](https://github.com/logact/becoming/issues/133) | 2026-08-15 02:33:16 | 2026-08-15 02:51:26 | 18m10s | — | 963a437 |
 | [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 02:51:26 | 2026-08-15 03:13:23 | 21m57s | — | 218e463 |
 | [#132](https://github.com/logact/becoming/issues/132) | 2026-08-15 03:13:23 | 2026-08-15 03:36:11 | 22m48s | — | 67138fe |
-| [#135](https://github.com/logact/becoming/issues/135) | — | — | — | — | — |
+| [#135](https://github.com/logact/becoming/issues/135) | 2026-08-15 03:36:11 | 2026-08-15 07:16:49 | 3h40m38s | — | see wave-4 commit |
 | [#136](https://github.com/logact/becoming/issues/136) | — | — | — | — | — |
 
-Note: started/completed are recorded to the second (UTC). Start times are bounded by the previous wave's commit and completion by the wave's commit, so they are accurate to within about a minute. #131 and #133 ran in parallel in Wave 1. #132 includes one interruption and resume.
+Note: started/completed are recorded to the second (UTC). Start times are bounded by the previous wave's commit and completion by the wave's commit, so they are accurate to within about a minute. #131 and #133 ran in parallel in Wave 1. #132 includes one interruption and resume. #135's elapsed includes a ~3.5h pause for a usage-quota refresh; active work time was roughly 25 minutes.
 
 ## Maintaining the plan
 
