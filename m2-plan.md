@@ -251,7 +251,7 @@ Before closing M2:
 | [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 02:51:26 | 2026-08-15 03:13:23 | 21m57s | — | 218e463 |
 | [#132](https://github.com/logact/becoming/issues/132) | 2026-08-15 03:13:23 | 2026-08-15 03:36:11 | 22m48s | — | 67138fe |
 | [#135](https://github.com/logact/becoming/issues/135) | 2026-08-15 03:36:11 | 2026-08-15 07:16:49 | 3h40m38s | — | 086b8b1 |
-| [#136](https://github.com/logact/becoming/issues/136) | 2026-08-15 07:18:00 | 2026-08-15 07:40:18 | 22m18s | — | see wave-5 commit |
+| [#136](https://github.com/logact/becoming/issues/136) | 2026-08-15 07:18:00 | 2026-08-15 07:40:18 | 22m18s | — | 6ccc8c3 |
 
 Note: started/completed are recorded to the second (UTC). Start times are bounded by the previous wave's commit and completion by the wave's commit, so they are accurate to within about a minute. #131 and #133 ran in parallel in Wave 1. #132 includes one interruption and resume. #135's elapsed includes a ~3.5h pause for a usage-quota refresh; active work time was roughly 25 minutes.
 
