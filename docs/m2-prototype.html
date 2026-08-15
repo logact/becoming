@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Becoming — M2 Native UI Prototype</title>
+<style>
+  :root {
+    --blue: #007aff;
+    --red: #ff3b30;
+    --orange: #ff9500;
+    --green: #34c759;
+    --gray: #8e8e93;
+    --bg: #f2f2f7;
+    --card: #ffffff;
+    --separator: #d1d1d6;
+    --text: #1c1c1e;
+    --text-2: #6c6c70;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #3a3a3c;
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    padding: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  /* ---------- phone frame ---------- */
+  .phone {
+    width: 390px;
+    height: 844px;
+    background: var(--bg);
+    border-radius: 44px;
+    border: 10px solid #111;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .statusbar {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    font-size: 14px;
+    font-weight: 600;
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .screen { flex: 1; overflow-y: auto; position: relative; }
+  .navbar {
+    padding: 8px 16px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    border-bottom: 0.5px solid var(--separator);
+  }
+  .navbar h1 { font-size: 28px; font-weight: 700; flex: 1; }
+  .navbar h1.small { font-size: 17px; font-weight: 600; }
+  .nav-back {
+    border: none; background: none; color: var(--blue);
+    font-size: 17px; min-width: 44px; min-height: 44px; cursor: pointer; text-align: left;
+  }
+  .nav-action {
+    border: none; background: none; color: var(--blue);
+    font-size: 17px; min-width: 44px; min-height: 44px; cursor: pointer; font-weight: 600;
+  }
+  .content { padding: 12px 16px 24px; }
+  /* ---------- tab bar ---------- */
+  .tabbar {
+    height: 84px;
+    border-top: 0.5px solid var(--separator);
+    background: rgba(255,255,255,0.92);
+    display: flex;
+    flex-shrink: 0;
+    padding-bottom: 18px;
+  }
+  .tab {
+    flex: 1; border: none; background: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    color: var(--gray); font-size: 11px; min-height: 44px;
+  }
+  .tab .icon { font-size: 22px; }
+  .tab.active { color: var(--blue); }
+  /* ---------- lists & cards ---------- */
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px;
+    min-height: 48px;
+    border-bottom: 0.5px solid var(--separator);
+    cursor: pointer;
+    background: var(--card);
+    width: 100%;
+    border-top: none; border-left: none; border-right: none;
+    text-align: left;
+    font-size: 16px;
+    color: var(--text);
+  }
+  .row:last-child { border-bottom: none; }
+  .row .chev { margin-left: auto; color: var(--gray); }
+  .row .sub { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+  .row.disabled { opacity: 0.45; cursor: not-allowed; }
+  .row.destructive { color: var(--red); justify-content: center; }
+  .section-title {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px;
+    color: var(--text-2); margin: 18px 16px 6px;
+  }
+  .section-note { font-size: 13px; color: var(--text-2); margin: 6px 16px 0; }
+  /* ---------- segmented control ---------- */
+  .segmented {
+    display: flex; background: #e5e5ea; border-radius: 9px; padding: 2px; margin: 4px 0 12px;
+  }
+  .segmented button {
+    flex: 1; border: none; background: none; padding: 7px 0; border-radius: 7px;
+    font-size: 14px; cursor: pointer; color: var(--text); min-height: 32px;
+  }
+  .segmented button.active { background: #fff; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+  /* ---------- badges (color-independent: icon + text) ---------- */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 600;
+    border-radius: 6px; padding: 3px 8px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .badge.complete     { color: #1f7a38; background: #e7f6ec; }
+  .badge.incomplete   { color: #0b5cad; background: #e6f0fb; }
+  .badge.blocked      { color: #a05a00; background: #fdf1de; }
+  .badge.unmanaged    { color: #5c5c60; background: #eeeef0; }
+  .badge.uninitialized{ color: #5c5c60; background: #eeeef0; border-style: dashed; }
+  .badge.invalid      { color: #b3261e; background: #fdecea; }
+  .badge.archived     { color: #5c5c60; background: #eeeef0; }
+  .badge.relation     { color: #0b5cad; background: #e6f0fb; }
+  .badge.ended        { color: #5c5c60; background: #eeeef0; }
+  /* ---------- banners & feedback ---------- */
+  .banner {
+    margin: 12px 16px 0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 14px;
+    display: flex; gap: 10px; align-items: flex-start;
+  }
+  .banner .b-icon { font-size: 18px; line-height: 1.2; }
+  .banner .b-title { font-weight: 700; margin-bottom: 2px; }
+  .banner.error   { background: #fdecea; color: #8c1d18; border: 1px solid #f5c6c2; }
+  .banner.info    { background: #e6f0fb; color: #0b4f8a; border: 1px solid #c2d9f0; }
+  .banner.warning { background: #fdf1de; color: #7a4a00; border: 1px solid #f0dcB8; }
+  .banner.neutral { background: #eeeef0; color: #4c4c50; border: 1px solid var(--separator); }
+  .banner .b-dismiss { margin-left: auto; border: none; background: none; font-size: 16px; cursor: pointer; color: inherit; min-width: 32px; min-height: 32px; }
+  /* ---------- empty / loading / error states ---------- */
+  .state-block { text-align: center; padding: 48px 32px; color: var(--text-2); }
+  .state-block .s-icon { font-size: 44px; margin-bottom: 10px; }
+  .state-block .s-title { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .state-block .s-body { font-size: 14px; line-height: 1.45; }
+  .spinner {
+    width: 28px; height: 28px; border: 3px solid #d1d1d6; border-top-color: var(--blue);
+    border-radius: 50%; margin: 0 auto 14px; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* ---------- forms ---------- */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 5px; }
+  .field input, .field textarea, .field select {
+    width: 100%; border: 1px solid var(--separator); border-radius: 10px;
+    padding: 11px 12px; font-size: 16px; background: #fff; font-family: inherit;
+  }
+  .field textarea { min-height: 74px; resize: vertical; }
+  .field .f-error { color: var(--red); font-size: 13px; margin-top: 4px; display: flex; gap: 5px; align-items: center; }
+  .field input.invalid, .field textarea.invalid { border-color: var(--red); }
+  .btn {
+    display: block; width: 100%; border: none; border-radius: 12px;
+    padding: 14px; font-size: 17px; font-weight: 600; cursor: pointer; min-height: 50px;
+  }
+  .btn.primary { background: var(--blue); color: #fff; }
+  .btn.secondary { background: #e5e5ea; color: var(--blue); margin-top: 10px; }
+  .btn.destructive { background: #fff; color: var(--red); margin-top: 10px; border: 1px solid var(--separator); }
+  /* ---------- hierarchy tree ---------- */
+  .tree-node { display: flex; flex-direction: column; }
+  .tree-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; min-height: 48px;
+    background: var(--card);
+    border-bottom: 0.5px solid var(--separator);
+    font-size: 15px;
+  }
+  .tree-toggle {
+    border: none; background: none; width: 32px; height: 32px; cursor: pointer;
+    color: var(--text-2); font-size: 13px; flex-shrink: 0;
+  }
+  .tree-type {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+    padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+  }
+  .tree-type.goal { background: #e6f0fb; color: #0b5cad; }
+  .tree-type.task { background: #e7f6ec; color: #1f7a38; }
+  .tree-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tree-add {
+    border: none; background: none; color: var(--blue); font-size: 20px;
+    width: 36px; height: 36px; cursor: pointer; flex-shrink: 0;
+  }
+  .indent-line { width: 1px; background: var(--separator); margin-left: 27px; }
+  /* ---------- progress ---------- */
+  .progress-hero {
+    background: var(--card); border-radius: 12px; padding: 20px 16px; text-align: center; margin-bottom: 12px;
+  }
+  .progress-hero .pct { font-size: 44px; font-weight: 700; }
+  .progress-hero .frac { font-size: 15px; color: var(--text-2); margin-top: 4px; }
+  .progress-bar { height: 8px; background: #e5e5ea; border-radius: 4px; margin-top: 14px; overflow: hidden; }
+  .progress-bar > div { height: 100%; background: var(--blue); border-radius: 4px; }
+  .cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cat-cell { background: var(--card); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+  .cat-cell .n { font-weight: 700; font-size: 17px; }
+  /* ---------- sheet & toast ---------- */
+  .sheet-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.35);
+    display: flex; align-items: flex-end; z-index: 20;
+  }
+  .sheet {
+    background: var(--bg); border-radius: 14px 14px 0 0; width: 100%;
+    max-height: 72%; display: flex; flex-direction: column;
+    animation: slideup 0.22s ease-out;
+  }
+  @keyframes slideup { from { transform: translateY(40%); } to { transform: translateY(0); } }
+  .sheet-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px 8px;
+  }
+  .sheet-header h2 { font-size: 17px; font-weight: 600; }
+  .sheet-body { overflow-y: auto; padding: 0 16px 28px; }
+  .toast {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: 100px; background: rgba(28,28,30,0.92); color: #fff;
+    padding: 10px 18px; border-radius: 20px; font-size: 14px; z-index: 30;
+    animation: fadein 0.15s ease-out; white-space: nowrap;
+  }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  /* ---------- side notes ---------- */
+  .notes {
+    width: 340px; background: #2c2c2e; color: #d1d1d6; border-radius: 16px;
+    padding: 20px; font-size: 13px; line-height: 1.55;
+  }
+  .notes h2 { color: #fff; font-size: 16px; margin-bottom: 10px; }
+  .notes h3 { color: #fff; font-size: 13px; margin: 14px 0 4px; }
+  .notes code { background: #48484a; border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+  .notes ul { padding-left: 18px; }
+  .notes li { margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<div class="phone" role="application" aria-label="Becoming M2 prototype">
+  <div class="statusbar"><span>9:41</span><span>Becoming</span><span>100%</span></div>
+  <div id="screen" class="screen"></div>
+  <div id="tabbar" class="tabbar"></div>
+  <div id="overlay-root"></div>
+  <div id="toast-root"></div>
+</div>
+
+<aside class="notes">
+  <h2>M2 Native UI Prototype</h2>
+  <p>Interactive walkthrough of the Milestone 2 planning loop (m2-plan.md): <code>Goal → Project → sub-goals &amp; Tasks → execution &amp; progress</code>. Mock data only — no persistence.</p>
+  <h3>Coverage map</h3>
+  <ul>
+    <li><b>#131</b> Goals tab: list (active/archived), detail, create/edit, archive, validation.</li>
+    <li><b>#133</b> Semantic relation feedback: trigger errors from pickers (duplicates, cross-project, cycle, cardinality, direction, archived, missing endpoint).</li>
+    <li><b>#134</b> Projects tab: CRUD + Goal pursuit start/end from both contexts, ended history preserved.</li>
+    <li><b>#132</b> Tasks tab: CRUD, priority 1–5 validation, Project membership start/end.</li>
+    <li><b>#135</b> Project detail → Hierarchy: indented tree, expand/collapse, add-child rules, truncation notice.</li>
+    <li><b>#136</b> Project detail → Execution: numerator/denominator, zero-denominator state (Scratch Project), six work categories, integrity findings.</li>
+  </ul>
+  <h3>Try this</h3>
+  <ul>
+    <li>Projects → Becoming App → Add Pursued Goal → pick "Ship Becoming MVP" → duplicate feedback.</li>
+    <li>Hierarchy → "+" on a node → greyed rows show why a structure is rejected; tap one to see the semantic error.</li>
+    <li>Execution on "Scratch Project" → explicit zero-denominator state; first open shows the error/retry state.</li>
+    <li>Create a task with priority 9 → validation error, input preserved.</li>
+  </ul>
+</aside>
+
+<script>
+'use strict';
+/* ============================================================
+ * Mock store — simulates the on-device SQLite state.
+ * Mutations update this store and re-render, mirroring the
+ * "mutation refreshes all visible projections" requirement.
+ * ============================================================ */
+const T0 = '2026-07-20T09:00:00Z';
+const store = {
+  goals: [
+    { id: 'g1',  title: 'Ship Becoming MVP',        targetState: 'M2 native planning loop usable on device', description: 'Deliver the native loop end to end.', successCriteria: 'All six M2 tasks closed', archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'g1a', title: 'Design planning UI',        targetState: 'Screen designs approved',                 description: '', successCriteria: '', archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'g1b', title: 'Implement planning UI',     targetState: 'Planning screens merged',                 description: '', successCriteria: '', archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'g2',  title: 'Speak conversational Spanish', targetState: 'Hold a 15-minute conversation',        description: 'Everyday fluency.', successCriteria: 'No notes for 15 minutes', archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'g3',  title: 'Run a marathon',            targetState: 'Finish 42.2 km',                          description: 'Paused this year.', successCriteria: '', archivedAt: '2026-06-15T10:00:00Z', createdAt: '2026-01-05T08:00:00Z', updatedAt: '2026-06-15T10:00:00Z' },
+  ],
+  projects: [
+    { id: 'p1', title: 'Becoming App',    purpose: 'Build the native planning loop',        description: 'Epic #3 delivery vehicle.', archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'p2', title: 'Spanish Sprint',  purpose: '90-day language push',                  description: '', archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'p3', title: 'Scratch Project', purpose: 'Empty project — states demo',           description: 'No pursued goals; unmanaged task only.', archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'p4', title: 'Old Website',     purpose: 'Legacy revamp',                         description: '', archivedAt: '2026-05-30T12:00:00Z', createdAt: '2026-02-01T09:00:00Z', updatedAt: '2026-05-30T12:00:00Z' },
+  ],
+  tasks: [
+    { id: 't1', title: 'Sketch Goal list screen', targetDescription: 'Wireframe approved',     description: '', exitCriteria: '', priority: 2, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't2', title: 'Wire pursuit service',    targetDescription: 'Pursuit commands wired', description: '', exitCriteria: '', priority: 1, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't3', title: 'Build hierarchy view',    targetDescription: 'Tree renders from snapshot', description: '', exitCriteria: '', priority: 3, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't8', title: 'Tree expand gestures',    targetDescription: 'Gestures shipped',       description: '', exitCriteria: '', priority: 4, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'td1', title: 'Nested drill-down 1', targetDescription: 'Done', description: '', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'td2', title: 'Nested drill-down 2', targetDescription: 'Done', description: '', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'td3', title: 'Nested drill-down 3', targetDescription: 'Done', description: '', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'td4', title: 'Nested drill-down 4', targetDescription: 'Done', description: '', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'td5', title: 'Nested drill-down 5', targetDescription: 'Done', description: '', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'td6', title: 'Nested drill-down 6', targetDescription: 'Done', description: '', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 'td7', title: 'Nested drill-down 7', targetDescription: 'Done', description: '', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't9',  title: 'Write snapshot tests', targetDescription: 'Coverage merged', description: 'Member of the project, not yet decomposed.', exitCriteria: '', priority: 2, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't10', title: 'Legacy data migration', targetDescription: 'Records migrated', description: 'Conflicting lifecycle states seeded for demo.', exitCriteria: '', priority: 5, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't4', title: 'Vocabulary deck 1', targetDescription: '200 words reviewed', description: '', exitCriteria: '', priority: 2, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't5', title: 'Unassigned idea task', targetDescription: 'Triaged', description: 'No project membership.', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't7', title: 'Untracked chore', targetDescription: 'Done eventually', description: 'No workflow applies — unmanaged.', exitCriteria: '', priority: null, archivedAt: null, createdAt: T0, updatedAt: T0 },
+    { id: 't6', title: 'Legacy task', targetDescription: 'Was done', description: '', exitCriteria: '', priority: 3, archivedAt: '2026-06-01T09:00:00Z', createdAt: '2026-03-01T09:00:00Z', updatedAt: '2026-06-01T09:00:00Z' },
+  ],
+  /* contributes_to: project -> goal */
+  pursuits: [
+    { id: 'r1', projectId: 'p1', goalId: 'g1', createdAt: T0, endedAt: null },
+    { id: 'r2', projectId: 'p2', goalId: 'g2', createdAt: T0, endedAt: null },
+    { id: 'r3', projectId: 'p1', goalId: 'g3', createdAt: '2026-02-10T09:00:00Z', endedAt: '2026-06-15T10:00:00Z' },
+    { id: 'r4', projectId: 'p1', goalId: 'g2', createdAt: '2026-03-01T09:00:00Z', endedAt: '2026-04-01T09:00:00Z' },
+  ],
+  /* belongs_to: task -> project */
+  memberships: [
+    { id: 'm1', taskId: 't1', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm2', taskId: 't2', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm3', taskId: 't3', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm4', taskId: 't4', projectId: 'p2', createdAt: T0, endedAt: null },
+    { id: 'm5', taskId: 't5', projectId: 'p1', createdAt: '2026-03-05T09:00:00Z', endedAt: '2026-05-01T09:00:00Z' },
+    { id: 'm6', taskId: 't7', projectId: 'p3', createdAt: T0, endedAt: null },
+    { id: 'm7', taskId: 't8', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm8', taskId: 't9', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm9', taskId: 't10', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm10', taskId: 't-ghost', projectId: 'p1', createdAt: '2026-04-12T09:00:00Z', endedAt: null }, // missing endpoint
+    { id: 'm11', taskId: 'td1', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm12', taskId: 'td2', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm13', taskId: 'td3', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm14', taskId: 'td4', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm15', taskId: 'td5', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm16', taskId: 'td6', projectId: 'p1', createdAt: T0, endedAt: null },
+    { id: 'm17', taskId: 'td7', projectId: 'p1', createdAt: T0, endedAt: null },
+  ],
+  /* decomposes: parent -> child, scoped to a project */
+  decompositions: [
+    { id: 'd1', projectId: 'p1', parentType: 'goal', parentId: 'g1',  childType: 'goal', childId: 'g1a', createdAt: T0, endedAt: null },
+    { id: 'd2', projectId: 'p1', parentType: 'goal', parentId: 'g1',  childType: 'goal', childId: 'g1b', createdAt: T0, endedAt: null },
+    { id: 'd3', projectId: 'p1', parentType: 'goal', parentId: 'g1a', childType: 'task', childId: 't1',  createdAt: T0, endedAt: null },
+    { id: 'd4', projectId: 'p1', parentType: 'goal', parentId: 'g1b', childType: 'task', childId: 't2',  createdAt: T0, endedAt: null },
+    { id: 'd5', projectId: 'p1', parentType: 'goal', parentId: 'g1b', childType: 'task', childId: 't3',  createdAt: T0, endedAt: null },
+    { id: 'd6', projectId: 'p1', parentType: 'task', parentId: 't3',  childType: 'task', childId: 't8',  createdAt: T0, endedAt: null },
+    { id: 'd7',  projectId: 'p1', parentType: 'task', parentId: 't8',  childType: 'task', childId: 'td1', createdAt: T0, endedAt: null },
+    { id: 'd8',  projectId: 'p1', parentType: 'task', parentId: 'td1', childType: 'task', childId: 'td2', createdAt: T0, endedAt: null },
+    { id: 'd9',  projectId: 'p1', parentType: 'task', parentId: 'td2', childType: 'task', childId: 'td3', createdAt: T0, endedAt: null },
+    { id: 'd10', projectId: 'p1', parentType: 'task', parentId: 'td3', childType: 'task', childId: 'td4', createdAt: T0, endedAt: null },
+    { id: 'd11', projectId: 'p1', parentType: 'task', parentId: 'td4', childType: 'task', childId: 'td5', createdAt: T0, endedAt: null },
+    { id: 'd12', projectId: 'p1', parentType: 'task', parentId: 'td5', childType: 'task', childId: 'td6', createdAt: T0, endedAt: null },
+    { id: 'd13', projectId: 'p1', parentType: 'task', parentId: 'td6', childType: 'task', childId: 'td7', createdAt: T0, endedAt: null },
+  ],
+  /* lifecycle read model per node (no mutation UI in M2 — inspect only) */
+  lifecycle: {
+    'goal:g1':  { machine: 'Default workflow', state: 'In Progress', category: 'incomplete' },
+    'goal:g1a': { machine: 'Default workflow', state: 'Done',        category: 'complete' },
+    'goal:g1b': { machine: 'Default workflow', state: 'In Progress', category: 'incomplete' },
+    'goal:g2':  { machine: 'Default workflow', state: 'In Progress', category: 'incomplete' },
+    'task:t1':  { machine: 'Default workflow', state: 'Done',        category: 'complete' },
+    'task:t2':  { machine: 'Default workflow', state: 'Review',      category: 'incomplete' },
+    'task:t3':  { machine: 'Default workflow', state: 'On Hold',     category: 'blocked' },
+    'task:t8':  { machine: 'Default workflow', state: 'Backlog',     category: 'incomplete' },
+    'task:t9':  { machine: 'Default workflow', state: null,          category: 'uninitialized' },
+    'task:t10': { machine: 'Default workflow', state: 'In Progress + Done (conflict)', category: 'invalid' },
+    'task:t4':  { machine: 'Default workflow', state: 'Ready',       category: 'incomplete' },
+  },
+  snapshotFailOnce: { p3: true },
+};
+let idCounter = 100;
+function nextId(prefix) { return prefix + '-' + (++idCounter); }
+function nowIso() { return new Date().toISOString(); }
+</script>
+<script>
+'use strict';
+/* ============================================================
+ * Helpers — read models derived from the store. UI translates;
+ * it does not re-decide domain rules (the "checks" below mirror
+ * the domain/application service contracts they would call).
+ * ============================================================ */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+const goalById    = id => store.goals.find(g => g.id === id) || null;
+const projectById = id => store.projects.find(p => p.id === id) || null;
+const taskById    = id => store.tasks.find(t => t.id === id) || null;
+function nodeEntity(type, id) { return type === 'goal' ? goalById(id) : taskById(id); }
+function nodeTitle(type, id) {
+  const e = nodeEntity(type, id);
+  return e ? e.title : 'Missing ' + type + ' (' + id + ')';
+}
+const isActive = e => e && !e.archivedAt;
+
+const activePursuitsForProject = pid => store.pursuits.filter(r => r.projectId === pid && !r.endedAt);
+const pursuitHistoryForProject = pid => store.pursuits.filter(r => r.projectId === pid && r.endedAt);
+const activePursuitsForGoal    = gid => store.pursuits.filter(r => r.goalId === gid && !r.endedAt);
+const pursuitHistoryForGoal    = gid => store.pursuits.filter(r => r.goalId === gid && r.endedAt);
+const activeMembershipsForProject = pid => store.memberships.filter(m => m.projectId === pid && !m.endedAt);
+const membershipHistoryForProject = pid => store.memberships.filter(m => m.projectId === pid && m.endedAt);
+const activeMembershipsForTask    = tid => store.memberships.filter(m => m.taskId === tid && !m.endedAt);
+const membershipHistoryForTask    = tid => store.memberships.filter(m => m.taskId === tid && m.endedAt);
+
+function activeChildren(projectId, parentType, parentId) {
+  return store.decompositions
+    .filter(d => d.projectId === projectId && !d.endedAt && d.parentType === parentType && d.parentId === parentId)
+    .map(d => ({ relationId: d.id, type: d.childType, id: d.childId }));
+}
+function activeParent(projectId, childType, childId) {
+  return store.decompositions.find(d => d.projectId === projectId && !d.endedAt && d.childType === childType && d.childId === childId) || null;
+}
+function hasProjectContext(projectId, type, id) {
+  if (type === 'goal') return store.pursuits.some(r => r.projectId === projectId && r.goalId === id && !r.endedAt);
+  return store.memberships.some(m => m.projectId === projectId && m.taskId === id && !m.endedAt);
+}
+/* cycle check: would child become its own descendant? */
+function isAncestorOrSelf(projectId, maybeAncestor, node) {
+  if (maybeAncestor.type === node.type && maybeAncestor.id === node.id) return true;
+  const parent = activeParent(projectId, node.type, node.id);
+  if (!parent) return false;
+  return isAncestorOrSelf(projectId, maybeAncestor, { type: parent.parentType, id: parent.parentId });
+}
+function lifecycleOf(type, id) {
+  const l = store.lifecycle[type + ':' + id];
+  if (!l) return { category: 'unmanaged', machine: null, state: null };
+  return l;
+}
+const CATEGORY_META = {
+  complete:      { icon: '✓', label: 'Complete' },
+  incomplete:    { icon: '●', label: 'Incomplete' },
+  blocked:       { icon: '▲', label: 'Blocked' },
+  unmanaged:     { icon: '○', label: 'Unmanaged' },
+  uninitialized: { icon: '◌', label: 'Uninitialized' },
+  invalid:       { icon: '⚠', label: 'Invalid' },
+};
+function categoryBadge(cat, extra) {
+  const m = CATEGORY_META[cat] || CATEGORY_META.unmanaged;
+  return '<span class="badge ' + cat + '" aria-label="' + m.label + '">' + m.icon + ' ' + m.label + (extra ? ' · ' + esc(extra) : '') + '</span>';
+}
+
+/* ---- hierarchy traversal with explicit truncation (maxDepth 6) ---- */
+const TRAVERSAL_MAX_DEPTH = 6;
+const TRAVERSAL_MAX_NODES = 100;
+function computeHierarchy(projectId) {
+  const roots = activePursuitsForProject(projectId).map(r => ({ type: 'goal', id: r.goalId }));
+  const nodes = [];
+  let truncated = false, depthLimitReached = false, nodeLimitReached = false;
+  function walk(node, depth) {
+    if (nodes.length >= TRAVERSAL_MAX_NODES) { truncated = true; nodeLimitReached = true; return; }
+    nodes.push({ node, depth, children: [] });
+    const kids = activeChildren(projectId, node.type, node.id);
+    if (kids.length === 0) return;
+    if (depth >= TRAVERSAL_MAX_DEPTH) { truncated = true; depthLimitReached = true; return; }
+    const entry = nodes[nodes.length - 1];
+    kids.forEach(k => {
+      const before = nodes.length;
+      walk(k, depth + 1);
+      entry.children.push(nodes[before]);
+    });
+  }
+  roots.forEach(r => walk(r, 0));
+  return { roots: nodes.filter(n => n.depth === 0), all: nodes, truncation: { truncated, depthLimitReached, nodeLimitReached, maxDepth: TRAVERSAL_MAX_DEPTH, maxNodes: TRAVERSAL_MAX_NODES, visitedNodeCount: nodes.length } };
+}
+
+/* ---- execution snapshot read model ---- */
+function computeSnapshot(projectId) {
+  const project = projectById(projectId);
+  const h = computeHierarchy(projectId);
+  const nodeMap = new Map();
+  h.all.forEach(n => nodeMap.set(n.node.type + ':' + n.node.id, n.node));
+  const members = activeMembershipsForProject(projectId);
+  const findings = [];
+  const connectedKeys = new Set(nodeMap.keys());
+  members.forEach(m => {
+    const t = taskById(m.taskId);
+    if (!t) {
+      findings.push({ icon: '⚠', text: 'Missing endpoint — membership references task "' + m.taskId + '", which no longer exists. Relationship kept for history.' });
+      return;
+    }
+    const key = 'task:' + m.taskId;
+    if (!connectedKeys.has(key)) {
+      if (activeParent(projectId, 'task', m.taskId)) return; // connected, but hidden by traversal truncation
+      nodeMap.set(key, { type: 'task', id: m.taskId });
+      findings.push({ icon: 'ⓘ', text: 'Disconnected active task — "' + t.title + '" is a project member but is not connected to the decomposition hierarchy.' });
+    }
+  });
+  if (h.truncation.truncated) {
+    findings.push({ icon: '✂', text: 'Traversal truncated — ' + (h.truncation.depthLimitReached ? 'depth limit ' + h.truncation.maxDepth : 'node limit ' + h.truncation.maxNodes) + ' reached after visiting ' + h.truncation.visitedNodeCount + ' nodes. Some descendants are hidden.' });
+  }
+  const counts = { complete: 0, incomplete: 0, blocked: 0, unmanaged: 0, uninitialized: 0, invalid: 0 };
+  const nodes = [];
+  nodeMap.forEach(n => {
+    const lc = lifecycleOf(n.type, n.id);
+    counts[lc.category] = (counts[lc.category] || 0) + 1;
+    nodes.push({ node: n, lifecycle: lc, title: nodeTitle(n.type, n.id), entity: nodeEntity(n.type, n.id) });
+  });
+  const numerator = counts.complete;
+  const denominator = counts.complete + counts.incomplete + counts.blocked;
+  const percentage = denominator === 0 ? null : Math.round((numerator / denominator) * 100);
+  return { project, nodes, counts, numerator, denominator, percentage, findings, truncation: h.truncation };
+}
+
+/* ============================================================
+ * Semantic relation feedback (#133) — reusable translation of
+ * every relation failure into retry-safe UI messaging.
+ * ============================================================ */
+const FEEDBACK = {
+  duplicate:         { icon: '⧉', title: 'Already exists',        body: 'An active relationship between these two already exists. The existing one was kept — nothing was changed.' },
+  archived_endpoint: { icon: '🗄', title: 'Archived item',         body: 'One side of this relationship is archived. Relationships can only be created between active items.' },
+  missing_endpoint:  { icon: '⚠', title: 'Item not found',        body: 'The item no longer exists. Refresh the list and try again — your input was not lost.' },
+  direction:         { icon: '↯', title: 'Direction not allowed', body: 'This relationship direction is not permitted. Goals may contain goals or tasks; tasks may only contain tasks.' },
+  cardinality:       { icon: '⊘', title: 'Already has a parent',  body: 'This item already has an active parent in the project. End that relationship first.' },
+  cycle:             { icon: '⟳', title: 'Would create a cycle',  body: 'This change would make the item its own ancestor. The hierarchy must stay acyclic — nothing was changed.' },
+  cross_project:     { icon: '⇄', title: 'Different project',     body: 'Both items must belong to this project before one can decompose into the other.' },
+  domain:            { icon: '⚠', title: 'Not allowed',           body: 'The change was rejected by the domain rules.' },
+};
+let ui = {
+  tab: 'goals',
+  stacks: { goals: [{ name: 'GoalsList' }], projects: [{ name: 'ProjectsList' }], tasks: [{ name: 'TasksList' }] },
+  feedback: null,      // { kind, detail, stackKey }
+  sheet: null,         // { title, html }
+  confirm: null,       // { title, body, actionLabel, onConfirm }
+  drafts: {},          // preserved form input after failed mutation
+  snapshotLoaded: {},
+  expanded: {},        // hierarchy expansion state, preserved across renders
+  seg: { goals: 'active', projects: 'active', tasks: 'active' },
+};
+function stackKey() { return ui.tab + ':' + ui.stacks[ui.tab].length; }
+function currentScreen() { const s = ui.stacks[ui.tab]; return s[s.length - 1]; }
+function navigate(name, params) { ui.stacks[ui.tab].push(Object.assign({ name }, params)); ui.feedback = null; render(); }
+function goBack() { const s = ui.stacks[ui.tab]; if (s.length > 1) s.pop(); ui.feedback = null; render(); }
+function switchTab(tab) { ui.tab = tab; ui.feedback = null; render(); }
+function showFeedback(kind, detail) { ui.feedback = { kind, detail, stackKey: stackKey() }; closeSheet(); render(); }
+function dismissFeedback() { ui.feedback = null; render(); }
+function feedbackHtml() {
+  if (!ui.feedback || ui.feedback.stackKey !== stackKey()) return '';
+  const f = FEEDBACK[ui.feedback.kind] || FEEDBACK.domain;
+  return '<div class="banner error" role="alert">' +
+    '<span class="b-icon">' + f.icon + '</span>' +
+    '<div><div class="b-title">' + f.title + '</div><div>' + esc(ui.feedback.detail || f.body) + '</div></div>' +
+    '<button class="b-dismiss" aria-label="Dismiss" onclick="dismissFeedback()">✕</button></div>';
+}
+function toast(msg) {
+  const root = document.getElementById('toast-root');
+  root.innerHTML = '<div class="toast" role="status">' + esc(msg) + '</div>';
+  setTimeout(() => { root.innerHTML = ''; }, 2200);
+}
+function openSheet(title, html) { ui.sheet = { title, html }; renderOverlay(); }
+function closeSheet() { ui.sheet = null; ui.confirm = null; renderOverlay(); }
+function openConfirm(title, body, actionLabel, onConfirm) { ui.confirm = { title, body, actionLabel, onConfirm }; renderOverlay(); }
+function renderOverlay() {
+  const root = document.getElementById('overlay-root');
+  let html = '';
+  if (ui.confirm) {
+    html = '<div class="sheet-overlay" onclick="closeSheet()">' +
+      '<div class="sheet" onclick="event.stopPropagation()" role="alertdialog" aria-label="' + esc(ui.confirm.title) + '">' +
+      '<div class="sheet-header"><h2>' + esc(ui.confirm.title) + '</h2></div>' +
+      '<div class="sheet-body"><p style="font-size:14px;color:var(--text-2);margin-bottom:16px;">' + esc(ui.confirm.body) + '</p>' +
+      '<button class="btn primary" style="background:var(--red)" id="confirm-btn">' + esc(ui.confirm.actionLabel) + '</button>' +
+      '<button class="btn secondary" onclick="closeSheet()">Cancel</button></div></div></div>';
+  } else if (ui.sheet) {
+    html = '<div class="sheet-overlay" onclick="closeSheet()">' +
+      '<div class="sheet" onclick="event.stopPropagation()" role="dialog" aria-label="' + esc(ui.sheet.title) + '">' +
+      '<div class="sheet-header"><h2>' + esc(ui.sheet.title) + '</h2>' +
+      '<button class="nav-action" onclick="closeSheet()">Close</button></div>' +
+      '<div class="sheet-body">' + ui.sheet.html + '</div></div></div>';
+  }
+  root.innerHTML = html;
+  const btn = document.getElementById('confirm-btn');
+  if (btn && ui.confirm) btn.onclick = () => { const fn = ui.confirm.onConfirm; closeSheet(); fn(); };
+}
+
+/* ============================================================
+ * Render shell
+ * ============================================================ */
+const RENDERERS = {};
+function render() {
+  const t = currentScreen();
+  const html = RENDERERS[t.name](t);
+  document.getElementById('screen').innerHTML = html;
+  document.getElementById('screen').scrollTop = 0;
+  renderTabbar();
+  renderOverlay();
+}
+function renderTabbar() {
+  const tabs = [
+    { id: 'goals', icon: '◎', label: 'Goals' },
+    { id: 'projects', icon: '▤', label: 'Projects' },
+    { id: 'tasks', icon: '☑', label: 'Tasks' },
+  ];
+  document.getElementById('tabbar').innerHTML = tabs.map(t =>
+    '<button class="tab' + (ui.tab === t.id ? ' active' : '') + '" aria-label="' + t.label + ' tab" onclick="switchTab(\'' + t.id + '\')">' +
+    '<span class="icon">' + t.icon + '</span><span>' + t.label + '</span></button>').join('');
+}
+function navbar(title, opts) {
+  opts = opts || {};
+  const s = ui.stacks[ui.tab];
+  const back = s.length > 1 ? '<button class="nav-back" aria-label="Back" onclick="goBack()">‹ Back</button>' : '';
+  const action = opts.action ? '<button class="nav-action" aria-label="' + esc(opts.action.label) + '" onclick="' + opts.action.onClick + '">' + esc(opts.action.label) + '</button>' : '';
+  const cls = s.length > 1 ? 'small' : '';
+  return '<div class="navbar">' + back + '<h1 class="' + cls + '">' + esc(title) + '</h1>' + action + '</div>';
+}
+function emptyState(icon, title, body) {
+  return '<div class="state-block"><div class="s-icon">' + icon + '</div><div class="s-title">' + esc(title) + '</div><div class="s-body">' + esc(body) + '</div></div>';
+}
+function archivedBanner(when) {
+  return '<div class="banner neutral"><span class="b-icon">🗄</span><div><div class="b-title">Archived</div><div>This item was archived on ' + fmtDate(when) + '. It is read-only and excluded from planning.</div></div></div>';
+}
+function relationRows(relations, resolveOther, otherType) {
+  return relations.map(r => {
+    const other = resolveOther(r);
+    const ended = !!r.endedAt;
+    const title = other ? other.title : 'Missing ' + otherType + ' (integrity anomaly)';
+    return '<button class="row" onclick="' + (other ? 'navigate(\'' + (otherType === 'goal' ? 'GoalDetail' : otherType === 'project' ? 'ProjectDetail' : 'TaskDetail') + '\', { id: \'' + other.id + '\' })' : 'showFeedback(\'missing_endpoint\')') + '">' +
+      '<div><div>' + esc(title) + (other && other.archivedAt ? ' <span class="badge archived">🗄 Archived</span>' : '') + '</div>' +
+      '<div class="sub">' + (ended ? 'Ended ' + fmtDate(r.endedAt) : 'Since ' + fmtDate(r.createdAt)) + '</div></div>' +
+      '<span class="badge ' + (ended ? 'ended' : 'relation') + '">' + (ended ? '◌ Ended' : '● Active') + '</span>' +
+      '<span class="chev">›</span></button>';
+  }).join('');
+}
+</script>
+<script>
+'use strict';
+/* ============================================================
+ * #131 — Goal planning screens
+ * ============================================================ */
+RENDERERS.GoalsList = function () {
+  const seg = ui.seg.goals;
+  const goals = store.goals.filter(g => seg === 'active' ? !g.archivedAt : g.archivedAt);
+  let list;
+  if (goals.length === 0) {
+    list = emptyState(seg === 'active' ? '◎' : '🗄', seg === 'active' ? 'No active goals' : 'Nothing archived', seg === 'active' ? 'Create a goal to start planning an outcome you want to achieve.' : 'Archived goals will appear here, kept for history.');
+  } else {
+    list = '<div class="card">' + goals.map(g =>
+      '<button class="row" onclick="navigate(\'GoalDetail\', { id: \'' + g.id + '\' })">' +
+      '<div><div>' + esc(g.title) + '</div><div class="sub">' + esc(g.targetState) + '</div></div>' +
+      (g.archivedAt ? '<span class="badge archived">🗄 Archived</span>' : '') +
+      '<span class="chev">›</span></button>').join('') + '</div>';
+  }
+  return navbar('Goals', { action: { label: '＋', onClick: 'navigate(\'GoalForm\', {})' } }) +
+    '<div class="content">' +
+    '<div class="segmented" role="tablist">' +
+    '<button class="' + (seg === 'active' ? 'active' : '') + '" onclick="ui.seg.goals=\'active\';render()">Active</button>' +
+    '<button class="' + (seg === 'archived' ? 'active' : '') + '" onclick="ui.seg.goals=\'archived\';render()">Archived</button>' +
+    '</div>' + feedbackHtml() + list + '</div>';
+};
+
+RENDERERS.GoalDetail = function (t) {
+  const g = goalById(t.id);
+  if (!g) return navbar('Goal') + emptyState('⚠', 'Goal not found', 'This goal no longer exists. It may have been removed.') ;
+  const archived = !!g.archivedAt;
+  const active = activePursuitsForGoal(g.id);
+  const history = pursuitHistoryForGoal(g.id);
+  let html = navbar('Goal', { action: archived ? null : { label: 'Edit', onClick: 'navigate(\'GoalForm\', { id: \'' + g.id + '\' })' } });
+  html += '<div class="content">' + feedbackHtml();
+  if (archived) html += archivedBanner(g.archivedAt);
+  html += '<div class="card" style="padding:16px;">' +
+    '<div style="font-size:22px;font-weight:700;margin-bottom:8px;">' + esc(g.title) + '</div>' +
+    '<div style="font-size:14px;color:var(--text-2);margin-bottom:4px;">Target state</div>' +
+    '<div style="font-size:16px;margin-bottom:10px;">' + esc(g.targetState) + '</div>' +
+    (g.description ? '<div style="font-size:14px;color:var(--text-2);margin-bottom:4px;">Description</div><div style="font-size:15px;margin-bottom:10px;">' + esc(g.description) + '</div>' : '') +
+    (g.successCriteria ? '<div style="font-size:14px;color:var(--text-2);margin-bottom:4px;">Success criteria</div><div style="font-size:15px;">' + esc(g.successCriteria) + '</div>' : '') +
+    '<div style="font-size:12px;color:var(--text-2);margin-top:12px;">Created ' + fmtDate(g.createdAt) + ' · Updated ' + fmtDate(g.updatedAt) + '</div></div>';
+
+  /* #134 — pursuit from Goal context */
+  html += '<div class="section-title">Pursued by projects</div>';
+  if (active.length === 0) html += '<div class="section-note">No project is actively pursuing this goal.</div>';
+  else html += '<div class="card">' + active.map(r =>
+    '<button class="row" onclick="navigate(\'ProjectDetail\', { id: \'' + r.projectId + '\' })">' +
+    '<div><div>' + esc((projectById(r.projectId) || {}).title || 'Missing project') + '</div><div class="sub">Since ' + fmtDate(r.createdAt) + '</div></div>' +
+    '<span class="badge relation">● Active</span><span class="chev">›</span></button>').join('') + '</div>';
+  if (!archived) {
+    html += '<div style="padding:0 0 4px;"><button class="btn secondary" style="margin-top:4px;" onclick="openPursuitPickerFromGoal(\'' + g.id + '\')">Start Pursuit…</button></div>';
+    if (active.length > 0) html += '<button class="btn secondary" onclick="openEndPursuitSheet(\'' + g.id + '\', \'goal\')">End a Pursuit…</button>';
+  }
+  if (history.length > 0) {
+    html += '<div class="section-title">Pursuit history</div><div class="card">' +
+      relationRows(history, r => projectById(r.projectId), 'project') + '</div>' +
+      '<div class="section-note">Ended relationships are preserved — history is never rewritten.</div>';
+  }
+  if (!archived) {
+    html += '<div style="margin-top:20px;"><button class="btn destructive" onclick="confirmArchiveGoal(\'' + g.id + '\')">Archive Goal</button></div>';
+  } else {
+    html += '<div style="margin-top:20px;"><button class="btn destructive" onclick="showFeedback(\'domain\', \'This goal is already archived. Archiving is not idempotent — the duplicate action was rejected.\')">Archive Goal</button></div>';
+  }
+  return html + '</div>';
+};
+
+function confirmArchiveGoal(id) {
+  const g = goalById(id);
+  openConfirm('Archive "' + g.title + '"?', 'The goal becomes read-only. Active pursuits and decompositions keep their history. This cannot be undone from the app.', 'Archive', () => {
+    g.archivedAt = nowIso(); g.updatedAt = nowIso();
+    toast('Goal archived');
+    render();
+  });
+}
+
+/* ---- Goal create/edit form with validation ---- */
+RENDERERS.GoalForm = function (t) {
+  const g = t.id ? goalById(t.id) : null;
+  const draft = ui.drafts.GoalForm || {};
+  const v = {
+    title: draft.title !== undefined ? draft.title : (g ? g.title : ''),
+    targetState: draft.targetState !== undefined ? draft.targetState : (g ? g.targetState : ''),
+    description: draft.description !== undefined ? draft.description : (g ? g.description : ''),
+    successCriteria: draft.successCriteria !== undefined ? draft.successCriteria : (g ? g.successCriteria : ''),
+  };
+  const errs = draft.errors || {};
+  return navbar(g ? 'Edit Goal' : 'New Goal') +
+    '<div class="content">' + feedbackHtml() +
+    '<div class="field"><label for="gf-title">Title *</label>' +
+    '<input id="gf-title" class="' + (errs.title ? 'invalid' : '') + '" value="' + esc(v.title) + '" aria-label="Goal title">' +
+    (errs.title ? '<div class="f-error">⚠ ' + esc(errs.title) + '</div>' : '') + '</div>' +
+    '<div class="field"><label for="gf-target">Target state *</label>' +
+    '<textarea id="gf-target" class="' + (errs.targetState ? 'invalid' : '') + '" aria-label="Target state">' + esc(v.targetState) + '</textarea>' +
+    (errs.targetState ? '<div class="f-error">⚠ ' + esc(errs.targetState) + '</div>' : '') + '</div>' +
+    '<div class="field"><label for="gf-desc">Description</label><textarea id="gf-desc">' + esc(v.description) + '</textarea></div>' +
+    '<div class="field"><label for="gf-crit">Success criteria</label><textarea id="gf-crit">' + esc(v.successCriteria) + '</textarea></div>' +
+    '<button class="btn primary" onclick="submitGoalForm(\'' + (g ? g.id : '') + '\')">' + (g ? 'Save Changes' : 'Create Goal') + '</button>' +
+    '<button class="btn secondary" onclick="goBack()">Cancel</button></div>';
+};
+function submitGoalForm(id) {
+  const v = {
+    title: document.getElementById('gf-title').value,
+    targetState: document.getElementById('gf-target').value,
+    description: document.getElementById('gf-desc').value,
+    successCriteria: document.getElementById('gf-crit').value,
+  };
+  const errors = {};
+  if (!v.title.trim()) errors.title = 'Title is required.';
+  if (!v.targetState.trim()) errors.targetState = 'Target state is required.';
+  if (Object.keys(errors).length) {
+    ui.drafts.GoalForm = Object.assign({}, v, { errors }); // input preserved on failure
+    render();
+    return;
+  }
+  ui.drafts.GoalForm = null;
+  if (id) {
+    const g = goalById(id);
+    if (g.archivedAt) { showFeedback('domain', 'Archived goals cannot be edited.'); return; }
+    Object.assign(g, { title: v.title.trim(), targetState: v.targetState.trim(), description: v.description.trim(), successCriteria: v.successCriteria.trim(), updatedAt: nowIso() });
+    toast('Goal updated');
+  } else {
+    store.goals.unshift({ id: nextId('g'), title: v.title.trim(), targetState: v.targetState.trim(), description: v.description.trim(), successCriteria: v.successCriteria.trim(), archivedAt: null, createdAt: nowIso(), updatedAt: nowIso() });
+    toast('Goal created');
+  }
+  goBack();
+}
+
+/* ============================================================
+ * #134 — Project planning + Goal pursuit
+ * ============================================================ */
+RENDERERS.ProjectsList = function () {
+  const seg = ui.seg.projects;
+  const projects = store.projects.filter(p => seg === 'active' ? !p.archivedAt : p.archivedAt);
+  let list;
+  if (projects.length === 0) {
+    list = emptyState('▤', seg === 'active' ? 'No active projects' : 'Nothing archived', seg === 'active' ? 'Create a project to organize work toward a goal.' : 'Archived projects will appear here.');
+  } else {
+    list = '<div class="card">' + projects.map(p =>
+      '<button class="row" onclick="navigate(\'ProjectDetail\', { id: \'' + p.id + '\' })">' +
+      '<div><div>' + esc(p.title) + '</div><div class="sub">' + esc(p.purpose || '') + '</div></div>' +
+      (p.archivedAt ? '<span class="badge archived">🗄 Archived</span>' : '') +
+      '<span class="chev">›</span></button>').join('') + '</div>';
+  }
+  return navbar('Projects', { action: { label: '＋', onClick: 'navigate(\'ProjectForm\', {})' } }) +
+    '<div class="content">' +
+    '<div class="segmented">' +
+    '<button class="' + (seg === 'active' ? 'active' : '') + '" onclick="ui.seg.projects=\'active\';render()">Active</button>' +
+    '<button class="' + (seg === 'archived' ? 'active' : '') + '" onclick="ui.seg.projects=\'archived\';render()">Archived</button>' +
+    '</div>' + feedbackHtml() + list + '</div>';
+};
+
+RENDERERS.ProjectDetail = function (t) {
+  const p = projectById(t.id);
+  if (!p) return navbar('Project') + emptyState('⚠', 'Project not found', 'This project no longer exists.');
+  const archived = !!p.archivedAt;
+  const pursuits = activePursuitsForProject(p.id);
+  const members = activeMembershipsForProject(p.id);
+  const pHist = pursuitHistoryForProject(p.id);
+  const mHist = membershipHistoryForProject(p.id);
+  let html = navbar('Project', { action: archived ? null : { label: 'Edit', onClick: 'navigate(\'ProjectForm\', { id: \'' + p.id + '\' })' } });
+  html += '<div class="content">' + feedbackHtml();
+  if (archived) html += archivedBanner(p.archivedAt);
+  html += '<div class="card" style="padding:16px;">' +
+    '<div style="font-size:22px;font-weight:700;margin-bottom:8px;">' + esc(p.title) + '</div>' +
+    (p.purpose ? '<div style="font-size:14px;color:var(--text-2);margin-bottom:4px;">Purpose</div><div style="font-size:16px;margin-bottom:10px;">' + esc(p.purpose) + '</div>' : '') +
+    (p.description ? '<div style="font-size:15px;margin-bottom:10px;">' + esc(p.description) + '</div>' : '') +
+    '<div style="font-size:12px;color:var(--text-2);">Created ' + fmtDate(p.createdAt) + '</div></div>';
+
+  if (!archived) {
+    html += '<div class="card">' +
+      '<button class="row" onclick="navigate(\'Hierarchy\', { projectId: \'' + p.id + '\' })"><div><div>Decomposition Hierarchy</div><div class="sub">Indented Goal/Task structure</div></div><span class="chev">›</span></button>' +
+      '<button class="row" onclick="openExecution(\'' + p.id + '\')"><div><div>Execution &amp; Progress</div><div class="sub">Snapshot-driven progress and findings</div></div><span class="chev">›</span></button>' +
+      '</div>';
+  }
+
+  html += '<div class="section-title">Pursued goals</div>';
+  if (pursuits.length === 0) html += '<div class="section-note">This project is not pursuing any goal yet.</div>';
+  else html += '<div class="card">' + relationRows(pursuits, r => goalById(r.goalId), 'goal') + '</div>';
+  if (!archived) {
+    html += '<button class="btn secondary" style="margin-top:0;" onclick="openPursuitPickerFromProject(\'' + p.id + '\')">Add Pursued Goal…</button>';
+    if (pursuits.length > 0) html += '<button class="btn secondary" onclick="openEndPursuitSheet(\'' + p.id + '\', \'project\')">End a Pursuit…</button>';
+  }
+
+  html += '<div class="section-title">Member tasks</div>';
+  if (members.length === 0) html += '<div class="section-note">No tasks belong to this project yet.</div>';
+  else html += '<div class="card">' + members.map(m => {
+    const task = taskById(m.taskId);
+    if (!task) return '<button class="row" onclick="showFeedback(\'missing_endpoint\')"><div><div>⚠ Missing task (' + esc(m.taskId) + ')</div><div class="sub">Integrity anomaly — kept for history</div></div></button>';
+    return '<button class="row" onclick="navigate(\'TaskDetail\', { id: \'' + task.id + '\' })">' +
+      '<div><div>' + esc(task.title) + (task.archivedAt ? ' <span class="badge archived">🗄 Archived</span>' : '') + '</div>' +
+      '<div class="sub">' + (task.priority ? 'Priority ' + task.priority + ' · ' : '') + 'Since ' + fmtDate(m.createdAt) + '</div></div>' +
+      categoryBadge(lifecycleOf('task', task.id).category, lifecycleOf('task', task.id).state) +
+      '<span class="chev">›</span></button>';
+  }).join('') + '</div>';
+  if (!archived) {
+    html += '<button class="btn secondary" style="margin-top:0;" onclick="openMembershipPicker(\'' + p.id + '\')">Add Member Task…</button>';
+    if (members.some(m => taskById(m.taskId))) html += '<button class="btn secondary" onclick="openEndMembershipSheet(\'' + p.id + '\')">Remove a Task…</button>';
+  }
+
+  if (pHist.length > 0) {
+    html += '<div class="section-title">Pursuit history</div><div class="card">' + relationRows(pHist, r => goalById(r.goalId), 'goal') + '</div>';
+  }
+  if (mHist.length > 0) {
+    html += '<div class="section-title">Membership history</div><div class="card">' + relationRows(mHist, r => taskById(r.taskId), 'task') + '</div>';
+  }
+  if (!archived) {
+    html += '<div style="margin-top:20px;"><button class="btn destructive" onclick="confirmArchiveProject(\'' + p.id + '\')">Archive Project</button></div>';
+  }
+  return html + '</div>';
+};
+
+function confirmArchiveProject(id) {
+  const p = projectById(id);
+  openConfirm('Archive "' + p.title + '"?', 'The project becomes read-only. Pursuit, membership, and decomposition history is preserved.', 'Archive', () => {
+    p.archivedAt = nowIso(); p.updatedAt = nowIso();
+    toast('Project archived');
+    render();
+  });
+}
+
+/* ---- pursuit pickers (#134 + #133 feedback) ---- */
+function openPursuitPickerFromProject(projectId) {
+  const rows = store.goals.map(g => {
+    const dup = store.pursuits.some(r => r.projectId === projectId && r.goalId === g.id && !r.endedAt);
+    const isArchived = !!g.archivedAt;
+    const disabled = dup || isArchived;
+    const reason = dup ? 'Already actively pursued' : isArchived ? 'Archived goal' : '';
+    const onclick = disabled
+      ? (dup ? 'showFeedback(\'duplicate\')' : 'showFeedback(\'archived_endpoint\')')
+      : 'startPursuit(\'' + projectId + '\', \'' + g.id + '\')';
+    return '<button class="row' + (disabled ? ' disabled' : '') + '" onclick="' + onclick + '">' +
+      '<div><div>' + esc(g.title) + '</div><div class="sub">' + (reason || esc(g.targetState)) + '</div></div>' +
+      (disabled ? '<span class="badge ended">⊘ ' + (dup ? 'Duplicate' : 'Archived') + '</span>' : '<span class="chev">›</span>') + '</button>';
+  }).join('');
+  openSheet('Add Pursued Goal', '<div class="card">' + rows + '</div><div class="section-note">Duplicate and archived candidates are shown with the reason they cannot be selected — tap one to see the semantic feedback.</div>');
+}
+function openPursuitPickerFromGoal(goalId) {
+  const rows = store.projects.map(p => {
+    const dup = store.pursuits.some(r => r.projectId === p.id && r.goalId === goalId && !r.endedAt);
+    const isArchived = !!p.archivedAt;
+    const disabled = dup || isArchived;
+    const reason = dup ? 'Already actively pursuing' : isArchived ? 'Archived project' : '';
+    const onclick = disabled
+      ? (dup ? 'showFeedback(\'duplicate\')' : 'showFeedback(\'archived_endpoint\')')
+      : 'startPursuit(\'' + p.id + '\', \'' + goalId + '\')';
+    return '<button class="row' + (disabled ? ' disabled' : '') + '" onclick="' + onclick + '">' +
+      '<div><div>' + esc(p.title) + '</div><div class="sub">' + (reason || esc(p.purpose || '')) + '</div></div>' +
+      (disabled ? '<span class="badge ended">⊘ ' + (dup ? 'Duplicate' : 'Archived') + '</span>' : '<span class="chev">›</span>') + '</button>';
+  }).join('');
+  openSheet('Start Pursuit', '<div class="card">' + rows + '</div>');
+}
+function startPursuit(projectId, goalId) {
+  store.pursuits.push({ id: nextId('r'), projectId, goalId, createdAt: nowIso(), endedAt: null });
+  closeSheet();
+  toast('Pursuit started');
+  render(); // every visible projection refreshes after the mutation
+}
+function openEndPursuitSheet(id, ctx) {
+  const rels = ctx === 'goal' ? activePursuitsForGoal(id) : activePursuitsForProject(id);
+  const rows = rels.map(r => {
+    const other = ctx === 'goal' ? projectById(r.projectId) : goalById(r.goalId);
+    return '<button class="row" onclick="endPursuit(\'' + r.id + '\')"><div><div>' + esc((other || {}).title || '?') + '</div><div class="sub">Started ' + fmtDate(r.createdAt) + '</div></div><span class="badge ended">End…</span></button>';
+  }).join('');
+  openSheet('End a Pursuit', '<div class="card">' + rows + '</div><div class="section-note">Ending preserves the relationship in history with its end date.</div>');
+}
+function endPursuit(relationId) {
+  const r = store.pursuits.find(x => x.id === relationId);
+  openConfirm('End this pursuit?', 'The relationship is ended, not deleted. It remains visible in pursuit history.', 'End Pursuit', () => {
+    if (r.endedAt) { showFeedback('domain', 'This pursuit was already ended — ending is idempotent; nothing changed.'); return; }
+    r.endedAt = nowIso();
+    toast('Pursuit ended');
+    render();
+  });
+}
+
+/* ---- project form ---- */
+RENDERERS.ProjectForm = function (t) {
+  const p = t.id ? projectById(t.id) : null;
+  const draft = ui.drafts.ProjectForm || {};
+  const v = {
+    title: draft.title !== undefined ? draft.title : (p ? p.title : ''),
+    purpose: draft.purpose !== undefined ? draft.purpose : (p ? p.purpose : ''),
+    description: draft.description !== undefined ? draft.description : (p ? p.description : ''),
+  };
+  const errs = draft.errors || {};
+  return navbar(p ? 'Edit Project' : 'New Project') +
+    '<div class="content">' + feedbackHtml() +
+    '<div class="field"><label for="pf-title">Title *</label><input id="pf-title" class="' + (errs.title ? 'invalid' : '') + '" value="' + esc(v.title) + '">' +
+    (errs.title ? '<div class="f-error">⚠ ' + esc(errs.title) + '</div>' : '') + '</div>' +
+    '<div class="field"><label for="pf-purpose">Purpose</label><textarea id="pf-purpose">' + esc(v.purpose) + '</textarea></div>' +
+    '<div class="field"><label for="pf-desc">Description</label><textarea id="pf-desc">' + esc(v.description) + '</textarea></div>' +
+    '<button class="btn primary" onclick="submitProjectForm(\'' + (p ? p.id : '') + '\')">' + (p ? 'Save Changes' : 'Create Project') + '</button>' +
+    '<button class="btn secondary" onclick="goBack()">Cancel</button></div>';
+};
+function submitProjectForm(id) {
+  const v = {
+    title: document.getElementById('pf-title').value,
+    purpose: document.getElementById('pf-purpose').value,
+    description: document.getElementById('pf-desc').value,
+  };
+  if (!v.title.trim()) { ui.drafts.ProjectForm = Object.assign({}, v, { errors: { title: 'Title is required.' } }); render(); return; }
+  ui.drafts.ProjectForm = null;
+  if (id) {
+    const p = projectById(id);
+    Object.assign(p, { title: v.title.trim(), purpose: v.purpose.trim(), description: v.description.trim(), updatedAt: nowIso() });
+    toast('Project updated');
+  } else {
+    store.projects.unshift({ id: nextId('p'), title: v.title.trim(), purpose: v.purpose.trim(), description: v.description.trim(), archivedAt: null, createdAt: nowIso(), updatedAt: nowIso() });
+    toast('Project created');
+  }
+  goBack();
+}
+
+/* ============================================================
+ * #132 — Task planning + Project membership
+ * ============================================================ */
+RENDERERS.TasksList = function () {
+  const seg = ui.seg.tasks;
+  const tasks = store.tasks.filter(x => seg === 'active' ? !x.archivedAt : x.archivedAt);
+  let list;
+  if (tasks.length === 0) {
+    list = emptyState('☑', seg === 'active' ? 'No active tasks' : 'Nothing archived', seg === 'active' ? 'Create a task to capture executable work.' : 'Archived tasks will appear here.');
+  } else {
+    list = '<div class="card">' + tasks.map(x =>
+      '<button class="row" onclick="navigate(\'TaskDetail\', { id: \'' + x.id + '\' })">' +
+      '<div><div>' + esc(x.title) + '</div><div class="sub">' + (x.priority ? 'Priority ' + x.priority + ' · ' : '') + esc(x.targetDescription) + '</div></div>' +
+      (x.archivedAt ? '<span class="badge archived">🗄 Archived</span>' : '') +
+      '<span class="chev">›</span></button>').join('') + '</div>';
+  }
+  return navbar('Tasks', { action: { label: '＋', onClick: 'navigate(\'TaskForm\', {})' } }) +
+    '<div class="content">' +
+    '<div class="segmented">' +
+    '<button class="' + (seg === 'active' ? 'active' : '') + '" onclick="ui.seg.tasks=\'active\';render()">Active</button>' +
+    '<button class="' + (seg === 'archived' ? 'active' : '') + '" onclick="ui.seg.tasks=\'archived\';render()">Archived</button>' +
+    '</div>' + feedbackHtml() + list + '</div>';
+};
+
+RENDERERS.TaskDetail = function (t) {
+  const task = taskById(t.id);
+  if (!task) return navbar('Task') + emptyState('⚠', 'Task not found', 'This task no longer exists.');
+  const archived = !!task.archivedAt;
+  const members = activeMembershipsForTask(task.id);
+  const hist = membershipHistoryForTask(task.id);
+  const lc = lifecycleOf('task', task.id);
+  let html = navbar('Task', { action: archived ? null : { label: 'Edit', onClick: 'navigate(\'TaskForm\', { id: \'' + task.id + '\' })' } });
+  html += '<div class="content">' + feedbackHtml();
+  if (archived) html += archivedBanner(task.archivedAt);
+  html += '<div class="card" style="padding:16px;">' +
+    '<div style="font-size:22px;font-weight:700;margin-bottom:8px;">' + esc(task.title) + '</div>' +
+    '<div style="margin-bottom:10px;">' + categoryBadge(lc.category, lc.state) + '</div>' +
+    '<div style="font-size:14px;color:var(--text-2);margin-bottom:4px;">Target</div>' +
+    '<div style="font-size:16px;margin-bottom:10px;">' + esc(task.targetDescription) + '</div>' +
+    (task.description ? '<div style="font-size:15px;margin-bottom:10px;">' + esc(task.description) + '</div>' : '') +
+    (task.exitCriteria ? '<div style="font-size:14px;color:var(--text-2);margin-bottom:4px;">Exit criteria</div><div style="font-size:15px;margin-bottom:10px;">' + esc(task.exitCriteria) + '</div>' : '') +
+    '<div style="font-size:14px;color:var(--text-2);">Priority</div>' +
+    '<div style="font-size:16px;">' + (task.priority ? task.priority + ' / 5' : 'Not set') + '</div></div>';
+
+  html += '<div class="section-title">Project membership</div>';
+  if (members.length === 0) html += '<div class="section-note">This task does not belong to any project.</div>';
+  else html += '<div class="card">' + relationRows(members, m => projectById(m.projectId), 'project') + '</div>';
+  if (!archived) {
+    html += '<button class="btn secondary" style="margin-top:0;" onclick="openMembershipPickerFromTask(\'' + task.id + '\')">Add to Project…</button>';
+    if (members.length > 0) html += '<button class="btn secondary" onclick="openEndMembershipSheetForTask(\'' + task.id + '\')">Remove from Project…</button>';
+  }
+  if (hist.length > 0) {
+    html += '<div class="section-title">Membership history</div><div class="card">' + relationRows(hist, m => projectById(m.projectId), 'project') + '</div>';
+  }
+  if (!archived) {
+    html += '<div style="margin-top:20px;"><button class="btn destructive" onclick="confirmArchiveTask(\'' + task.id + '\')">Archive Task</button></div>';
+  }
+  return html + '</div>';
+};
+function confirmArchiveTask(id) {
+  const task = taskById(id);
+  openConfirm('Archive "' + task.title + '"?', 'The task becomes read-only. Membership and decomposition history is preserved.', 'Archive', () => {
+    task.archivedAt = nowIso(); task.updatedAt = nowIso();
+    toast('Task archived');
+    render();
+  });
+}
+
+/* ---- membership pickers (#132 + #133 feedback) ---- */
+function openMembershipPicker(projectId) {
+  const rows = store.tasks.map(x => {
+    const dup = store.memberships.some(m => m.projectId === projectId && m.taskId === x.id && !m.endedAt);
+    const isArchived = !!x.archivedAt;
+    const disabled = dup || isArchived;
+    const reason = dup ? 'Already a member' : isArchived ? 'Archived task' : '';
+    const onclick = disabled
+      ? (dup ? 'showFeedback(\'duplicate\')' : 'showFeedback(\'archived_endpoint\')')
+      : 'startMembership(\'' + x.id + '\', \'' + projectId + '\')';
+    return '<button class="row' + (disabled ? ' disabled' : '') + '" onclick="' + onclick + '">' +
+      '<div><div>' + esc(x.title) + '</div><div class="sub">' + (reason || esc(x.targetDescription)) + '</div></div>' +
+      (disabled ? '<span class="badge ended">⊘ ' + (dup ? 'Duplicate' : 'Archived') + '</span>' : '<span class="chev">›</span>') + '</button>';
+  }).join('');
+  openSheet('Add Member Task', '<div class="card">' + rows + '</div>');
+}
+function openMembershipPickerFromTask(taskId) {
+  const rows = store.projects.filter(p => !p.archivedAt).map(p => {
+    const dup = store.memberships.some(m => m.projectId === p.id && m.taskId === taskId && !m.endedAt);
+    const onclick = dup ? 'showFeedback(\'duplicate\')' : 'startMembership(\'' + taskId + '\', \'' + p.id + '\')';
+    return '<button class="row' + (dup ? ' disabled' : '') + '" onclick="' + onclick + '">' +
+      '<div><div>' + esc(p.title) + '</div><div class="sub">' + (dup ? 'Already a member' : esc(p.purpose || '')) + '</div></div>' +
+      (dup ? '<span class="badge ended">⊘ Duplicate</span>' : '<span class="chev">›</span>') + '</button>';
+  }).join('');
+  openSheet('Add to Project', '<div class="card">' + rows + '</div>');
+}
+function startMembership(taskId, projectId) {
+  store.memberships.push({ id: nextId('m'), taskId, projectId, createdAt: nowIso(), endedAt: null });
+  closeSheet();
+  toast('Membership started');
+  render();
+}
+function openEndMembershipSheet(projectId) {
+  const rels = activeMembershipsForProject(projectId).filter(m => taskById(m.taskId));
+  const rows = rels.map(m => {
+    const task = taskById(m.taskId);
+    return '<button class="row" onclick="endMembership(\'' + m.id + '\')"><div><div>' + esc(task.title) + '</div><div class="sub">Since ' + fmtDate(m.createdAt) + '</div></div><span class="badge ended">Remove…</span></button>';
+  }).join('');
+  openSheet('Remove a Task', '<div class="card">' + rows + '</div><div class="section-note">Removing ends the membership — it stays in history with its end date.</div>');
+}
+function openEndMembershipSheetForTask(taskId) {
+  const rels = activeMembershipsForTask(taskId);
+  const rows = rels.map(m => {
+    const p = projectById(m.projectId);
+    return '<button class="row" onclick="endMembership(\'' + m.id + '\')"><div><div>' + esc((p || {}).title || '?') + '</div><div class="sub">Since ' + fmtDate(m.createdAt) + '</div></div><span class="badge ended">Remove…</span></button>';
+  }).join('');
+  openSheet('Remove from Project', '<div class="card">' + rows + '</div>');
+}
+function endMembership(membershipId) {
+  const m = store.memberships.find(x => x.id === membershipId);
+  openConfirm('End this membership?', 'The relationship is ended, not deleted. It remains visible in membership history.', 'Remove', () => {
+    if (m.endedAt) { showFeedback('domain', 'This membership was already ended — nothing changed.'); return; }
+    m.endedAt = nowIso();
+    toast('Membership ended');
+    render();
+  });
+}
+
+/* ---- task form with priority validation (#132) ---- */
+RENDERERS.TaskForm = function (t) {
+  const task = t.id ? taskById(t.id) : null;
+  const draft = ui.drafts.TaskForm || {};
+  const v = {
+    title: draft.title !== undefined ? draft.title : (task ? task.title : ''),
+    targetDescription: draft.targetDescription !== undefined ? draft.targetDescription : (task ? task.targetDescription : ''),
+    description: draft.description !== undefined ? draft.description : (task ? task.description : ''),
+    exitCriteria: draft.exitCriteria !== undefined ? draft.exitCriteria : (task ? task.exitCriteria : ''),
+    priority: draft.priority !== undefined ? draft.priority : (task && task.priority ? String(task.priority) : ''),
+  };
+  const errs = draft.errors || {};
+  return navbar(task ? 'Edit Task' : 'New Task') +
+    '<div class="content">' + feedbackHtml() +
+    '<div class="field"><label for="tf-title">Title *</label><input id="tf-title" class="' + (errs.title ? 'invalid' : '') + '" value="' + esc(v.title) + '">' +
+    (errs.title ? '<div class="f-error">⚠ ' + esc(errs.title) + '</div>' : '') + '</div>' +
+    '<div class="field"><label for="tf-target">Target *</label><textarea id="tf-target" class="' + (errs.targetDescription ? 'invalid' : '') + '">' + esc(v.targetDescription) + '</textarea>' +
+    (errs.targetDescription ? '<div class="f-error">⚠ ' + esc(errs.targetDescription) + '</div>' : '') + '</div>' +
+    '<div class="field"><label for="tf-desc">Description</label><textarea id="tf-desc">' + esc(v.description) + '</textarea></div>' +
+    '<div class="field"><label for="tf-exit">Exit criteria</label><textarea id="tf-exit">' + esc(v.exitCriteria) + '</textarea></div>' +
+    '<div class="field"><label for="tf-prio">Priority (integer 1–5)</label><input id="tf-prio" inputmode="numeric" class="' + (errs.priority ? 'invalid' : '') + '" value="' + esc(v.priority) + '" placeholder="Optional">' +
+    (errs.priority ? '<div class="f-error">⚠ ' + esc(errs.priority) + '</div>' : '') + '</div>' +
+    '<button class="btn primary" onclick="submitTaskForm(\'' + (task ? task.id : '') + '\')">' + (task ? 'Save Changes' : 'Create Task') + '</button>' +
+    '<button class="btn secondary" onclick="goBack()">Cancel</button></div>';
+};
+function submitTaskForm(id) {
+  const v = {
+    title: document.getElementById('tf-title').value,
+    targetDescription: document.getElementById('tf-target').value,
+    description: document.getElementById('tf-desc').value,
+    exitCriteria: document.getElementById('tf-exit').value,
+    priority: document.getElementById('tf-prio').value,
+  };
+  const errors = {};
+  if (!v.title.trim()) errors.title = 'Title is required.';
+  if (!v.targetDescription.trim()) errors.targetDescription = 'Target is required.';
+  if (v.priority.trim() !== '') {
+    const n = Number(v.priority);
+    if (!Number.isInteger(n) || n < 1 || n > 5) errors.priority = 'Priority must be an integer between 1 and 5.';
+  }
+  if (Object.keys(errors).length) {
+    ui.drafts.TaskForm = Object.assign({}, v, { errors }); // failed mutations preserve valid input
+    render();
+    return;
+  }
+  ui.drafts.TaskForm = null;
+  const prio = v.priority.trim() === '' ? null : Number(v.priority);
+  if (id) {
+    const task = taskById(id);
+    Object.assign(task, { title: v.title.trim(), targetDescription: v.targetDescription.trim(), description: v.description.trim(), exitCriteria: v.exitCriteria.trim(), priority: prio, updatedAt: nowIso() });
+    toast('Task updated');
+  } else {
+    store.tasks.unshift({ id: nextId('t'), title: v.title.trim(), targetDescription: v.targetDescription.trim(), description: v.description.trim(), exitCriteria: v.exitCriteria.trim(), priority: prio, archivedAt: null, createdAt: nowIso(), updatedAt: nowIso() });
+    toast('Task created');
+  }
+  goBack();
+}
+</script>
+<script>
+'use strict';
+/* ============================================================
+ * #135 — Project-scoped decomposition hierarchy
+ * ============================================================ */
+RENDERERS.Hierarchy = function (t) {
+  const p = projectById(t.projectId);
+  if (!p) return navbar('Hierarchy') + emptyState('⚠', 'Project not found', 'This project no longer exists.');
+  const h = computeHierarchy(p.id);
+  let html = navbar('Hierarchy');
+  html += '<div class="content">' + feedbackHtml();
+  html += '<div class="section-note" style="margin:4px 0 12px;">' + esc(p.title) + ' — indented Goal/Task structure. Expansion state is preserved while you navigate.</div>';
+
+  if (h.truncation.truncated) {
+    html += '<div class="banner warning"><span class="b-icon">✂</span><div><div class="b-title">Traversal truncated</div><div>' +
+      (h.truncation.depthLimitReached ? 'Depth limit ' + h.truncation.maxDepth + ' reached' : 'Node limit ' + h.truncation.maxNodes + ' reached') +
+      ' after visiting ' + h.truncation.visitedNodeCount + ' nodes. Some descendants are hidden — refine the view to inspect deeper levels.</div></div></div>';
+  }
+
+  if (h.roots.length === 0) {
+    html += emptyState('⑂', 'No structure yet', 'Pursue a goal first — pursued goals become the roots of the decomposition hierarchy.');
+  } else {
+    html += '<div class="card">' + h.roots.map(r => treeNodeHtml(p.id, r)).join('') + '</div>';
+  }
+
+  /* disconnected member tasks surface as a finding, not hidden */
+  const connected = new Set(h.all.map(n => n.node.type + ':' + n.node.id));
+  const disconnected = activeMembershipsForProject(p.id).filter(m => !connected.has('task:' + m.taskId) && !activeParent(p.id, 'task', m.taskId));
+  if (disconnected.length > 0) {
+    html += '<div class="section-title">Not in hierarchy</div>';
+    html += '<div class="card">' + disconnected.map(m => {
+      const task = taskById(m.taskId);
+      if (!task) return '<div class="row"><div><div>⚠ Missing task (' + esc(m.taskId) + ')</div><div class="sub">Integrity anomaly — membership endpoint not found</div></div></div>';
+      return '<button class="row" onclick="navigate(\'TaskDetail\', { id: \'' + task.id + '\' })">' +
+        '<div><div>' + esc(task.title) + '</div><div class="sub">Member task without a parent — attach it from a node\'s ＋ menu</div></div>' +
+        '<span class="badge unmanaged">○ Disconnected</span><span class="chev">›</span></button>';
+    }).join('') + '</div>';
+  }
+  return html + '</div>';
+};
+
+function treeNodeHtml(projectId, entry) {
+  const { node, depth, children } = entry;
+  const key = projectId + ':' + node.type + ':' + node.id;
+  const expanded = ui.expanded[key] !== undefined ? ui.expanded[key] : depth < 2;
+  const entity = nodeEntity(node.type, node.id);
+  const lc = lifecycleOf(node.type, node.id);
+  const hasKids = children.length > 0 || activeChildren(projectId, node.type, node.id).length > 0;
+  const hiddenKids = depth >= TRAVERSAL_MAX_DEPTH && activeChildren(projectId, node.type, node.id).length > 0;
+  let row = '<div class="tree-row" style="padding-left:' + (12 + depth * 22) + 'px;">' +
+    (hasKids
+      ? '<button class="tree-toggle" aria-label="' + (expanded ? 'Collapse' : 'Expand') + '" onclick="toggleNode(\'' + key + '\',' + expanded + ')">' + (expanded ? '▾' : '▸') + '</button>'
+      : '<span class="tree-toggle"></span>') +
+    '<span class="tree-type ' + node.type + '">' + node.type.toUpperCase() + '</span>' +
+    '<span class="tree-title" onclick="navigate(\'' + (node.type === 'goal' ? 'GoalDetail' : 'TaskDetail') + '\', { id: \'' + node.id + '\' })">' +
+      esc(nodeTitle(node.type, node.id)) + (entity && entity.archivedAt ? ' 🗄' : '') + '</span>' +
+    categoryBadge(lc.category, lc.state) +
+    '<button class="tree-add" aria-label="Add child to ' + esc(nodeTitle(node.type, node.id)) + '" onclick="openAddChildSheet(\'' + projectId + '\', \'' + node.type + '\', \'' + node.id + '\')">＋</button>' +
+    '</div>';
+  if (hiddenKids) {
+    row += '<div class="tree-row" style="padding-left:' + (12 + (depth + 1) * 22) + 'px;color:var(--text-2);font-size:13px;">✂ Deeper levels hidden — traversal limit reached</div>';
+  }
+  if (expanded && children.length > 0) {
+    row += children.map(c => treeNodeHtml(projectId, c)).join('');
+  }
+  return row;
+}
+function toggleNode(key, currentlyExpanded) { ui.expanded[key] = !currentlyExpanded; render(); }
+
+/* Add-child picker: domain direction/type/cardinality/cycle/context rules
+ * are applied to build the candidate list; rejected candidates stay visible
+ * with their reason and surface the semantic feedback on tap (#133). */
+function openAddChildSheet(projectId, parentType, parentId) {
+  const allowedChildTypes = parentType === 'goal' ? ['goal', 'task'] : ['task'];
+  let rows = '';
+  allowedChildTypes.forEach(childType => {
+    const pool = childType === 'goal' ? store.goals : store.tasks;
+    rows += '<div class="section-title">Add a ' + childType + '</div><div class="card">';
+    rows += pool.map(e => {
+      let reject = null;
+      if (e.archivedAt) reject = 'archived_endpoint';
+      else if (parentType === childType && parentId === e.id) reject = 'self';
+      else if (!hasProjectContext(projectId, childType, e.id)) reject = 'cross_project';
+      else if (activeParent(projectId, childType, e.id)) reject = 'cardinality';
+      else if (isAncestorOrSelf(projectId, { type: childType, id: e.id }, { type: parentType, id: parentId })) reject = 'cycle';
+      const reasons = {
+        archived_endpoint: 'Archived', cross_project: 'Not in this project',
+        cardinality: 'Already has a parent', cycle: 'Would create a cycle', self: 'Same item',
+      };
+      if (!reject) {
+        return '<button class="row" onclick="addChild(\'' + projectId + '\', \'' + parentType + '\', \'' + parentId + '\', \'' + childType + '\', \'' + e.id + '\')">' +
+          '<div><div>' + esc(e.title) + '</div></div><span class="chev">›</span></button>';
+      }
+      const feedbackKind = reject === 'self' ? 'cycle' : reject;
+      return '<button class="row disabled" onclick="showFeedback(\'' + feedbackKind + '\')">' +
+        '<div><div>' + esc(e.title) + '</div><div class="sub">' + reasons[reject] + '</div></div>' +
+        '<span class="badge ended">⊘ ' + reasons[reject] + '</span></button>';
+    }).join('');
+    rows += '</div>';
+  });
+  if (parentType === 'task') {
+    rows += '<div class="section-note">A task can only contain tasks — goals are not offered as children of a task. Trying that direction elsewhere surfaces the "direction not permitted" feedback.</div>';
+  }
+  openSheet('Add child to "' + nodeTitle(parentType, parentId) + '"', rows);
+}
+function addChild(projectId, parentType, parentId, childType, childId) {
+  store.decompositions.push({ id: nextId('d'), projectId, parentType, parentId, childType, childId, createdAt: nowIso(), endedAt: null });
+  closeSheet();
+  toast('Child added');
+  render();
+}
+
+/* ============================================================
+ * #136 — Execution snapshot & derived progress
+ * ============================================================ */
+function openExecution(projectId) {
+  navigate('Execution', { projectId });
+  if (!ui.snapshotLoaded[projectId]) {
+    setTimeout(() => {
+      ui.snapshotLoaded[projectId] = true;
+      if (currentScreen().name === 'Execution') render();
+    }, 600);
+  }
+}
+RENDERERS.Execution = function (t) {
+  const p = projectById(t.projectId);
+  if (!p) return navbar('Execution') + emptyState('⚠', 'Project not found', 'This project no longer exists.');
+
+  /* loading state */
+  if (!ui.snapshotLoaded[t.projectId]) {
+    return navbar('Execution') + '<div class="state-block" style="padding-top:120px;"><div class="spinner"></div><div class="s-title">Loading snapshot…</div><div class="s-body">Composing pursuits, memberships, hierarchy, and lifecycle state.</div></div>';
+  }
+  /* error + retry state (seeded once for the Scratch Project) */
+  if (store.snapshotFailOnce[t.projectId]) {
+    return navbar('Execution') + '<div class="content">' +
+      '<div class="state-block" style="padding-top:80px;"><div class="s-icon">⚠</div>' +
+      '<div class="s-title">Snapshot failed to load</div>' +
+      '<div class="s-body">The execution snapshot could not be composed. Nothing was changed — your data is intact.</div>' +
+      '<div style="margin-top:18px;"><button class="btn primary" onclick="retrySnapshot(\'' + t.projectId + '\')">Retry</button></div></div></div>';
+  }
+
+  const snap = computeSnapshot(t.projectId);
+  let html = navbar('Execution');
+  html += '<div class="content">' + feedbackHtml();
+  html += '<div class="section-note" style="margin:4px 0 12px;">' + esc(p.title) + ' — derived from the execution snapshot. Lifecycle is inspect-only in M2; transitions ship with Feature #29.</div>';
+
+  /* progress hero — percentage only when defined */
+  if (snap.percentage === null) {
+    html += '<div class="progress-hero"><div class="pct" style="font-size:24px;">Not measurable yet</div>' +
+      '<div class="frac">' + snap.numerator + ' complete of ' + snap.denominator + ' measurable items</div>' +
+      '<div class="frac" style="margin-top:8px;">Progress percentage is undefined when there are no complete, incomplete, or blocked items — it is never shown as 0% or 100% by default.</div></div>';
+  } else {
+    html += '<div class="progress-hero"><div class="pct">' + snap.percentage + '%</div>' +
+      '<div class="frac">' + snap.numerator + ' of ' + snap.denominator + ' measurable items complete</div>' +
+      '<div class="progress-bar"><div style="width:' + snap.percentage + '%;"></div></div></div>';
+  }
+
+  /* work categories */
+  html += '<div class="section-title">Work categories</div><div class="cat-grid">' +
+    Object.keys(CATEGORY_META).map(cat =>
+      '<div class="cat-cell"><span>' + CATEGORY_META[cat].icon + ' ' + CATEGORY_META[cat].label + '</span><span class="n">' + (snap.counts[cat] || 0) + '</span></div>').join('') +
+    '</div><div class="section-note">Unmanaged, uninitialized, and invalid items are excluded from the denominator and reported separately.</div>';
+
+  /* integrity findings */
+  if (snap.findings.length > 0) {
+    html += '<div class="section-title">Integrity findings (' + snap.findings.length + ')</div><div class="card">' +
+      snap.findings.map(f => '<div class="row" style="cursor:default;"><span>' + f.icon + '</span><div style="font-size:14px;">' + esc(f.text) + '</div></div>').join('') +
+      '</div>';
+  }
+
+  /* nodes with lifecycle context */
+  html += '<div class="section-title">Nodes (' + snap.nodes.length + ')</div>';
+  if (snap.nodes.length === 0) {
+    html += emptyState('▤', 'No work in scope', 'Pursue a goal or add member tasks to build the execution scope.');
+  } else {
+    html += '<div class="card">' + snap.nodes.map(n =>
+      '<button class="row" onclick="navigate(\'' + (n.node.type === 'goal' ? 'GoalDetail' : 'TaskDetail') + '\', { id: \'' + n.node.id + '\' })">' +
+      '<span class="tree-type ' + n.node.type + '">' + n.node.type.toUpperCase() + '</span>' +
+      '<div style="flex:1;min-width:0;"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(n.title) + '</div>' +
+      '<div class="sub">' + (n.lifecycle.machine ? esc(n.lifecycle.machine) : 'No applicable workflow') + '</div></div>' +
+      categoryBadge(n.lifecycle.category, n.lifecycle.state) +
+      '<span class="chev">›</span></button>').join('') + '</div>';
+  }
+  return html + '</div>';
+};
+function retrySnapshot(projectId) {
+  store.snapshotFailOnce[projectId] = false;
+  ui.snapshotLoaded[projectId] = false;
+  render();
+  setTimeout(() => {
+    ui.snapshotLoaded[projectId] = true;
+    if (currentScreen().name === 'Execution') { toast('Snapshot loaded'); render(); }
+  }, 500);
+}
+
+/* ============================================================ */
+render();
+</script>
+</body>
+</html>

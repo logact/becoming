@@ -44,7 +44,7 @@ Becoming is a native iOS app built with TypeScript, React Native, and Expo, pers
 - `src/persistence/` — framework-independent persistence port (`SqliteDatabase`), `withTransaction` unit-of-work helper, append-only migrations, and repositories for implemented entities, relations, and state-machine tables.
 - `src/persistence/sqlite/` — port adapters: `appDatabase.ts` (production, expo-sqlite) and `nodeSqliteDatabase.ts` (tests/CI, `node:sqlite`).
 - `__tests__/` — Jest (jest-expo preset, Node environment) suites plus the shared harness `__tests__/helpers/testDatabase.ts`, which builds a fresh migrated in-memory database per test.
-- `docs/` — architecture and CI/CD documentation.
+- `docs/` — architecture and CI/CD documentation, plus interactive UI prototypes (`m2-prototype.html`, single-file HTML mock of the M2 native planning loop).
 - `.github/workflows/` — `publish.yml` (manual EAS Build/Submit to TestFlight or App Store; setup in `docs/ci-cd.md`).
 
 Checks: `npm run typecheck` and `npm test`. Hard rules: no database foreign keys, no shared `entities` table, exact decimals as TEXT, logical references validated in the domain layer. Update this guide when the layout changes.
