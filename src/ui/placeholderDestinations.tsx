@@ -1,25 +1,20 @@
 import React from 'react';
 import { Text } from 'react-native';
 
+import { goalsDestination } from './goals/goalsDestination';
 import type { ShellDestination } from './navigation/NavigationShell';
 import { EntityListScaffold } from './shared/EntityListScaffold';
 
 /**
- * Temporary destinations so the shell and composition root are exercisable
- * before the M2 screen tasks (#131, #132, #134) land. Each renders the
- * shared list scaffold in its empty state; the real screens replace these
- * without changing the shell contract.
+ * The shell destinations for the app: the real Goals destination (#131) plus
+ * the remaining temporary placeholders, which render the shared list
+ * scaffold in its empty state until the M2 Project (#134) and Task (#132)
+ * screens land. Real screens replace placeholders without changing the shell
+ * contract.
  */
-export function placeholderDestinations(): ShellDestination[] {
+export function appDestinations(): ShellDestination[] {
   return [
-    placeholder({
-      id: 'goals',
-      title: 'Goals',
-      icon: '◎',
-      heroTitle: 'What do you want to become?',
-      heroCopy: 'Define outcomes before choosing the work.',
-      emptyMessage: 'Goal planning screens arrive with the M2 Goal task.',
-    }),
+    goalsDestination(),
     placeholder({
       id: 'projects',
       title: 'Projects',
