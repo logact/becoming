@@ -74,7 +74,7 @@ describe('EntityListScaffold', () => {
     expect(screen.queryByLabelText('New goal')).toBeNull();
   });
 
-  it('forwards search input and segmented filter changes', () => {
+  it('forwards search input and filter toggle changes', () => {
     const onSearchChange = jest.fn();
     const onFilterChange = jest.fn();
     render(<EntityListScaffold {...props({ onSearchChange, onFilterChange })} />);

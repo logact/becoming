@@ -6,7 +6,7 @@ import type { ProjectProgressFinding } from '../../../application/projectProgres
 import { useAppServices } from '../../composition/AppServicesProvider';
 import { useShellNavigation } from '../../navigation/NavigationShell';
 import { StatusBadge } from '../../shared/StatusBadge';
-import { colors, radius, spacing } from '../../shared/theme';
+import { colors, fonts, radius, spacing } from '../../shared/theme';
 import { requestCrossDestinationDetail } from '../crossDestinationDetail';
 import type { ProjectDetailSegmentContext } from '../projectDetailSlots';
 import {
@@ -432,15 +432,17 @@ const styles = StyleSheet.create({
     color: colors.brandSoft,
   },
   heroNumber: {
+    fontFamily: fonts.display,
     fontSize: 44,
     lineHeight: 48,
-    fontWeight: '800',
+    fontWeight: '500',
     color: colors.white,
   },
   heroZeroTitle: {
+    fontFamily: fonts.display,
     fontSize: 22,
     lineHeight: 28,
-    fontWeight: '700',
+    fontWeight: '500',
     color: colors.white,
   },
   heroCopy: {
@@ -458,7 +460,7 @@ const styles = StyleSheet.create({
   barFill: {
     height: '100%',
     borderRadius: 4,
-    backgroundColor: colors.brandSoft,
+    backgroundColor: colors.lime,
   },
   heroNote: {
     fontSize: 12,

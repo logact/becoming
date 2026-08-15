@@ -193,8 +193,8 @@ Prototype-aligned delivery:
 
 - [x] Fill the Project detail Structure segment with a deterministic, accessible indented tree. Each row exposes expand/collapse, Goal or Task type text, entity title, Task lifecycle status when available, and a contextual add-child action.
 - [x] For a Project with no root structure, show the prototype's explicit No structure yet state and route Pursue a Goal through #134. Do not fabricate a hierarchy root in presentation code.
-- [x] Explain the valid directions in context: Goal -> Goal or Task, and Task -> Task. The add-child sheet combines eligible Goals and Tasks and keeps rejected candidates visible with distinct #133 reasons where useful.
-- [x] Commit Goal->Goal, Goal->Task, and Task->Task additions through decomposition services. Add a contextual, confirmed end-edge action that removes only the active edge and preserves both entities and historical relation; this required action extends the current prototype.
+- [x] Explain the valid directions in context: Goal -&gt; Goal or Task, and Task -&gt; Task. The add-child sheet combines eligible Goals and Tasks and keeps rejected candidates visible with distinct #133 reasons where useful.
+- [x] Commit Goal-&gt;Goal, Goal-&gt;Task, and Task-&gt;Task additions through decomposition services. Add a contextual, confirmed end-edge action that removes only the active edge and preserves both entities and historical relation; this required action extends the current prototype.
 - [x] Preserve expansion state by stable typed node identity after add/end/refresh operations. A collapsed branch remains collapsed when its node still exists.
 - [x] Render loading, bounded-query error/retry, missing endpoint, cycle/integrity, and traversal-truncated states. Show truncation guidance only when reported by the query, including enough context to prevent a partial tree from looking complete.
 
@@ -244,14 +244,16 @@ Before closing M2:
 
 ## Task execution log
 
-| Task | Started (UTC) | Completed (UTC) | Elapsed | Worker token usage | Commit |
-| --- | --- | --- | --- | --- | --- |
-| [#131](https://github.com/logact/becoming/issues/131) | 2026-08-15 02:33:16 | 2026-08-15 02:51:26 | 18m10s | — | 963a437 |
-| [#133](https://github.com/logact/becoming/issues/133) | 2026-08-15 02:33:16 | 2026-08-15 02:51:26 | 18m10s | — | 963a437 |
-| [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 02:51:26 | 2026-08-15 03:13:23 | 21m57s | — | 218e463 |
-| [#132](https://github.com/logact/becoming/issues/132) | 2026-08-15 03:13:23 | 2026-08-15 03:36:11 | 22m48s | — | 67138fe |
-| [#135](https://github.com/logact/becoming/issues/135) | 2026-08-15 03:36:11 | 2026-08-15 07:16:49 | 3h40m38s | — | 086b8b1 |
-| [#136](https://github.com/logact/becoming/issues/136) | 2026-08-15 07:18:00 | 2026-08-15 07:40:18 | 22m18s | — | 6ccc8c3 |
+
+| Task                                                  | Started (UTC)       | Completed (UTC)     | Elapsed  | Worker token usage | Commit  |
+| ----------------------------------------------------- | ------------------- | ------------------- | -------- | ------------------ | ------- |
+| [#131](https://github.com/logact/becoming/issues/131) | 2026-08-15 02:33:16 | 2026-08-15 02:51:26 | 18m10s   | —                  | 963a437 |
+| [#133](https://github.com/logact/becoming/issues/133) | 2026-08-15 02:33:16 | 2026-08-15 02:51:26 | 18m10s   | —                  | 963a437 |
+| [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 02:51:26 | 2026-08-15 03:13:23 | 21m57s   | —                  | 218e463 |
+| [#132](https://github.com/logact/becoming/issues/132) | 2026-08-15 03:13:23 | 2026-08-15 03:36:11 | 22m48s   | —                  | 67138fe |
+| [#135](https://github.com/logact/becoming/issues/135) | 2026-08-15 03:36:11 | 2026-08-15 07:16:49 | 3h40m38s | —                  | 086b8b1 |
+| [#136](https://github.com/logact/becoming/issues/136) | 2026-08-15 07:18:00 | 2026-08-15 07:40:18 | 22m18s   | —                  | 6ccc8c3 |
+
 
 Note: started/completed are recorded to the second (UTC). Start times are bounded by the previous wave's commit and completion by the wave's commit, so they are accurate to within about a minute. #131 and #133 ran in parallel in Wave 1. #132 includes one interruption and resume. #135's elapsed includes a ~3.5h pause for a usage-quota refresh; active work time was roughly 25 minutes.
 
@@ -265,3 +267,240 @@ The GitHub sub-issue relationships, milestone membership, labels, and numbered `
 4. explain dependency changes in the affected issue or PR.
 
 If native GitHub `blocked by` relationships are introduced for M2, migrate the complete dependency graph and treat those native relationships as authoritative. Do not use this document to override an open dependency silently.
+
+
+
+Comment   
+The agent did not primarily fail at implementation—it optimized for the contract in [`m2-plan.md`](http://m2-plan.md). That contract strongly emphasized behavior, domain correctness, persistence, edge states, and tests, while explicitly weakening visual fidelity.
+
+## Primary cause
+
+The decisive sentence is:
+
+&gt; “It defines the intended screen relationships and presentation states, not … a pixel-perfect web specification.”
+
+See [[m2-plan.md](http://m2-plan.md)](/Users/logact/projects/becoming/[m2-plan.md:35](http://m2-plan.md:35)).
+
+An implementation agent will interpret that as:
+
+- Preserve screen hierarchy and actions.
+
+- Preserve loading/error/empty states.
+
+- Adapt the presentation freely for React Native.
+
+- Prefer native accessibility and maintainability over matching CSS details.
+
+That is exactly what happened. The app reproduces the prototype’s information architecture, but not its complete visual system.
+
+## Why the process allowed the mismatch
+
+### 1. “Prototype-aligned” criteria describe features, not appearance
+
+For example, the Goal requirement asks for a hero, search, filter, rows, and create action: [[m2-plan.md](http://m2-plan.md)](/Users/logact/projects/becoming/[m2-plan.md:108](http://m2-plan.md:108)).
+
+It does not specify that:
+
+- The hero needs the lime circular ornament.
+
+- Headings use Georgia/serif typography.
+
+- Search and filter stay on one horizontal line.
+
+- Rows share one grouped container with separators.
+
+- Create is a 54×54 lime FAB.
+
+- Detail facts use a compact two-column grid.
+
+- Project segments remain a single horizontal row.
+
+Therefore, a green pill labeled “New goal” technically satisfies “active-only create action,” even though it does not resemble the prototype.
+
+### 2. The acceptance gates reward functional correctness
+
+The Definition of Done is dominated by:
+
+- Component and integration tests
+
+- Persistence
+
+- Domain validation
+
+- Refresh behavior
+
+- Error states
+
+- Accessibility semantics
+
+See [[m2-plan.md](http://m2-plan.md)](/Users/logact/projects/becoming/[m2-plan.md:62](http://m2-plan.md:62)).
+
+These are valuable requirements, but there is no corresponding requirement such as:
+
+- Capture the Expo screen.
+
+- Compare it side-by-side with the prototype.
+
+- Verify typography, spacing, geometry, and colors.
+
+- Obtain a visual review before closing the task.
+
+Consequently, the agent maximized what could be objectively checked.
+
+### 3. The tests cannot detect visual divergence
+
+The UI tests primarily assert that text exists and actions work. For example, [entityListScaffold.test.tsx](/Users/logact/projects/becoming/__tests__/entityListScaffold.test.tsx:34) checks that the hero and row render and that pressing the create action calls its handler.
+
+Likewise, [projectDetailScreen.test.tsx](/Users/logact/projects/becoming/__tests__/projectDetailScreen.test.tsx:35) verifies facts, segments, navigation, errors, and mutations.
+
+There are no committed assertions for:
+
+- Safe-area placement
+
+- Horizontal segment layout
+
+- Typography
+
+- Lime accent use
+
+- Inline toolbar layout
+
+- Grouped rows
+
+- FAB dimensions
+
+- Screen density
+
+- Simulator screenshots
+
+React Native’s Jest renderer also cannot reproduce UIKit’s sticky-header behavior or the iPhone status area. This is why the vertical Project segment and status-bar overlap passed every test.
+
+### 4. The agent apparently did not perform a real simulator comparison
+
+Two defects would have been immediately obvious from one Expo screenshot:
+
+- Content under the Dynamic Island/status bar.
+
+- `Overview / Structure / Progress` stacked vertically.
+
+The sticky segment defect is especially instructive. In source code, `flexDirection: 'row'` looked correct. But React Native’s sticky-header wrapper transfers the child style to an outer wrapper and replaces the inner child style. Only an actual native run exposed the result.
+
+The closeout still has unchecked items for demonstrating the native loop and verifying Dynamic Type, VoiceOver, and touch behavior: [[m2-plan.md](http://m2-plan.md)](/Users/logact/projects/becoming/[m2-plan.md:230](http://m2-plan.md:230)). Feature waves were marked complete before that final native acceptance pass occurred.
+
+### 5. The initial shared foundation encoded the visual drift
+
+The foundation theme at committed `HEAD` copied most colors, spacing, and radii, but omitted:
+
+- Lime
+
+- Display typography
+
+- Shadows
+
+- Type-scale roles
+
+- Reusable grouped-list styling
+
+- Compact fact-grid rules
+
+The shared list scaffold then introduced:
+
+- Stacked toolbar controls
+
+- Independent rounded row cards
+
+- Green pill create action
+
+- System-font hero title
+
+Because Goals, Projects, and Tasks all consume that scaffold, one early approximation propagated across the entire milestone.
+
+### 6. The scope encouraged speed and breadth
+
+The task log records roughly 18–25 active minutes for several very large UI waves: [[m2-plan.md](http://m2-plan.md)](/Users/logact/projects/becoming/[m2-plan.md:245](http://m2-plan.md:245)).
+
+Those commits added thousands of lines of screens, integration code, and tests. That execution pattern is compatible with building broad functional coverage, but not with iterative visual refinement across multiple simulator captures.
+
+## What the agent actually reproduced successfully
+
+The agent was fairly faithful to:
+
+- Navigation topology
+
+- Entity and relationship flows
+
+- Loading, empty, error, and archived states
+
+- Bottom-sheet interaction model
+
+- Status badges and non-color cues
+
+- Provenance activity
+
+- Progress semantics
+
+- Domain/application boundaries
+
+- SQLite-backed behavior
+
+It was not faithful to:
+
+- Typography
+
+- Page composition
+
+- Density
+
+- Decorative identity
+
+- Control geometry
+
+- Native safe areas
+
+- Runtime layout behavior
+
+So the plan produced “functional fidelity,” not “visual fidelity.”
+
+## How the plan should be changed
+
+Replace the current prototype contract with something closer to:
+
+&gt; `m2-codex-prototype.html` is the visual and interaction source of truth. Reproduce its mobile layout, hierarchy, typography, colors, spacing, radii, grouped-list treatment, segmented controls, sheets, and create affordances as closely as React Native permits. Native adaptation is allowed only for safe areas, keyboard behavior, accessibility, and platform touch targets. Any intentional visual deviation must be documented before implementation.
+
+Then add explicit visual acceptance criteria:
+
+- Use the prototype’s serif display typography.
+
+- Include the lime hero ornament, FAB, and progress accent.
+
+- Keep search and filter inline at the reference width.
+
+- Preserve grouped list rows and separators.
+
+- Keep Project segments horizontal and sticky.
+
+- Use compact multi-column fact layouts where shown.
+
+- Respect top and bottom safe-area insets.
+
+- Capture equivalent prototype and Expo screens at a named iPhone viewport.
+
+- Review list, detail, sheet, Structure, Progress, zero-denominator, and rejection states side-by-side.
+
+- Do not close a wave until its simulator screenshots pass visual review.
+
+The best workflow would be:
+
+1. Port the complete design token system.
+
+2. Implement one representative list, detail, and sheet.
+
+3. Run Expo and compare screenshots.
+
+4. Correct the shared primitives.
+
+5. Only then reuse those primitives across all six features.
+
+6. Run a final simulator visual gate after integration.
+
+One additional note: the working tree currently contains uncommitted changes that appear to address several of the earlier problems, including safe areas, typography, the lime accent, FAB styling, and the sticky segment wrapper. The analysis above refers to the committed implementation at `HEAD`, which is the version originally reviewed.

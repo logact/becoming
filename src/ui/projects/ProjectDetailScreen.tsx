@@ -17,7 +17,7 @@ import { useShellNavigation } from '../navigation/NavigationShell';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { StatusBadge } from '../shared/StatusBadge';
 import { useToast } from '../shared/Toast';
-import { colors, radius, spacing } from '../shared/theme';
+import { colors, fonts, radius, spacing } from '../shared/theme';
 import { ProjectFormSheet } from './ProjectFormSheet';
 import { ProjectOverview } from './ProjectOverview';
 import type { ProjectDetailSegmentId, ProjectDetailSlots } from './projectDetailSlots';
@@ -236,28 +236,32 @@ export function ProjectDetailScreen({ entityId, slots }: ProjectDetailScreenProp
         </View>
       </View>
 
-      <View
-        style={styles.segmentBar}
-        accessibilityRole="tablist"
-        accessibilityLabel="Project detail sections"
-      >
-        {SEGMENTS.map((option) => {
-          const selected = segment === option.id;
-          return (
-            <Pressable
-              key={option.id}
-              onPress={() => setSegment(option.id)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              accessibilityLabel={`Show ${option.label.toLowerCase()}`}
-              style={[styles.segmentOption, selected && styles.segmentOptionSelected]}
-            >
-              <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+      {/* Sticky header wrappers replace their child's style with flex: 1, so the
+          row layout must live on an inner view, not the sticky child itself. */}
+      <View style={styles.segmentSticky}>
+        <View
+          style={styles.segmentBar}
+          accessibilityRole="tablist"
+          accessibilityLabel="Project detail sections"
+        >
+          {SEGMENTS.map((option) => {
+            const selected = segment === option.id;
+            return (
+              <Pressable
+                key={option.id}
+                onPress={() => setSegment(option.id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`Show ${option.label.toLowerCase()}`}
+                style={[styles.segmentOption, selected && styles.segmentOptionSelected]}
+              >
+                <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
       {segment === 'overview' && (
@@ -381,8 +385,9 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   title: {
+    fontFamily: fonts.display,
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.ink,
     marginTop: spacing.sm,
   },
@@ -397,6 +402,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
   },
+  segmentSticky: {
+    backgroundColor: colors.canvas,
+    marginBottom: spacing.lg,
+  },
   segmentBar: {
     flexDirection: 'row',
     backgroundColor: colors.paper,
@@ -404,7 +413,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
     padding: spacing.xs,
-    marginBottom: spacing.lg,
   },
   segmentOption: {
     flex: 1,

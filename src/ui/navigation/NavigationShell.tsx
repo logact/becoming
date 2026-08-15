@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, spacing } from '../shared/theme';
 
@@ -113,15 +114,20 @@ export function NavigationShell({ destinations, initialDestination }: Navigation
   }, [active, stacks, openDetail, goBack, switchDestination, presentSheet, dismissSheet]);
 
   const current = destinations.find((d) => d.id === active) ?? destinations[0];
+  const insets = useSafeAreaInsets();
 
   return (
     <ShellNavigationContext.Provider value={value}>
       <View style={styles.shell}>
-        <View style={styles.screen}>
+        <View style={[styles.screen, { paddingTop: insets.top }]}>
           {current && renderCurrentRoute(current, value.route)}
         </View>
         {sheet !== null && <View style={styles.sheetSlot}>{sheet}</View>}
-        <View style={styles.tabBar} accessibilityRole="tablist" accessibilityLabel="Primary">
+        <View
+          style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, spacing.lg) }]}
+          accessibilityRole="tablist"
+          accessibilityLabel="Primary"
+        >
           {destinations.map((destination) => {
             const selected = destination.id === active;
             return (

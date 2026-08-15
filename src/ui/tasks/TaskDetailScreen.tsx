@@ -17,7 +17,7 @@ import { requestCrossDestinationDetail } from '../projects/crossDestinationDetai
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { StatusBadge } from '../shared/StatusBadge';
 import { useToast } from '../shared/Toast';
-import { colors, radius, spacing } from '../shared/theme';
+import { colors, fonts, radius, spacing } from '../shared/theme';
 import { TaskMembershipActions } from './membership/TaskMembershipActions';
 import { describeTaskActivity, formatActivityTime } from './taskActivity';
 import {
@@ -431,8 +431,9 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   title: {
+    fontFamily: fonts.display,
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.ink,
     marginTop: spacing.sm,
   },

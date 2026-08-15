@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { colors, radius, spacing } from './theme';
+import { colors, fonts, radius, spacing } from './theme';
 
 export type EntityListStatus = 'loading' | 'error' | 'ready';
 export type EntityListFilter = 'active' | 'archived';
@@ -54,10 +54,11 @@ export interface EntityListScaffoldProps<T> {
 
 /**
  * Shared entity list scaffold for the Goals, Projects, and Tasks
- * destinations: planning hero, title search, Active/Archived segmented
- * filter, populated rows, explicit empty state, loading state, recoverable
- * error/retry state, and an active-only create action. Presentation only —
- * screens own the query, filtering, and mutations.
+ * destinations: planning hero, an inline toolbar with title search and an
+ * Active/Archived filter toggle, grouped list rows with separators, explicit
+ * empty state, loading state, recoverable error/retry state, and an
+ * active-only lime square create button. Presentation only — screens own the
+ * query, filtering, and mutations.
  */
 export function EntityListScaffold<T>(props: EntityListScaffoldProps<T>) {
   const {
@@ -72,6 +73,11 @@ export function EntityListScaffold<T>(props: EntityListScaffoldProps<T>) {
     <View style={styles.screen}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <View style={styles.hero}>
+          <View
+            style={styles.heroOrnament}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
           <Text style={styles.heroKicker} maxFontSizeMultiplier={2}>
             {heroKicker}
           </Text>
@@ -94,30 +100,20 @@ export function EntityListScaffold<T>(props: EntityListScaffoldProps<T>) {
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <View
-            style={styles.segment}
-            accessibilityRole="tablist"
-            accessibilityLabel={`${title} status filter`}
+          <Pressable
+            onPress={() => onFilterChange(filter === 'active' ? 'archived' : 'active')}
+            accessibilityRole="button"
+            accessibilityLabel={
+              filter === 'active'
+                ? `Show archived ${title.toLowerCase()}`
+                : `Show active ${title.toLowerCase()}`
+            }
+            style={styles.filterToggle}
           >
-            {(['active', 'archived'] as const).map((option) => {
-              const selected = filter === option;
-              const label = option === 'active' ? 'Active' : 'Archived';
-              return (
-                <Pressable
-                  key={option}
-                  onPress={() => onFilterChange(option)}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`Show ${label.toLowerCase()} ${title.toLowerCase()}`}
-                  style={[styles.segmentOption, selected && styles.segmentOptionSelected]}
-                >
-                  <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+            <Text style={styles.filterToggleText} maxFontSizeMultiplier={2}>
+              {filter === 'active' ? 'Active' : 'Archived'} ⌄
+            </Text>
+          </Pressable>
         </View>
 
         {status === 'loading' && (
@@ -158,8 +154,11 @@ export function EntityListScaffold<T>(props: EntityListScaffoldProps<T>) {
 
         {status === 'ready' && items.length > 0 && (
           <View style={styles.rows}>
-            {items.map((item) => (
-              <View key={keyExtractor(item)} style={styles.row}>
+            {items.map((item, index) => (
+              <View
+                key={keyExtractor(item)}
+                style={[styles.row, index === items.length - 1 && styles.rowLast]}
+              >
                 {renderRow(item)}
               </View>
             ))}
@@ -172,9 +171,16 @@ export function EntityListScaffold<T>(props: EntityListScaffoldProps<T>) {
           onPress={onCreate}
           accessibilityRole="button"
           accessibilityLabel={createLabel}
-          style={styles.createButton}
+          style={styles.fab}
         >
-          <Text style={styles.createText}>{createLabel}</Text>
+          <Text
+            style={styles.fabIcon}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+            maxFontSizeMultiplier={2}
+          >
+            ＋
+          </Text>
         </Pressable>
       )}
     </View>
@@ -198,6 +204,17 @@ const styles = StyleSheet.create({
     borderRadius: radius.sheet,
     padding: spacing.xl,
     marginBottom: spacing.lg,
+    overflow: 'hidden',
+  },
+  heroOrnament: {
+    position: 'absolute',
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: colors.lime,
+    opacity: 0.84,
+    right: -60,
+    top: -56,
   },
   heroKicker: {
     fontSize: 11,
@@ -207,8 +224,9 @@ const styles = StyleSheet.create({
     color: '#c8ddd5',
   },
   heroTitle: {
+    fontFamily: fonts.display,
     fontSize: 26,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.white,
     marginTop: spacing.sm,
     marginBottom: spacing.sm,
@@ -219,10 +237,13 @@ const styles = StyleSheet.create({
     color: '#c8d7d2',
   },
   toolbar: {
-    gap: spacing.md,
-    marginBottom: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   search: {
+    flex: 1,
     backgroundColor: colors.card,
     borderRadius: radius.card,
     borderWidth: 1,
@@ -232,30 +253,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.ink,
   },
-  segment: {
-    flexDirection: 'row',
+  filterToggle: {
     backgroundColor: colors.paper,
-    borderRadius: radius.badge,
+    borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: spacing.xs,
-    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
   },
-  segmentOption: {
-    borderRadius: radius.badge,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
-  segmentOptionSelected: {
-    backgroundColor: colors.ink,
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.muted,
-  },
-  segmentTextSelected: {
-    color: colors.white,
+  filterToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.ink,
   },
   stateBlock: {
     alignItems: 'center',
@@ -272,8 +281,9 @@ const styles = StyleSheet.create({
     color: colors.red,
   },
   stateTitle: {
+    fontFamily: fonts.display,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500',
     color: colors.ink,
     textAlign: 'center',
   },
@@ -295,27 +305,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   rows: {
-    gap: spacing.md,
-  },
-  row: {
     backgroundColor: colors.card,
     borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: spacing.lg,
+    overflow: 'hidden',
   },
-  createButton: {
+  row: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  rowLast: {
+    borderBottomWidth: 0,
+  },
+  fab: {
     position: 'absolute',
     right: spacing.lg,
     bottom: spacing.lg,
-    backgroundColor: colors.brand,
-    borderRadius: radius.badge,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: colors.lime,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#365246',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.24,
+    shadowRadius: 26,
+    elevation: 6,
   },
-  createText: {
-    color: colors.white,
-    fontWeight: '700',
-    fontSize: 15,
+  fabIcon: {
+    color: colors.ink,
+    fontWeight: '400',
+    fontSize: 28,
+    lineHeight: 32,
   },
 });

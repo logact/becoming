@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { colors, radius, spacing } from './theme';
+import { colors, fonts, radius, spacing } from './theme';
 
 export interface SheetProps {
   visible: boolean;
@@ -94,8 +94,9 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+    fontFamily: fonts.display,
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '500',
     color: colors.ink,
   },
   close: {

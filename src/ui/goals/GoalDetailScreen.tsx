@@ -16,7 +16,7 @@ import { useShellNavigation } from '../navigation/NavigationShell';
 import { ConfirmDialog } from '../shared/ConfirmDialog';
 import { StatusBadge } from '../shared/StatusBadge';
 import { useToast } from '../shared/Toast';
-import { colors, radius, spacing } from '../shared/theme';
+import { colors, fonts, radius, spacing } from '../shared/theme';
 import { describeGoalActivity, formatActivityTime } from './goalActivity';
 import type { GoalDetailSlots } from './goalDetailSlots';
 import { GoalFormSheet } from './GoalFormSheet';
@@ -218,9 +218,11 @@ export function GoalDetailScreen({ entityId, slots }: GoalDetailScreenProps) {
         </View>
       </View>
 
-      <View style={styles.factGrid}>
+      <View style={styles.factCard}>
         <Fact label="Target state" value={goal.targetState} />
+        <View style={styles.factDivider} />
         <Fact label="Success criteria" value={goal.successCriteria ?? 'Not defined'} />
+        <View style={styles.factDivider} />
         <Fact label="Active projects" value={`${pursuits.length}`} />
       </View>
 
@@ -370,8 +372,9 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   title: {
+    fontFamily: fonts.display,
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.ink,
     marginTop: spacing.sm,
   },
@@ -386,16 +389,20 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.md,
   },
-  factGrid: {
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  fact: {
+  factCard: {
     backgroundColor: colors.card,
     borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  fact: {
+    paddingVertical: spacing.md,
+  },
+  factDivider: {
+    height: 1,
+    backgroundColor: colors.line,
   },
   factLabel: {
     fontSize: 11,

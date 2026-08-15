@@ -13,6 +13,7 @@ export const colors = {
   line: '#dbe1dc',
   brand: '#16735c',
   brandSoft: '#d9eee5',
+  lime: '#dff16b',
   amber: '#a56313',
   amberSoft: '#fff2d9',
   red: '#a63d35',
@@ -20,6 +21,15 @@ export const colors = {
   blue: '#376aa0',
   blueSoft: '#e7f0fb',
   white: '#ffffff',
+} as const;
+
+/**
+ * Typography tokens. The prototype pairs a serif display face (Georgia) for
+ * hero headings, detail titles, sheet titles, and the progress figure with a
+ * system sans for body copy; body text keeps the React Native default.
+ */
+export const fonts = {
+  display: 'Georgia',
 } as const;
 
 export const spacing = {
