@@ -80,7 +80,7 @@ A task is done when:
 - **Gate B — Goal pursuit ✅ (2026-08-15):** #134 is merged; Projects can be managed from Project or Goal context and active pursuit history remains intact.
 - **Gate C — Task membership ✅ (2026-08-15):** #132 is merged; Task CRUD, Project-context selection, membership changes, archive behavior, and duplicate feedback pass integration tests.
 - **Gate D — Decomposition ✅ (2026-08-15):** #135 is merged; the indented Project hierarchy supports all valid child types and exposes rejected structures and traversal findings.
-- **Gate E — Execution insight:** #136 is merged; execution snapshots drive all progress categories, zero-denominator behavior, lifecycle display, and integrity findings.
+- **Gate E — Execution insight ✅ (2026-08-15):** #136 is merged; execution snapshots drive all progress categories, zero-denominator behavior, lifecycle display, and integrity findings.
 - **Gate F — Milestone acceptance:** the complete native loop works across Goal, Project, Task, decomposition, and progress screens; all six tasks and Features #17–#22 are ready to close.
 
 ## Workstreams
@@ -209,23 +209,23 @@ Task acceptance scenarios:
 
 Exit gate: the Project execution snapshot is the screen authority; numerator, denominator, percentage or zero-denominator state, lifecycle context, work categories, and integrity findings all render correctly.
 
-#### [#136](https://github.com/logact/becoming/issues/136) — Build Project execution and progress UI (Feature #22)
+#### [#136](https://github.com/logact/becoming/issues/136) — Build Project execution and progress UI (Feature #22) ✅ implemented 2026-08-15
 
 Prototype-aligned delivery:
 
-- [ ] Fill the Project detail Progress segment from one authoritative Project execution snapshot. Show a skeleton while loading and a Snapshot unavailable state with retry on query failure; never attempt a mutation as part of retry.
-- [ ] For measurable work, show the derived percentage prominently together with exact `complete` numerator, `measurable` denominator, and a visual bar. Render values supplied by the snapshot rather than joining Tasks or reproducing progress policy in UI code.
-- [ ] For a zero denominator, show Not measurable yet, `0 complete of 0 measurable`, no percentage, and explanatory text. Do not display `0%` or imply failure.
-- [ ] Show separate, labeled counts for complete, incomplete, blocked, unmanaged, uninitialized, and invalid work, with text/icon status cues that do not depend on color. Keep unmanaged, uninitialized, and invalid work visibly outside the measurable denominator according to the snapshot.
-- [ ] Show integrity findings as actionable rows with affected Task/entity, concise reason, lifecycle state when supplied, and drill-in to its read-only detail. Also surface hierarchy and traversal findings supplied by the snapshot.
-- [ ] Keep lifecycle state inspect-only across Project Overview rows, Structure Task rows, Progress findings, and Task detail; provide no transition action.
+- [x] Fill the Project detail Progress segment from one authoritative Project execution snapshot. Show a skeleton while loading and a Snapshot unavailable state with retry on query failure; never attempt a mutation as part of retry.
+- [x] For measurable work, show the derived percentage prominently together with exact `complete` numerator, `measurable` denominator, and a visual bar. Render values supplied by the snapshot rather than joining Tasks or reproducing progress policy in UI code.
+- [x] For a zero denominator, show Not measurable yet, `0 complete of 0 measurable`, no percentage, and explanatory text. Do not display `0%` or imply failure.
+- [x] Show separate, labeled counts for complete, incomplete, blocked, unmanaged, uninitialized, and invalid work, with text/icon status cues that do not depend on color. Keep unmanaged, uninitialized, and invalid work visibly outside the measurable denominator according to the snapshot.
+- [x] Show integrity findings as actionable rows with affected Task/entity, concise reason, lifecycle state when supplied, and drill-in to its read-only detail. Also surface hierarchy and traversal findings supplied by the snapshot.
+- [x] Keep lifecycle state inspect-only across Project Overview rows, Structure Task rows, Progress findings, and Task detail; provide no transition action.
 
 Task acceptance scenarios:
 
-- [ ] Snapshot fixtures cover empty, zero-denominator, mixed, blocked, unmanaged, uninitialized, invalid, traversal-truncated, and fully complete Projects.
-- [ ] Tests assert exact numerator, denominator, optional percentage, all six category counts, deterministic ordering, and affected-work findings.
-- [ ] Loading, error, retry success/failure, refresh, stale-result protection, and screen re-entry are defined and tested.
-- [ ] Tests fail if presentation code independently derives membership, lifecycle category, integrity state, numerator, denominator, or percentage.
+- [x] Snapshot fixtures cover empty, zero-denominator, mixed, blocked, unmanaged, uninitialized, invalid, traversal-truncated, and fully complete Projects.
+- [x] Tests assert exact numerator, denominator, optional percentage, all six category counts, deterministic ordering, and affected-work findings.
+- [x] Loading, error, retry success/failure, refresh, stale-result protection, and screen re-entry are defined and tested.
+- [x] Tests fail if presentation code independently derives membership, lifecycle category, integrity state, numerator, denominator, or percentage.
 
 ## Milestone closeout
 
@@ -250,8 +250,8 @@ Before closing M2:
 | [#133](https://github.com/logact/becoming/issues/133) | 2026-08-15 02:33:16 | 2026-08-15 02:51:26 | 18m10s | — | 963a437 |
 | [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 02:51:26 | 2026-08-15 03:13:23 | 21m57s | — | 218e463 |
 | [#132](https://github.com/logact/becoming/issues/132) | 2026-08-15 03:13:23 | 2026-08-15 03:36:11 | 22m48s | — | 67138fe |
-| [#135](https://github.com/logact/becoming/issues/135) | 2026-08-15 03:36:11 | 2026-08-15 07:16:49 | 3h40m38s | — | see wave-4 commit |
-| [#136](https://github.com/logact/becoming/issues/136) | — | — | — | — | — |
+| [#135](https://github.com/logact/becoming/issues/135) | 2026-08-15 03:36:11 | 2026-08-15 07:16:49 | 3h40m38s | — | 086b8b1 |
+| [#136](https://github.com/logact/becoming/issues/136) | 2026-08-15 07:18:00 | 2026-08-15 07:40:18 | 22m18s | — | see wave-5 commit |
 
 Note: started/completed are recorded to the second (UTC). Start times are bounded by the previous wave's commit and completion by the wave's commit, so they are accurate to within about a minute. #131 and #133 ran in parallel in Wave 1. #132 includes one interruption and resume. #135's elapsed includes a ~3.5h pause for a usage-quota refresh; active work time was roughly 25 minutes.
 
