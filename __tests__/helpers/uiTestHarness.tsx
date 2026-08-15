@@ -7,6 +7,7 @@ import type { SqliteDatabase } from '../../src/persistence/database';
 import { composeAppServices } from '../../src/ui/composition/appServices';
 import type { AppServices } from '../../src/ui/composition/appServices';
 import { AppServicesProvider } from '../../src/ui/composition/AppServicesProvider';
+import { ToastProvider } from '../../src/ui/shared/Toast';
 import { closeQuietly, createTestDatabase } from './testDatabase';
 
 /**
@@ -27,6 +28,11 @@ export async function createUiTestHarness(): Promise<UiTestHarness> {
 
 export async function closeUiTestHarness(harness: UiTestHarness): Promise<void> {
   await closeQuietly(harness.db);
+}
+
+/** Keep disappearance assertions meaningful without paying the production toast delay in CI. */
+export function TestToastProvider({ children }: { children: ReactElement }) {
+  return <ToastProvider durationMs={500}>{children}</ToastProvider>;
 }
 
 /** Render a screen wrapped in the services provider, as the app shell does. */

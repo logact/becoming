@@ -5,8 +5,12 @@ import type { RenderAPI } from '@testing-library/react-native';
 import { composeAppServices } from '../src/ui/composition/appServices';
 import { NavigationShell } from '../src/ui/navigation/NavigationShell';
 import { appDestinations } from '../src/ui/placeholderDestinations';
-import { ToastProvider } from '../src/ui/shared/Toast';
-import { closeUiTestHarness, createUiTestHarness, renderWithServices } from './helpers/uiTestHarness';
+import {
+  closeUiTestHarness,
+  createUiTestHarness,
+  renderWithServices,
+  TestToastProvider,
+} from './helpers/uiTestHarness';
 import { expectTransientToast } from './helpers/goalScreenHarness';
 import type { UiTestHarness } from './helpers/uiTestHarness';
 import type { AppServices } from '../src/ui/composition/appServices';
@@ -23,9 +27,9 @@ afterEach(async () => {
 
 function renderApp(services: AppServices): RenderAPI {
   return renderWithServices(
-    <ToastProvider>
+    <TestToastProvider>
       <NavigationShell destinations={appDestinations()} />
-    </ToastProvider>,
+    </TestToastProvider>,
     services,
   );
 }

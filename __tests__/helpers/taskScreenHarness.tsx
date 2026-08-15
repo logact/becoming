@@ -3,9 +3,8 @@ import type { RenderAPI } from '@testing-library/react-native';
 
 import type { AppServices } from '../../src/ui/composition/appServices';
 import { NavigationShell } from '../../src/ui/navigation/NavigationShell';
-import { ToastProvider } from '../../src/ui/shared/Toast';
 import { tasksDestination } from '../../src/ui/tasks/tasksDestination';
-import { renderWithServices } from './uiTestHarness';
+import { renderWithServices, TestToastProvider } from './uiTestHarness';
 
 /**
  * Render the real Tasks destination inside the shell and toast provider,
@@ -13,9 +12,9 @@ import { renderWithServices } from './uiTestHarness';
  */
 export function renderTasksApp(services: AppServices): RenderAPI {
   return renderWithServices(
-    <ToastProvider>
+    <TestToastProvider>
       <NavigationShell destinations={[tasksDestination()]} />
-    </ToastProvider>,
+    </TestToastProvider>,
     services,
   );
 }

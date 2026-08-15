@@ -6,8 +6,7 @@ import { NavigationShell } from '../../src/ui/navigation/NavigationShell';
 import { appDestinations } from '../../src/ui/placeholderDestinations';
 import { projectsDestination } from '../../src/ui/projects/projectsDestination';
 import type { ProjectDetailSlots } from '../../src/ui/projects/projectDetailSlots';
-import { ToastProvider } from '../../src/ui/shared/Toast';
-import { renderWithServices } from './uiTestHarness';
+import { renderWithServices, TestToastProvider } from './uiTestHarness';
 
 /**
  * Render the real Projects destination inside the shell and toast provider,
@@ -15,9 +14,9 @@ import { renderWithServices } from './uiTestHarness';
  */
 export function renderProjectsApp(services: AppServices, slots?: ProjectDetailSlots): RenderAPI {
   return renderWithServices(
-    <ToastProvider>
+    <TestToastProvider>
       <NavigationShell destinations={[projectsDestination(slots)]} />
-    </ToastProvider>,
+    </TestToastProvider>,
     services,
   );
 }
@@ -29,9 +28,9 @@ export function renderProjectsApp(services: AppServices, slots?: ProjectDetailSl
  */
 export function renderPlanningApp(services: AppServices): RenderAPI {
   return renderWithServices(
-    <ToastProvider>
+    <TestToastProvider>
       <NavigationShell destinations={appDestinations()} />
-    </ToastProvider>,
+    </TestToastProvider>,
     services,
   );
 }

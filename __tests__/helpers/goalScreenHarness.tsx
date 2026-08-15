@@ -4,10 +4,9 @@ import type { RenderAPI } from '@testing-library/react-native';
 
 import type { AppServices } from '../../src/ui/composition/appServices';
 import { NavigationShell } from '../../src/ui/navigation/NavigationShell';
-import { ToastProvider } from '../../src/ui/shared/Toast';
 import { goalsDestination } from '../../src/ui/goals/goalsDestination';
 import type { GoalDetailSlots } from '../../src/ui/goals/goalDetailSlots';
-import { renderWithServices } from './uiTestHarness';
+import { renderWithServices, TestToastProvider } from './uiTestHarness';
 
 /**
  * Render the real Goals destination inside the shell and toast provider,
@@ -15,9 +14,9 @@ import { renderWithServices } from './uiTestHarness';
  */
 export function renderGoalsApp(services: AppServices, slots?: GoalDetailSlots): RenderAPI {
   return renderWithServices(
-    <ToastProvider>
+    <TestToastProvider>
       <NavigationShell destinations={[goalsDestination(slots)]} />
-    </ToastProvider>,
+    </TestToastProvider>,
     services,
   );
 }

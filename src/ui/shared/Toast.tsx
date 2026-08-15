@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -24,14 +24,28 @@ export function useToast(): ToastApi {
 
 const TOAST_DURATION_MS = 2500;
 
-export function ToastProvider({ children }: { children: ReactNode }) {
+export function ToastProvider({
+  children,
+  durationMs = TOAST_DURATION_MS,
+}: {
+  children: ReactNode;
+  /** Override the display duration for deterministic hosts such as UI tests. */
+  durationMs?: number;
+}) {
   const [message, setMessage] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showToast = useCallback((next: string) => {
     if (timer.current !== null) clearTimeout(timer.current);
     setMessage(next);
-    timer.current = setTimeout(() => setMessage(null), TOAST_DURATION_MS);
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      setMessage(null);
+    }, durationMs);
+  }, [durationMs]);
+
+  useEffect(() => () => {
+    if (timer.current !== null) clearTimeout(timer.current);
   }, []);
 
   return (
