@@ -246,12 +246,14 @@ Before closing M2:
 
 | Task | Started (UTC) | Completed (UTC) | Elapsed | Worker token usage | Commit |
 | --- | --- | --- | --- | --- | --- |
-| [#131](https://github.com/logact/becoming/issues/131) | 2026-08-15 | 2026-08-15 | — | — | 963a437 |
-| [#133](https://github.com/logact/becoming/issues/133) | 2026-08-15 | 2026-08-15 | — | — | 963a437 |
-| [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 | 2026-08-15 | — | — | 218e463 |
-| [#132](https://github.com/logact/becoming/issues/132) | 2026-08-15 | 2026-08-15 | — | — | see wave-3 commit |
+| [#131](https://github.com/logact/becoming/issues/131) | 2026-08-15 02:33:16 | 2026-08-15 02:51:26 | 18m10s | — | 963a437 |
+| [#133](https://github.com/logact/becoming/issues/133) | 2026-08-15 02:33:16 | 2026-08-15 02:51:26 | 18m10s | — | 963a437 |
+| [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 02:51:26 | 2026-08-15 03:13:23 | 21m57s | — | 218e463 |
+| [#132](https://github.com/logact/becoming/issues/132) | 2026-08-15 03:13:23 | 2026-08-15 03:36:11 | 22m48s | — | 67138fe |
 | [#135](https://github.com/logact/becoming/issues/135) | — | — | — | — | — |
 | [#136](https://github.com/logact/becoming/issues/136) | — | — | — | — | — |
+
+Note: started/completed are recorded to the second (UTC). Start times are bounded by the previous wave's commit and completion by the wave's commit, so they are accurate to within about a minute. #131 and #133 ran in parallel in Wave 1. #132 includes one interruption and resume.
 
 ## Maintaining the plan
 
