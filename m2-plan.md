@@ -76,8 +76,8 @@ A task is done when:
 
 ### Integration gates
 
-- **Gate A — Planning foundations:** #131 and #133 are merged; Goal planning and reusable relation feedback pass component and application-integration tests.
-- **Gate B — Goal pursuit:** #134 is merged; Projects can be managed from Project or Goal context and active pursuit history remains intact.
+- **Gate A — Planning foundations ✅ (2026-08-15):** #131 and #133 are merged; Goal planning and reusable relation feedback pass component and application-integration tests.
+- **Gate B — Goal pursuit ✅ (2026-08-15):** #134 is merged; Projects can be managed from Project or Goal context and active pursuit history remains intact.
 - **Gate C — Task membership:** #132 is merged; Task CRUD, Project-context selection, membership changes, archive behavior, and duplicate feedback pass integration tests.
 - **Gate D — Decomposition:** #135 is merged; the indented Project hierarchy supports all valid child types and exposes rejected structures and traversal findings.
 - **Gate E — Execution insight:** #136 is merged; execution snapshots drive all progress categories, zero-denominator behavior, lifecycle display, and integrity findings.
@@ -105,61 +105,61 @@ Protect these paths from avoidable delay, but do not let them bypass interaction
 
 Exit gate: Goal CRUD/archive screens work against persisted application services, and every supported semantic-relation failure has a reusable, retry-safe UI translation.
 
-#### [#131](https://github.com/logact/becoming/issues/131) — Build Goal planning UI (Feature #17)
+#### [#131](https://github.com/logact/becoming/issues/131) — Build Goal planning UI (Feature #17) ✅ implemented 2026-08-15
 
 Prototype-aligned delivery:
 
-- [ ] Build the Goals destination with the prototype's planning hero, title search, Active/Archived filter, populated rows, explicit empty state, loading state, and recoverable error/retry state. Active rows show target state plus pursued/unpursued context; archived rows remain inspectable and expose no create action.
-- [ ] Build the New Goal and Edit Goal sheet flows for title, target state, description, and the issue-required success criteria. Preserve entered values and show actionable inline feedback when validation fails.
-- [ ] Build Goal detail with intended-outcome heading, description, archive/pursuit status, target-state and active-Project facts, Pursued by list or empty message, and recent persisted activity. Pursuit actions are wired by #134; this task provides the stable detail slots they extend.
-- [ ] Add edit and confirmed archive actions. Cancel leaves the Goal unchanged; confirm makes it read-only, removes it from Active, preserves it under Archived/history, and refreshes visible projections.
-- [ ] Announce successful create, edit, and archive outcomes without treating the transient confirmation as persisted state.
+- [x] Build the Goals destination with the prototype's planning hero, title search, Active/Archived filter, populated rows, explicit empty state, loading state, and recoverable error/retry state. Active rows show target state plus pursued/unpursued context; archived rows remain inspectable and expose no create action.
+- [x] Build the New Goal and Edit Goal sheet flows for title, target state, description, and the issue-required success criteria. Preserve entered values and show actionable inline feedback when validation fails.
+- [x] Build Goal detail with intended-outcome heading, description, archive/pursuit status, target-state and active-Project facts, Pursued by list or empty message, and recent persisted activity. Pursuit actions are wired by #134; this task provides the stable detail slots they extend.
+- [x] Add edit and confirmed archive actions. Cancel leaves the Goal unchanged; confirm makes it read-only, removes it from Active, preserves it under Archived/history, and refreshes visible projections.
+- [x] Announce successful create, edit, and archive outcomes without treating the transient confirmation as persisted state.
 
 Task acceptance scenarios:
 
-- [ ] Search and Active/Archived filtering produce correct populated and empty results without changing persisted data.
-- [ ] Required fields, optional-field round trips, and non-numeric success criteria behave according to the Goal application contract.
-- [ ] Create and edit refresh the list and detail immediately; reload reconstructs the same values from SQLite.
-- [ ] Loading, query failure, mutation failure, cancellation, archive, and archived read-only presentations pass component and integration tests.
+- [x] Search and Active/Archived filtering produce correct populated and empty results without changing persisted data.
+- [x] Required fields, optional-field round trips, and non-numeric success criteria behave according to the Goal application contract.
+- [x] Create and edit refresh the list and detail immediately; reload reconstructs the same values from SQLite.
+- [x] Loading, query failure, mutation failure, cancellation, archive, and archived read-only presentations pass component and integration tests.
 
-#### [#133](https://github.com/logact/becoming/issues/133) — Integrate semantic relation feedback into planning UI (Feature #19)
+#### [#133](https://github.com/logact/becoming/issues/133) — Integrate semantic relation feedback into planning UI (Feature #19) ✅ implemented 2026-08-15
 
 Prototype-aligned delivery:
 
-- [ ] Define one reusable mapping from structured relation errors to a short title, actionable explanation, affected action or candidate, retryability, and safe fallback. Preserve the original structured identity for logs and tests.
-- [ ] Use endpoint picker rows that keep useful unavailable choices visible with a Rejected state and a reason such as archived endpoint, duplicate active relationship, invalid direction, already in structure, or cross-Project structure.
-- [ ] On commit-time rejection, present the prototype's focused Change not allowed feedback without navigating away, clearing a valid draft/selection, or rendering the relation optimistically. Let the user review another choice, correct the input, refresh stale endpoints, and retry.
-- [ ] Use concise success confirmation only after the service commits, then refresh every affected Goal, Project, Task, hierarchy, activity, and progress projection.
-- [ ] Integrate this presentation contract into the Goal-pursuit work in #134, Task-membership work in #132, and decomposition work in #135; do not build a generic relation editor.
+- [x] Define one reusable mapping from structured relation errors to a short title, actionable explanation, affected action or candidate, retryability, and safe fallback. Preserve the original structured identity for logs and tests.
+- [x] Use endpoint picker rows that keep useful unavailable choices visible with a Rejected state and a reason such as archived endpoint, duplicate active relationship, invalid direction, already in structure, or cross-Project structure.
+- [x] On commit-time rejection, present the prototype's focused Change not allowed feedback without navigating away, clearing a valid draft/selection, or rendering the relation optimistically. Let the user review another choice, correct the input, refresh stale endpoints, and retry.
+- [x] Use concise success confirmation only after the service commits, then refresh every affected Goal, Project, Task, hierarchy, activity, and progress projection.
+- [x] Integrate this presentation contract into the Goal-pursuit work in #134, Task-membership work in #132, and decomposition work in #135; do not build a generic relation editor.
 
 Task acceptance scenarios:
 
-- [ ] Table-driven tests distinguish missing source, missing target, duplicate active relation, invalid direction, invalid endpoint type, cardinality violation, cycle, archived endpoint, cross-Project structure, and an unknown safe fallback.
-- [ ] Picker-time hints and commit-time validation produce consistent language, while the application/domain result remains authoritative.
-- [ ] Failed, corrected, retried, and eventually successful mutations preserve state and never show an uncommitted relation.
+- [x] Table-driven tests distinguish missing source, missing target, duplicate active relation, invalid direction, invalid endpoint type, cardinality violation, cycle, archived endpoint, cross-Project structure, and an unknown safe fallback.
+- [x] Picker-time hints and commit-time validation produce consistent language, while the application/domain result remains authoritative.
+- [x] Failed, corrected, retried, and eventually successful mutations preserve state and never show an uncommitted relation.
 
 ### Wave 2 — Project planning and Goal pursuit
 
 Exit gate: Projects can be listed, created, edited, inspected, and archived; users can create or end valid Goal pursuits from Goal or Project context with semantic failure feedback.
 
-#### [#134](https://github.com/logact/becoming/issues/134) — Build Project and Goal pursuit UI (Feature #20)
+#### [#134](https://github.com/logact/becoming/issues/134) — Build Project and Goal pursuit UI (Feature #20) ✅ implemented 2026-08-15
 
 Prototype-aligned delivery:
 
-- [ ] Build the Projects destination using the shared list scaffold: planning hero, title search, Active/Archived filter, task-count context, populated/empty/loading/error states, and active-only New Project action.
-- [ ] Build New Project and Edit Project sheets for title, purpose, and description, with inline validation, preserved draft state, successful refresh, and persisted reload behavior.
-- [ ] Build Project detail and the sticky Overview/Structure/Progress segment control. #134 owns the header, archive state, segment shell, and Overview; later tasks own the Structure and Progress content.
-- [ ] In Overview, show pursued-Goal and member-Task facts, pursued Goal rows or their explicit empty state, member Task rows or their explicit empty state, and recent persisted Project activity. Rows navigate to the corresponding Goal or Task detail.
-- [ ] Support Goal pursuit from both directions: Connect/Remove from Goal detail, and Add/Remove from Project Overview. Include creation of a Project from Goal context and selecting multiple active Goals when starting from Project context, even though the prototype demonstrates one-at-a-time connection.
-- [ ] Keep unavailable Goals or Projects visible with #133 feedback where that clarifies duplicate or archived-endpoint policy. Ending a pursuit uses an explicit picker when needed and a confirmation explaining that both entities and prior association remain in history.
-- [ ] Build Project edit and confirmed archive behavior consistent with Goal planning. Archived Projects become read-only and are rejected or hidden as relation endpoints according to domain policy.
+- [x] Build the Projects destination using the shared list scaffold: planning hero, title search, Active/Archived filter, task-count context, populated/empty/loading/error states, and active-only New Project action.
+- [x] Build New Project and Edit Project sheets for title, purpose, and description, with inline validation, preserved draft state, successful refresh, and persisted reload behavior.
+- [x] Build Project detail and the sticky Overview/Structure/Progress segment control. #134 owns the header, archive state, segment shell, and Overview; later tasks own the Structure and Progress content.
+- [x] In Overview, show pursued-Goal and member-Task facts, pursued Goal rows or their explicit empty state, member Task rows or their explicit empty state, and recent persisted Project activity. Rows navigate to the corresponding Goal or Task detail.
+- [x] Support Goal pursuit from both directions: Connect/Remove from Goal detail, and Add/Remove from Project Overview. Include creation of a Project from Goal context and selecting multiple active Goals when starting from Project context, even though the prototype demonstrates one-at-a-time connection.
+- [x] Keep unavailable Goals or Projects visible with #133 feedback where that clarifies duplicate or archived-endpoint policy. Ending a pursuit uses an explicit picker when needed and a confirmation explaining that both entities and prior association remain in history.
+- [x] Build Project edit and confirmed archive behavior consistent with Goal planning. Archived Projects become read-only and are rejected or hidden as relation endpoints according to domain policy.
 
 Task acceptance scenarios:
 
-- [ ] Project CRUD, search/filter, empty/loading/error/retry, cancellation, archive, and persisted reload states pass component and integration tests.
-- [ ] Pursuit creation works from Goal and Project contexts, including multi-Goal selection, duplicate rejection, archived endpoints, cancellation, ending, and history preservation.
-- [ ] Successful pursuit mutations refresh Goal facts/list badges, Project facts/Overview, pickers, and activity; failed mutations preserve current UI state.
-- [ ] Overview displays existing Task membership but does not own membership mutation, hierarchy mutation, or progress calculation.
+- [x] Project CRUD, search/filter, empty/loading/error/retry, cancellation, archive, and persisted reload states pass component and integration tests.
+- [x] Pursuit creation works from Goal and Project contexts, including multi-Goal selection, duplicate rejection, archived endpoints, cancellation, ending, and history preservation.
+- [x] Successful pursuit mutations refresh Goal facts/list badges, Project facts/Overview, pickers, and activity; failed mutations preserve current UI state.
+- [x] Overview displays existing Task membership but does not own membership mutation, hierarchy mutation, or progress calculation.
 
 ### Wave 3 — Task planning and Project membership
 
@@ -246,9 +246,9 @@ Before closing M2:
 
 | Task | Started (UTC) | Completed (UTC) | Elapsed | Worker token usage | Commit |
 | --- | --- | --- | --- | --- | --- |
-| [#131](https://github.com/logact/becoming/issues/131) | — | — | — | — | — |
-| [#133](https://github.com/logact/becoming/issues/133) | — | — | — | — | — |
-| [#134](https://github.com/logact/becoming/issues/134) | — | — | — | — | — |
+| [#131](https://github.com/logact/becoming/issues/131) | 2026-08-15 | 2026-08-15 | — | — | 963a437 |
+| [#133](https://github.com/logact/becoming/issues/133) | 2026-08-15 | 2026-08-15 | — | — | 963a437 |
+| [#134](https://github.com/logact/becoming/issues/134) | 2026-08-15 | 2026-08-15 | — | — | 218e463 |
 | [#132](https://github.com/logact/becoming/issues/132) | — | — | — | — | — |
 | [#135](https://github.com/logact/becoming/issues/135) | — | — | — | — | — |
 | [#136](https://github.com/logact/becoming/issues/136) | — | — | — | — | — |
