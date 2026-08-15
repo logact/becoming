@@ -12,6 +12,8 @@ import { SqliteWorkflowStateRepository } from '../../persistence/workflowStateRe
 import { SqliteProjectStateRepository } from '../../persistence/projectStateRepository';
 import { SqliteProjectStateTransitionRepository } from '../../persistence/projectStateTransitionRepository';
 import { SqliteProjectEntityStateRepository } from '../../persistence/projectEntityStateRepository';
+import { SqliteMilestoneRepository } from '../../persistence/milestoneRepository';
+import { SqliteMilestoneGoalAssignmentRepository } from '../../persistence/milestoneGoalAssignmentRepository';
 import { SqliteCoreEntityLookup } from '../../persistence/sqlite/coreEntityLookup';
 import { GoalService } from '../../application/goalService';
 import { ProjectService } from '../../application/projectService';
@@ -30,6 +32,11 @@ import { TaskProjectMembershipQueryService } from '../../application/taskProject
 import { DecompositionService } from '../../application/decompositionService';
 import { DecompositionHierarchyQueryService } from '../../application/decompositionHierarchyQueryService';
 import { ProjectExecutionSnapshotService } from '../../application/projectExecutionSnapshotService';
+import { MilestoneService } from '../../application/milestoneService';
+import { RecordMilestoneProvenancePort } from '../../application/milestoneProvenanceService';
+import { ProjectRoadmapQueryService } from '../../application/projectRoadmapQueryService';
+import { ProjectStructureCreationService } from '../../application/projectStructureCreationService';
+import { DefaultDecompositionGuidanceService } from '../../application/defaultDecompositionGuidanceService';
 import { EntityTimelineQueryService } from '../../application/entityTimelineQueryService';
 import { LifecycleAuditQueryService } from '../../application/lifecycleAuditQueryService';
 import { workflowApplicabilityGuidanceResolver } from './decompositionGuidanceResolver';
@@ -52,9 +59,15 @@ export interface AppServices {
   taskMembershipQueries: TaskProjectMembershipQueryService;
   /** Project-scoped decomposition commands (create/end edge). */
   decomposition: DecompositionService<SqliteDatabase>;
+  /** Atomic create-and-attach commands used by the Project Structure UI. */
+  structureCreation: ProjectStructureCreationService<SqliteDatabase>;
   decompositionQueries: DecompositionHierarchyQueryService;
   /** Read model for the Project execution/progress view. */
   executionSnapshots: ProjectExecutionSnapshotService;
+  /** Project Roadmap Milestone commands (create/update/reorder/archive, membership). */
+  milestones: MilestoneService<SqliteDatabase>;
+  /** Read model for the Project Roadmap view. */
+  roadmaps: ProjectRoadmapQueryService;
   /** Per-entity persisted activity (provenance) timeline. */
   timelines: EntityTimelineQueryService;
   /** Lifecycle transition audit history. */
@@ -108,6 +121,67 @@ export function composeAppServices(db: SqliteDatabase): AppServices {
     tasks: taskRepository,
     relations: relationRepository,
   });
+  const executionSnapshots = new ProjectExecutionSnapshotService({
+    projects: projectRepository,
+    goals: goalRepository,
+    tasks: taskRepository,
+    pursuits: goalPursuitQueries,
+    memberships: taskMembershipQueries,
+    hierarchy: decompositionQueries,
+    entityLabels: new SqliteEntityLabelRepository(db),
+    labels: labelRepository,
+    projectStates: projectStateRepository,
+    entityStates: new SqliteProjectEntityStateRepository(db),
+  });
+
+  // Compound Structure creation owns the outer transaction. These scoped
+  // services reuse that context without trying to open nested transactions.
+  const scopedUnitOfWork = (context: SqliteDatabase) => ({
+    run: <T>(work: (inner: SqliteDatabase) => Promise<T>) => work(context),
+  });
+  const scopedGoals = (context: SqliteDatabase) => new GoalService<SqliteDatabase>({
+    unitOfWork: scopedUnitOfWork(context),
+    goals: () => new SqliteGoalRepository(context),
+    records: () => new SqliteRecordRepository(context),
+    readGoals: new SqliteGoalRepository(context),
+  });
+  const scopedTasks = (context: SqliteDatabase) => new TaskService<SqliteDatabase>({
+    unitOfWork: scopedUnitOfWork(context),
+    tasks: () => new SqliteTaskRepository(context),
+    records: () => new SqliteRecordRepository(context),
+    readTasks: new SqliteTaskRepository(context),
+  });
+  const scopedMemberships = (context: SqliteDatabase) =>
+    new TaskProjectMembershipService<SqliteDatabase>({
+      unitOfWork: scopedUnitOfWork(context),
+      tasks: () => new SqliteTaskRepository(context),
+      projects: () => new SqliteProjectRepository(context),
+      relations: () => new SqliteRelationRepository(context),
+      provenance: new RecordRelationProvenancePort({
+        records: () => new SqliteRecordRepository(context),
+      }),
+    });
+  const scopedDecompositions = (context: SqliteDatabase) =>
+    new DecompositionService<SqliteDatabase>({
+      unitOfWork: scopedUnitOfWork(context),
+      projects: () => new SqliteProjectRepository(context),
+      goals: () => new SqliteGoalRepository(context),
+      tasks: () => new SqliteTaskRepository(context),
+      relations: () => new SqliteRelationRepository(context),
+      workflowGuidance: workflowApplicabilityGuidanceResolver(workflowApplicability),
+      provenance: new RecordDecompositionProvenancePort({
+        records: () => new SqliteRecordRepository(context),
+      }),
+      milestoneAssignments: () => new SqliteMilestoneGoalAssignmentRepository(context),
+    });
+  const defaultDecompositionGuidance = new DefaultDecompositionGuidanceService<SqliteDatabase>({
+    labels: (context) => new SqliteLabelRepository(context),
+    workflows: (context) => new SqliteWorkflowRepository(context),
+    states: (context) => new SqliteWorkflowStateRepository(context),
+    relations: (context) => new SqliteRelationRepository(context),
+    records,
+    provenance: new RecordRelationProvenancePort({ records }),
+  });
 
   return {
     goals: new GoalService<SqliteDatabase>({
@@ -152,19 +226,40 @@ export function composeAppServices(db: SqliteDatabase): AppServices {
       relations: (context) => new SqliteRelationRepository(context),
       workflowGuidance: workflowApplicabilityGuidanceResolver(workflowApplicability),
       provenance: new RecordDecompositionProvenancePort<SqliteDatabase>({ records }),
+      milestoneAssignments: (context) => new SqliteMilestoneGoalAssignmentRepository(context),
+    }),
+    structureCreation: new ProjectStructureCreationService<SqliteDatabase>({
+      unitOfWork,
+      goals: scopedGoals,
+      tasks: scopedTasks,
+      memberships: scopedMemberships,
+      decompositions: scopedDecompositions,
+      guidance: defaultDecompositionGuidance,
     }),
     decompositionQueries,
-    executionSnapshots: new ProjectExecutionSnapshotService({
-      projects: projectRepository,
+    executionSnapshots,
+    milestones: new MilestoneService<SqliteDatabase>({
+      unitOfWork,
+      projects: (context) => new SqliteProjectRepository(context),
+      goals: (context) => new SqliteGoalRepository(context),
+      relations: (context) => new SqliteRelationRepository(context),
+      milestones: (context) => new SqliteMilestoneRepository(context),
+      assignments: (context) => new SqliteMilestoneGoalAssignmentRepository(context),
+      hierarchy: (context) =>
+        new DecompositionHierarchyQueryService({
+          projects: new SqliteProjectRepository(context),
+          goals: new SqliteGoalRepository(context),
+          tasks: new SqliteTaskRepository(context),
+          relations: new SqliteRelationRepository(context),
+        }),
+      provenance: new RecordMilestoneProvenancePort<SqliteDatabase>({ records }),
+    }),
+    roadmaps: new ProjectRoadmapQueryService({
       goals: goalRepository,
-      tasks: taskRepository,
       pursuits: goalPursuitQueries,
-      memberships: taskMembershipQueries,
-      hierarchy: decompositionQueries,
-      entityLabels: new SqliteEntityLabelRepository(db),
-      labels: labelRepository,
-      projectStates: projectStateRepository,
-      entityStates: new SqliteProjectEntityStateRepository(db),
+      milestones: new SqliteMilestoneRepository(db),
+      assignments: new SqliteMilestoneGoalAssignmentRepository(db),
+      snapshots: executionSnapshots,
     }),
     timelines: new EntityTimelineQueryService({
       entities: new SqliteCoreEntityLookup(db),

@@ -172,14 +172,23 @@ describe('relation commit flow (integration)', () => {
     expect(screen.queryByText('Change not allowed')).toBeNull();
     expect(screen.getByText('selected:one')).toBeTruthy();
 
-    // Correct the selection and retry: succeeds, refreshes projections.
+    // Strict 1:1: a different Goal is rejected while the first pursuit is active.
     await press('Select Goal Two');
     await press('Connect selected Goal');
-    expect(screen.getByText('committed:2')).toBeTruthy();
+    expect(screen.getByText('Change not allowed')).toBeTruthy();
+    expect(screen.getByText('Already placed')).toBeTruthy();
+    expect(screen.getByText('committed:1')).toBeTruthy();
+
+    // Ending the active pursuit frees the Project; the preserved selection retries.
+    const [pursuit] = await services.goalPursuitQueries.listGoalsPursuedByProject(projectId);
+    await services.goalPursuit.endPursuit({ relationId: pursuit.relationId, actor: 'tester' });
+    await press('Try again');
+
     expect(screen.queryByText('Change not allowed')).toBeNull();
-    expect(
-      await services.goalPursuitQueries.listGoalsPursuedByProject(projectId),
-    ).toHaveLength(2);
+    expect(screen.getByText(/Pursuit started/)).toBeTruthy();
+    expect(screen.getByText('committed:1')).toBeTruthy();
+    const [replacement] = await services.goalPursuitQueries.listGoalsPursuedByProject(projectId);
+    expect(replacement.goalId).toBe(goalTwoId);
   });
 
   it('supports refreshing stale endpoints and retrying the same selection', async () => {

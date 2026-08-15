@@ -6,7 +6,9 @@ import {
 } from '../src/application/decompositionService';
 import {
   DuplicateActiveGoalPursuitError,
+  GoalAlreadyPursuedByProjectError,
   GoalPursuitNotFoundError,
+  ProjectAlreadyPursuesGoalError,
   ProjectGoalPursuitEndpointArchivedError,
   ProjectGoalPursuitEndpointNotFoundError,
 } from '../src/application/projectGoalPursuitService';
@@ -200,6 +202,20 @@ const CASES: Case[] = [
   {
     name: 'DecompositionParentCardinalityError',
     error: new DecompositionParentCardinalityError('p-1', 'task', 't-1'),
+    kind: 'cardinality-violation',
+    affected: 'candidate',
+    retryable: true,
+  },
+  {
+    name: 'ProjectAlreadyPursuesGoalError',
+    error: new ProjectAlreadyPursuesGoalError(RELATION),
+    kind: 'cardinality-violation',
+    affected: 'candidate',
+    retryable: true,
+  },
+  {
+    name: 'GoalAlreadyPursuedByProjectError',
+    error: new GoalAlreadyPursuedByProjectError(RELATION),
     kind: 'cardinality-violation',
     affected: 'candidate',
     retryable: true,

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { Task } from '../../domain/task';
+import type { CreateTaskCommand } from '../../application/taskService';
 import { useAppServices } from '../composition/AppServicesProvider';
 import { Sheet } from '../shared/Sheet';
 import { colors, radius, spacing } from '../shared/theme';
@@ -13,6 +14,10 @@ export interface TaskFormSheetProps {
   mode: 'create' | 'edit';
   /** Required in edit mode; its values prefill the form. */
   task?: Task;
+  /** Optional create command override for contextual compound mutations. */
+  createTask?: (command: CreateTaskCommand) => Promise<Task>;
+  /** Contextual create heading; list creation keeps the default. */
+  createHeading?: string;
   /** Called only after the service has committed the mutation. */
   onSaved: (task: Task) => void;
   onCancel: () => void;
@@ -32,7 +37,14 @@ interface FieldErrors {
  * structured validation failures into inline feedback and preserves the
  * entered draft on any failure.
  */
-export function TaskFormSheet({ mode, task, onSaved, onCancel }: TaskFormSheetProps) {
+export function TaskFormSheet({
+  mode,
+  task,
+  createTask,
+  createHeading,
+  onSaved,
+  onCancel,
+}: TaskFormSheetProps) {
   const services = useAppServices();
   const [title, setTitle] = useState(task?.title ?? '');
   const [targetDescription, setTargetDescription] = useState(task?.targetDescription ?? '');
@@ -42,7 +54,7 @@ export function TaskFormSheet({ mode, task, onSaved, onCancel }: TaskFormSheetPr
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const heading = mode === 'create' ? 'New task' : 'Edit task';
+  const heading = mode === 'create' ? (createHeading ?? 'New task') : 'Edit task';
 
   async function submit() {
     if (submitting) return;
@@ -57,7 +69,7 @@ export function TaskFormSheet({ mode, task, onSaved, onCancel }: TaskFormSheetPr
       const optionalExitCriteria = exitCriteria.trim().length === 0 ? undefined : exitCriteria;
       const parsedPriority = priority.trim().length === 0 ? undefined : Number(priority.trim());
       const saved = mode === 'create'
-        ? await services.tasks.createTask({
+        ? await (createTask ?? ((command) => services.tasks.createTask(command)))({
             actor: ACTOR,
             title,
             targetDescription,

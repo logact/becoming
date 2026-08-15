@@ -62,14 +62,15 @@ describe('Goal pursuit from Goal context', () => {
     expect(pursuits).toHaveLength(1);
   });
 
-  it('keeps duplicate and archived Projects visible with rejection reasons', async () => {
-    const goal = await seedGoal('Run a marathon');
+  it('keeps unavailable Projects visible with rejection reasons', async () => {
+    await seedGoal('Run a marathon');
+    const otherGoal = await seedGoal('Learn Spanish');
     const pursuing = await seedProject('Marathon training');
     const archived = await seedProject('Old effort');
     await harness.services.projects.archiveProject({ id: archived.id, actor: 'test' });
     await harness.services.goalPursuit.startPursuit({
       projectId: pursuing.id,
-      goalId: goal.id,
+      goalId: otherGoal.id,
       actor: 'test',
     });
 
@@ -78,11 +79,28 @@ describe('Goal pursuit from Goal context', () => {
 
     fireEvent.press(screen.getByLabelText('Connect goal to a project'));
     expect(
-      await screen.findByLabelText('Marathon training, unavailable: Duplicate active relationship'),
+      await screen.findByLabelText('Marathon training, unavailable: Already pursues a goal'),
     ).toBeTruthy();
     expect(
       screen.getByLabelText('Old effort, unavailable: Archived endpoint'),
     ).toBeTruthy();
+  });
+
+  it('offers Remove instead of Connect and New Project while the Goal has a Project', async () => {
+    const goal = await seedGoal('Run a marathon');
+    const project = await seedProject('Marathon training');
+    await harness.services.goalPursuit.startPursuit({
+      projectId: project.id,
+      goalId: goal.id,
+      actor: 'test',
+    });
+
+    renderPlanningApp(harness.services);
+    await openGoalDetail('Run a marathon');
+
+    expect(await screen.findByLabelText('Remove goal from a project')).toBeTruthy();
+    expect(screen.queryByLabelText('Connect goal to a project')).toBeNull();
+    expect(screen.queryByLabelText('Create a project for this goal')).toBeNull();
   });
 
   it('shows the rejection sheet on commit-time failure without committing a relation', async () => {
@@ -192,46 +210,66 @@ describe('Goal pursuit from Goal context', () => {
 });
 
 describe('Goal pursuit from Project context', () => {
-  it('pursues multiple Goals with duplicate and archived rejections visible', async () => {
+  it('pursues one Goal with unavailable choices visible', async () => {
     const project = await seedProject('Marathon training');
+    const otherProject = await seedProject('Spanish study');
     await seedGoal('Goal A');
-    await seedGoal('Goal B');
-    const pursued = await seedGoal('Goal C');
+    const taken = await seedGoal('Goal C');
     const archived = await seedGoal('Goal D');
     await harness.services.goals.archiveGoal(archived.id, 'test');
     await harness.services.goalPursuit.startPursuit({
-      projectId: project.id,
-      goalId: pursued.id,
+      projectId: otherProject.id,
+      goalId: taken.id,
       actor: 'test',
     });
 
     renderPlanningApp(harness.services);
     await openProjectDetail('Marathon training');
 
-    fireEvent.press(screen.getByLabelText('Add pursued goals'));
+    fireEvent.press(screen.getByLabelText('Add a pursued goal'));
     expect(await screen.findByLabelText('Goal A')).toBeTruthy();
-    expect(screen.getByLabelText('Goal B')).toBeTruthy();
     expect(
-      screen.getByLabelText('Goal C, unavailable: Duplicate active relationship'),
+      screen.getByLabelText('Goal C, unavailable: Already has a project'),
     ).toBeTruthy();
     expect(screen.getByLabelText('Goal D, unavailable: Archived endpoint')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Goal A'));
-    fireEvent.press(screen.getByLabelText('Goal B'));
-    fireEvent.press(screen.getByLabelText('Pursue selected goals'));
-    await expectTransientToast('2 pursuits started');
+    fireEvent.press(screen.getByLabelText('Pursue selected goal'));
+    await expectTransientToast('Pursuit started');
 
-    // Overview facts and rows refresh; the pre-existing pursuit remains.
+    // Overview facts and rows refresh; Add is replaced by Remove.
     expect(await screen.findByLabelText('Open goal Goal A')).toBeTruthy();
-    expect(screen.getByLabelText('Open goal Goal B')).toBeTruthy();
-    expect(screen.getByLabelText('Open goal Goal C')).toBeTruthy();
+    expect(await screen.findByLabelText('Remove a pursued goal')).toBeTruthy();
+    expect(screen.queryByLabelText('Add a pursued goal')).toBeNull();
     expect(screen.queryByText('No pursued Goals')).toBeNull();
+
+    // The committed relation is persisted.
+    const goalA = (await harness.services.goals.listActiveGoals()).find((g) => g.title === 'Goal A')!;
+    const pursuits = await harness.services.goalPursuitQueries.listGoalsPursuedByProject(project.id);
+    expect(pursuits.map((view) => view.goalId)).toEqual([goalA.id]);
 
     // The Goal list badges refresh too.
     fireEvent.press(screen.getByLabelText('Goals tab'));
-    expect(await screen.findAllByLabelText('1 project')).toHaveLength(3);
+    expect(await screen.findAllByLabelText('1 project')).toHaveLength(2);
     expect(screen.queryByLabelText('Unpursued')).toBeNull();
   }, 15000);
+
+  it('offers Remove instead of Add while the Project has an active pursuit', async () => {
+    const project = await seedProject('Marathon training');
+    const goal = await seedGoal('Goal A');
+    await harness.services.goalPursuit.startPursuit({
+      projectId: project.id,
+      goalId: goal.id,
+      actor: 'test',
+    });
+
+    renderPlanningApp(harness.services);
+    await openProjectDetail('Marathon training');
+
+    expect(await screen.findByLabelText('Remove a pursued goal')).toBeTruthy();
+    expect(screen.queryByLabelText('Add a pursued goal')).toBeNull();
+    expect(screen.getByLabelText('Open goal Goal A')).toBeTruthy();
+  });
 
   it('keeps selections and shows the rejection sheet when the commit fails', async () => {
     await seedProject('Marathon training');
@@ -251,9 +289,9 @@ describe('Goal pursuit from Project context', () => {
     renderPlanningApp(services);
     await openProjectDetail('Marathon training');
 
-    fireEvent.press(screen.getByLabelText('Add pursued goals'));
+    fireEvent.press(screen.getByLabelText('Add a pursued goal'));
     fireEvent.press(await screen.findByLabelText('Goal A'));
-    fireEvent.press(screen.getByLabelText('Pursue selected goals'));
+    fireEvent.press(screen.getByLabelText('Pursue selected goal'));
 
     expect(await screen.findByText('Change not allowed')).toBeTruthy();
     fireEvent.press(screen.getByLabelText('Review another choice'));
@@ -267,16 +305,17 @@ describe('Goal pursuit from Project context', () => {
     ).toHaveLength(0);
   });
 
-  it('ends a pursuit through the picker and preserves both entities and history', async () => {
+  it('ends the active pursuit after confirmation and preserves both entities and history', async () => {
     const project = await seedProject('Marathon training');
     const goalA = await seedGoal('Goal A');
-    await seedGoal('Goal B');
-    await harness.services.goalPursuit.startPursuit({
+    const goalB = await seedGoal('Goal B');
+    const first = await harness.services.goalPursuit.startPursuit({
       projectId: project.id,
       goalId: goalA.id,
       actor: 'test',
     });
-    const goalB = (await harness.services.goals.listActiveGoals()).find((g) => g.title === 'Goal B')!;
+    await harness.services.goalPursuit.endPursuit({ relationId: first.id, actor: 'test' });
+    // Temporal replacement: ending the first pursuit frees both sides.
     await harness.services.goalPursuit.startPursuit({
       projectId: project.id,
       goalId: goalB.id,
@@ -286,35 +325,33 @@ describe('Goal pursuit from Project context', () => {
     renderPlanningApp(harness.services);
     await openProjectDetail('Marathon training');
 
-    // Two active pursuits: the explicit picker appears first.
-    fireEvent.press(screen.getByLabelText('Remove a pursued goal'));
-    expect(await screen.findByText('Remove a pursued Goal')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('End pursuit with Goal A'));
-
+    // A single active pursuit needs no picker: the confirmation appears first.
+    fireEvent.press(await screen.findByLabelText('Remove a pursued goal'));
     expect(await screen.findByText('End this pursuit?')).toBeTruthy();
     fireEvent.press(screen.getByLabelText('End pursuit'));
     await expectTransientToast('Pursuit ended');
 
-    expect(await screen.findByLabelText('Open goal Goal B')).toBeTruthy();
-    expect(screen.queryByLabelText('Open goal Goal A')).toBeNull();
+    expect(screen.queryByLabelText('Open goal Goal B')).toBeNull();
+    expect(await screen.findByLabelText('Add a pursued goal')).toBeTruthy();
 
-    // Both entities and the prior association remain in history.
+    // Both entities and both associations remain in history.
     expect(await harness.services.goals.getGoal(goalA.id)).not.toBeNull();
+    expect(await harness.services.goals.getGoal(goalB.id)).not.toBeNull();
     expect(await harness.services.projects.getProject(project.id)).not.toBeNull();
     const history = await harness.services.goalPursuitQueries.listGoalPursuitHistoryForProject(
       project.id,
     );
     expect(history).toHaveLength(2);
-    expect(history.filter((view) => view.endedAt !== null)).toHaveLength(1);
+    expect(history.filter((view) => view.endedAt !== null)).toHaveLength(2);
     expect(
       screen.getAllByText('A relationship ended; the previous association remains in history')
         .length,
     ).toBeGreaterThan(0);
 
-    // The Goal list badge for the ended pursuit returns to Unpursued.
+    // The Goal list badges for both ended pursuits return to Unpursued.
     fireEvent.press(screen.getByLabelText('Goals tab'));
-    expect(await screen.findByLabelText('Unpursued')).toBeTruthy();
-    expect(screen.getByLabelText('1 project')).toBeTruthy();
+    expect(await screen.findAllByLabelText('Unpursued')).toHaveLength(2);
+    expect(screen.queryByLabelText('1 project')).toBeNull();
   }, 15000);
 
   it('cancelling the end-pursuit confirmation leaves the pursuit active', async () => {

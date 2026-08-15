@@ -164,7 +164,7 @@ State, labels, Project membership, Workflow, target date, Resources and constrai
 
 A Project defines:
 
-> A context for managing related activity toward one or more Goals.
+> A context for managing related activity toward exactly one Goal (strict 1:1 pursuit).
 
 ```text
 projects
@@ -1136,7 +1136,117 @@ ended_at IS NULL
 
 ---
 
-# 21. State Examples
+# 21. `milestones`
+
+Stores ordered Roadmap checkpoints for one exact Project pursuit relation.
+
+A Milestone groups descendant Goals; it is not itself a Goal, lifecycle State,
+or persisted completion value. Whether it is reached is derived from the
+authoritative Project execution snapshot.
+
+```text
+milestones
+
+id                    TEXT PRIMARY KEY
+                      // Globally unique Milestone identifier.
+
+pursuit_relation_id   TEXT NOT NULL
+                      // Logical reference to the exact active canonical
+                      // Project -> contributes_to -> Goal relation.
+
+title                 TEXT NOT NULL
+                      // Non-blank user-facing checkpoint name.
+
+description           TEXT
+                      // Optional Milestone detail.
+
+target_at             TEXT
+                      // Optional ISO 8601 target timestamp.
+
+sort_order            INTEGER NOT NULL CHECK (sort_order > 0)
+                      // User-controlled position within the pursuit.
+
+created_at            TEXT NOT NULL
+                      // ISO 8601 creation timestamp.
+
+updated_at            TEXT NOT NULL
+                      // ISO 8601 timestamp of the last intrinsic edit.
+
+archived_at           TEXT
+                      // ISO 8601 archive timestamp.
+                      // NULL means the Milestone is active.
+```
+
+Active Milestone order is unique within a pursuit. Reads are deterministic by
+`sort_order`, then `created_at`, then `id`. Archiving retains the row for
+historical Roadmap reads.
+
+Indexes:
+
+```text
+milestones_pursuit_order_idx
+  (pursuit_relation_id, archived_at, sort_order, created_at, id)
+
+milestone_active_order_unique_idx UNIQUE
+  (pursuit_relation_id, sort_order)
+  WHERE archived_at IS NULL
+```
+
+---
+
+# 22. `milestone_goal_assignments`
+
+Stores ordered, temporal Goal membership within Milestones.
+
+```text
+milestone_goal_assignments
+
+id                    TEXT PRIMARY KEY
+                      // Globally unique assignment identifier.
+
+pursuit_relation_id   TEXT NOT NULL
+                      // Repeats the owning Milestone's pursuit relation for
+                      // pursuit-wide uniqueness and corruption detection.
+
+milestone_id          TEXT NOT NULL
+                      // Logical reference to the owning Milestone.
+
+goal_id               TEXT NOT NULL
+                      // Logical reference to the assigned descendant Goal.
+
+sort_order            INTEGER NOT NULL CHECK (sort_order > 0)
+                      // User-controlled Goal position in the Milestone.
+
+created_at            TEXT NOT NULL
+                      // ISO 8601 assignment start timestamp.
+
+ended_at              TEXT
+                      // ISO 8601 assignment end timestamp.
+                      // NULL means the assignment is active.
+```
+
+One Goal may have at most one active assignment in a pursuit. Ending an
+assignment preserves it; reassigning the Goal later creates a new row.
+
+Indexes:
+
+```text
+milestone_goal_assignments_milestone_idx
+  (milestone_id, ended_at, sort_order, created_at, id)
+
+milestone_goal_active_pursuit_unique_idx UNIQUE
+  (pursuit_relation_id, goal_id)
+  WHERE ended_at IS NULL
+```
+
+Neither Roadmap table has database foreign keys. The application layer checks
+that the pursuit, Milestone, and Goal exist; that the assignment pursuit
+matches its Milestone; and that the Goal is an active descendant of the
+pursued root Goal in the same Project-scoped hierarchy.
+
+---
+
+# 23. State Examples
 
 ## Task
 
@@ -1182,7 +1292,7 @@ State: Active Development
 
 ---
 
-# 22. Multiple Labels
+# 24. Multiple Labels
 
 An entity can have multiple Labels.
 
@@ -1221,7 +1331,7 @@ This distinction is controlled by Workflow/Project configuration rather than har
 
 ---
 
-# 23. State Transition Runtime
+# 25. State Transition Runtime
 
 Suppose:
 
@@ -1268,7 +1378,7 @@ Example Record payload:
 
 ---
 
-# 24. No Foreign Keys
+# 26. No Foreign Keys
 
 No table has database-level foreign keys.
 
@@ -1291,7 +1401,7 @@ The domain layer must validate them.
 
 ---
 
-# 25. Application-Level Integrity Rules
+# 27. Application-Level Integrity Rules
 
 ## Entity Labels
 
@@ -1380,7 +1490,7 @@ ended_at IS NULL
 
 ---
 
-# 26. Complete Table List
+# 28. Complete Table List
 
 ## Core Concepts
 
@@ -1428,15 +1538,22 @@ project_state_transitions
 project_entity_states
 ```
 
+## Project Roadmaps
+
+```text
+milestones
+milestone_goal_assignments
+```
+
 Total:
 
 ```text
-16 tables
+18 tables
 ```
 
 ---
 
-# 27. Final Architecture
+# 29. Final Architecture
 
 ```text
 CORE CONCEPT
@@ -1446,8 +1563,11 @@ Philosophy / Workflow / Resource / Record
         ├──────── semantic connections ───────→ relations
         │
         ├──────── classification ─────────────→ entity_labels
+        ├──────── project lifecycle ──────────→ project_entity_states
         │
-        └──────── project lifecycle ──────────→ project_entity_states
+        └──────── Project pursuit ────────────→ milestones
+                                                   │
+                                                   └── milestone_goal_assignments
 ```
 
 State-machine definition:
@@ -1520,6 +1640,10 @@ The final boundaries are:
 
 **`project_entity_states`**
 → actual lifecycle history of core entities inside Projects.
+
+**Roadmap Milestone tables**
+→ ordered checkpoints and temporal Goal grouping for one exact Project pursuit;
+completion remains derived rather than stored.
 
 **Resources**
 → capacity and constraints.

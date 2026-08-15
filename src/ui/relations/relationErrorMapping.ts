@@ -248,6 +248,9 @@ function classify(error: Error): RelationErrorKind {
       return 'archived-endpoint';
     case 'DuplicateActiveGoalPursuitError':
       return 'duplicate-active-relation';
+    case 'ProjectAlreadyPursuesGoalError':
+    case 'GoalAlreadyPursuedByProjectError':
+      return 'cardinality-violation';
     case 'GoalPursuitNotFoundError':
       return 'relation-not-found';
     // src/application/taskProjectMembershipService.ts (Task -> belongs_to -> Project)

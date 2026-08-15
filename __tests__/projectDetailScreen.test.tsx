@@ -74,7 +74,7 @@ describe('ProjectDetailScreen', () => {
     expect(screen.getAllByText('No purpose defined yet').length).toBeGreaterThan(0);
   });
 
-  it('switches segments and shows labeled placeholder panes for Structure and Progress', async () => {
+  it('switches segments and shows labeled placeholder panes for Structure and Roadmap', async () => {
     await seedProject();
     renderProjectsApp(harness.services);
     await openDetail('Becoming for iOS');
@@ -86,8 +86,8 @@ describe('ProjectDetailScreen', () => {
     expect(await screen.findByText('Structure arrives with the decomposition task')).toBeTruthy();
     expect(screen.queryByText('No pursued Goals')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText('Show progress'));
-    expect(await screen.findByText('Progress arrives with the execution task')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Show roadmap'));
+    expect(await screen.findByText('Roadmap arrives with the milestone task')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Show overview'));
     expect(await screen.findByText('No pursued Goals')).toBeTruthy();
@@ -97,7 +97,7 @@ describe('ProjectDetailScreen', () => {
     await seedProject();
     renderProjectsApp(harness.services, {
       renderStructure: ({ project }) => <Text>{`Structure slot for ${project.title}`}</Text>,
-      renderProgress: ({ project }) => <Text>{`Progress slot for ${project.title}`}</Text>,
+      renderRoadmap: ({ project }) => <Text>{`Roadmap slot for ${project.title}`}</Text>,
     });
     await openDetail('Becoming for iOS');
 
@@ -105,8 +105,8 @@ describe('ProjectDetailScreen', () => {
     expect(await screen.findByText('Structure slot for Becoming for iOS')).toBeTruthy();
     expect(screen.queryByText('Structure arrives with the decomposition task')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText('Show progress'));
-    expect(await screen.findByText('Progress slot for Becoming for iOS')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Show roadmap'));
+    expect(await screen.findByText('Roadmap slot for Becoming for iOS')).toBeTruthy();
   });
 
   it('lists pursued Goals and member Tasks read-only with navigation affordances', async () => {
@@ -160,7 +160,7 @@ describe('ProjectDetailScreen', () => {
     expect(screen.getByText('Project archived')).toBeTruthy();
     expect(screen.queryByLabelText('Edit project')).toBeNull();
     expect(screen.queryByLabelText('Archive project')).toBeNull();
-    expect(screen.queryByLabelText('Add pursued goals')).toBeNull();
+    expect(screen.queryByLabelText('Add a pursued goal')).toBeNull();
   });
 
   it('shows a recoverable error state when the query fails and retries', async () => {

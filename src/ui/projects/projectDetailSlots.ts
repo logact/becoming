@@ -14,7 +14,7 @@ export interface ProjectMembershipSlotContext {
 }
 
 /** The segments the Project detail shell owns. */
-export type ProjectDetailSegmentId = 'overview' | 'structure' | 'progress';
+export type ProjectDetailSegmentId = 'overview' | 'structure' | 'roadmap';
 
 /** Context handed to the Project detail segment slots. */
 export interface ProjectDetailSegmentContext {
@@ -31,7 +31,10 @@ export interface ProjectDetailSegmentContext {
  * detail screen:
  *
  * - #135 wires `renderStructure` (Project-scoped decomposition tree).
- * - #136 wires `renderProgress` (Project execution snapshot).
+ * - the Roadmap milestone task wires `renderRoadmap` (the Project Roadmap:
+ *   ordered Milestones grouping the pursued Goal's descendants; it replaced
+ *   the visible Progress segment — the execution snapshot read model stays
+ *   available through `executionSnapshots` for other consumers).
  * - #132 wires `renderMembershipActions` (Add an existing Task, rendered in
  *   the Overview's Member tasks section header for active Projects).
  *
@@ -40,6 +43,6 @@ export interface ProjectDetailSegmentContext {
  */
 export interface ProjectDetailSlots {
   renderStructure?: (context: ProjectDetailSegmentContext) => ReactNode;
-  renderProgress?: (context: ProjectDetailSegmentContext) => ReactNode;
+  renderRoadmap?: (context: ProjectDetailSegmentContext) => ReactNode;
   renderMembershipActions?: (context: ProjectMembershipSlotContext) => ReactNode;
 }

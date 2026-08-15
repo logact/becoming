@@ -116,7 +116,9 @@ export const PROJECT_GOAL_PURSUIT_RELATION_TYPE = 'contributes_to' as const;
  * The Feature #20 policy is deliberately kept separate from the open default
  * `contributes_to` policy.  Other semantic uses of that general relation
  * type remain possible, while the pursuit command has one canonical,
- * directional interpretation and one active row per Project/Goal pair.
+ * directional interpretation with strict 1:1 cardinality: one active pursuit
+ * per Project and one active pursuit per Goal, enforced by
+ * `ProjectGoalPursuitService` (policies themselves stay pure).
  */
 export const PROJECT_GOAL_PURSUIT_POLICY: RelationPolicy = Object.freeze({
   relationType: PROJECT_GOAL_PURSUIT_RELATION_TYPE,

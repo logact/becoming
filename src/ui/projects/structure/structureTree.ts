@@ -16,14 +16,15 @@ import type {
   DecompositionTraversalResult,
 } from '../../../application/decompositionHierarchyQueryService';
 import type { CandidateRejection } from '../../relations';
+import { DEFAULT_DECOMPOSITION_MANAGEMENT_LABEL_ID } from '../../../application/defaultDecompositionGuidanceService';
 
 /**
- * The management-label context the app passes when resolving decomposition
- * workflow guidance. When no applicability is configured for it, the
- * decomposition service rejects the commit and the #133 workflow-guidance
- * feedback is shown — presentation never bypasses guidance.
+ * The built-in management-label context the app passes when resolving
+ * decomposition workflow guidance. The Structure command service lazily
+ * installs its default guidance on first use; explicit non-default contexts
+ * retain the normal workflow-guidance rejection behavior.
  */
-export const DECOMPOSITION_MANAGEMENT_LABEL_ID = 'management';
+export const DECOMPOSITION_MANAGEMENT_LABEL_ID = DEFAULT_DECOMPOSITION_MANAGEMENT_LABEL_ID;
 
 export type StructureNodeRef = DecompositionNode;
 
@@ -63,6 +64,10 @@ export function buildStructureRows(
   collapsed: ReadonlySet<string>,
 ): StructureRow[] {
   const rows: StructureRow[] = [];
+  // Keep one emitted set across every pursuit root. Corrupt/legacy data can
+  // expose overlapping root traversals; rendering the same entity twice would
+  // both misrepresent the tree and give React duplicate stable keys.
+  const emitted = new Set<string>();
   for (const { root, traversal } of roots) {
     const childrenByParent = new Map<string, DecompositionHierarchyEdge[]>();
     for (const edge of traversal.edges) {
@@ -71,7 +76,6 @@ export function buildStructureRows(
       list.push(edge);
       childrenByParent.set(key, list);
     }
-    const emitted = new Set<string>([structureNodeKey(root)]);
     const visit = (node: StructureNodeRef, depth: number, via: DecompositionHierarchyEdge | null): void => {
       const children = (childrenByParent.get(structureNodeKey(node)) ?? []).filter(
         (edge) => !emitted.has(structureNodeKey(edge.child)),
@@ -83,6 +87,9 @@ export function buildStructureRows(
         visit(edge.child, depth + 1, edge);
       }
     };
+    const rootKey = structureNodeKey(root);
+    if (emitted.has(rootKey)) continue;
+    emitted.add(rootKey);
     visit(root, 0, null);
   }
   return rows;

@@ -31,7 +31,7 @@ const RECENT_ACTIVITY_LIMIT = 5;
 const SEGMENTS: readonly { id: ProjectDetailSegmentId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'structure', label: 'Structure' },
-  { id: 'progress', label: 'Progress' },
+  { id: 'roadmap', label: 'Roadmap' },
 ];
 
 interface ProjectDetailData {
@@ -48,17 +48,17 @@ type DetailState =
 
 export interface ProjectDetailScreenProps {
   entityId: string;
-  /** Stable extension slots; #135/#136 inject Structure and Progress content. */
+  /** Stable extension slots; #135 and the Roadmap task inject Structure and Roadmap content. */
   slots?: ProjectDetailSlots;
 }
 
 /**
  * Project detail (#134): execution-context header with title, purpose, and
- * archive status; the sticky Overview/Structure/Progress segment shell; the
+ * archive status; the sticky Overview/Structure/Roadmap segment shell; the
  * Overview segment (facts, pursued Goals, member Tasks, persisted activity);
  * edit and confirmed archive. #134 owns the shell and Overview only —
- * Structure and Progress render as clearly-labeled placeholder panes until
- * #135/#136 inject their content through `ProjectDetailSlots`, and #132
+ * Structure and Roadmap render as clearly-labeled placeholder panes until
+ * their tasks inject content through `ProjectDetailSlots`, and #132
  * injects the Overview's membership actions through the same slots.
  * Presentation translates service read models; it never re-derives pursuit,
  * membership, archive, or progress rules.
@@ -284,14 +284,14 @@ export function ProjectDetailScreen({ entityId, slots }: ProjectDetailScreenProp
             message="The Project-scoped Goal and Task hierarchy (#135) will render here."
           />
         ))}
-      {segment === 'progress' &&
-        (slots?.renderProgress !== undefined ? (
-          <>{slots.renderProgress({ project, refresh: reload })}</>
+      {segment === 'roadmap' &&
+        (slots?.renderRoadmap !== undefined ? (
+          <>{slots.renderRoadmap({ project, refresh: reload })}</>
         ) : (
           <PlaceholderPane
-            icon="◔"
-            title="Progress arrives with the execution task"
-            message="The Project execution snapshot (#136) will render derived progress here."
+            icon="◇"
+            title="Roadmap arrives with the milestone task"
+            message="The Project Roadmap (ordered Milestones grouping sub-goals) will render here."
           />
         ))}
 

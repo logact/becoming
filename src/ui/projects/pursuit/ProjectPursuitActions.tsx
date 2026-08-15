@@ -8,7 +8,6 @@ import { useShellNavigation } from '../../navigation/NavigationShell';
 import {
   RelationRejectionSheet,
   candidateRejectionReason,
-  mapRelationError,
   useRelationCommit,
 } from '../../relations';
 import type { EndpointCandidate, RelationErrorFeedback } from '../../relations';
@@ -29,17 +28,17 @@ export interface ProjectPursuitActionsProps {
 }
 
 /**
- * The Project-Overview pursuit actions (#134): Add one or more Goals
- * (multi-select, broader than the prototype's one-at-a-time sketch) and
- * Remove an active pursuit. Unavailable Goals stay visible with #133
- * rejection reasons; commit-time validation stays authoritative.
+ * The Project-Overview pursuit actions (#134): Add the Project's one pursued
+ * Goal (strict 1:1) and Remove an active pursuit. Unavailable Goals stay
+ * visible with #133 rejection reasons; commit-time validation stays
+ * authoritative.
  */
 export function ProjectPursuitActions({ project, pursuits, onChanged }: ProjectPursuitActionsProps) {
   const navigation = useShellNavigation();
 
   function openAdd() {
     navigation.presentSheet(
-      <AddGoalsFlow project={project} onCommitted={onChanged} onClose={navigation.dismissSheet} />,
+      <AddGoalFlow project={project} onCommitted={onChanged} onClose={navigation.dismissSheet} />,
     );
   }
 
@@ -62,15 +61,17 @@ export function ProjectPursuitActions({ project, pursuits, onChanged }: ProjectP
           Remove…
         </Text>
       )}
-      <Text style={styles.action} onPress={openAdd} accessibilityRole="button"
-        accessibilityLabel="Add pursued goals">
-        ＋ Add
-      </Text>
+      {pursuits.length === 0 && (
+        <Text style={styles.action} onPress={openAdd} accessibilityRole="button"
+          accessibilityLabel="Add a pursued goal">
+          ＋ Add
+        </Text>
+      )}
     </View>
   );
 }
 
-interface AddGoalsFlowProps {
+interface AddGoalFlowProps {
   project: Project;
   onCommitted: () => void;
   onClose: () => void;
@@ -82,18 +83,18 @@ type CandidateState =
   | { status: 'ready'; candidates: EndpointCandidate[] };
 
 /**
- * Multi-Goal picker: the issue requires selecting multiple active Goals when
- * starting from Project context. Rejected candidates (duplicate active
- * relationship, archived endpoint) stay visible but cannot be selected. Each
- * selected Goal is committed through the pursuit service inside one
- * `useRelationCommit` operation; a rejection keeps every selection intact.
+ * Single-Goal picker: pursuit is strict 1:1, so the Project commits exactly
+ * one Goal. Rejected candidates (already pursued by another Project,
+ * archived endpoint) stay visible but cannot be selected. The selected Goal
+ * is committed through the pursuit service inside one `useRelationCommit`
+ * operation; a rejection keeps the selection intact.
  */
-function AddGoalsFlow({ project, onCommitted, onClose }: AddGoalsFlowProps) {
+function AddGoalFlow({ project, onCommitted, onClose }: AddGoalFlowProps) {
   const services = useAppServices();
   const { commit } = useRelationCommit();
   const [state, setState] = useState<CandidateState>({ status: 'loading' });
   const [reloadToken, setReloadToken] = useState(0);
-  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<RelationErrorFeedback | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -101,25 +102,29 @@ function AddGoalsFlow({ project, onCommitted, onClose }: AddGoalsFlowProps) {
     let cancelled = false;
     async function load() {
       try {
-        const [goals, pursuits] = await Promise.all([
-          services.goals.listGoalHistory(),
-          services.goalPursuitQueries.listGoalsPursuedByProject(project.id),
-        ]);
-        const pursuedIds = new Set(pursuits.map((pursuit) => pursuit.goalId));
+        const goals = await services.goals.listGoalHistory();
+        const pursuitLists = await Promise.all(
+          goals.map((goal) => services.goalPursuitQueries.listProjectsPursuingGoal(goal.id)),
+        );
         if (!cancelled) {
           setState({
             status: 'ready',
-            candidates: goals.map((goal) => ({
-              id: goal.id,
-              title: goal.title,
-              detail: goal.targetState,
-              rejection:
-                goal.archivedAt !== null
-                  ? { kind: 'archived-endpoint' }
-                  : pursuedIds.has(goal.id)
-                    ? { kind: 'duplicate-active-relation' }
-                    : undefined,
-            })),
+            candidates: goals.map((goal, index) => {
+              const activePursuers = pursuitLists[index];
+              return {
+                id: goal.id,
+                title: goal.title,
+                detail: goal.targetState,
+                rejection:
+                  goal.archivedAt !== null
+                    ? { kind: 'archived-endpoint' as const }
+                    : activePursuers.some((pursuit) => pursuit.projectId === project.id)
+                      ? { kind: 'duplicate-active-relation' as const }
+                      : activePursuers.length > 0
+                        ? { kind: 'cardinality-violation' as const, reason: 'Already has a project' }
+                        : undefined,
+              };
+            }),
           });
         }
       } catch (error) {
@@ -140,62 +145,29 @@ function AddGoalsFlow({ project, onCommitted, onClose }: AddGoalsFlowProps) {
   }, [project.id, reloadToken, services]);
 
   const candidates = state.status === 'ready' ? state.candidates : [];
-  const availableSelected = candidates.filter(
-    (candidate) => candidate.rejection === undefined && selected.has(candidate.id),
+  const selected = candidates.find(
+    (candidate) => candidate.rejection === undefined && candidate.id === selectedId,
   );
 
   function toggle(candidate: EndpointCandidate) {
     if (candidate.rejection !== undefined) return;
-    setSelected((previous) => {
-      const next = new Set(previous);
-      if (next.has(candidate.id)) {
-        next.delete(candidate.id);
-      } else {
-        next.add(candidate.id);
-      }
-      return next;
-    });
+    setSelectedId((previous) => (previous === candidate.id ? null : candidate.id));
   }
 
   async function pursueSelected() {
-    if (submitting || availableSelected.length === 0) return;
+    if (submitting || selected === undefined) return;
     setSubmitting(true);
     const outcome = await commit(
-      async () => {
-        const failures: unknown[] = [];
-        let started = 0;
-        for (const candidate of availableSelected) {
-          try {
-            await services.goalPursuit.startPursuit({
-              projectId: project.id,
-              goalId: candidate.id,
-              actor: ACTOR,
-            });
-            started += 1;
-          } catch (error) {
-            failures.push(error);
-          }
-        }
-        if (started === 0 && failures.length > 0) throw failures[0];
-        return { firstFailure: failures[0] };
-      },
-      {
-        successMessage:
-          availableSelected.length > 1
-            ? `${availableSelected.length} pursuits started`
-            : 'Pursuit started',
-        refresh: [onCommitted],
-      },
+      () => services.goalPursuit.startPursuit({
+        projectId: project.id,
+        goalId: selected.id,
+        actor: ACTOR,
+      }),
+      { successMessage: 'Pursuit started', refresh: [onCommitted] },
     );
     setSubmitting(false);
     if (outcome.status === 'rejected') {
       setFeedback(outcome.feedback);
-      return;
-    }
-    if (outcome.result.firstFailure !== undefined) {
-      // A partial commit: the started pursuits refreshed above; surface the
-      // first failure without clearing the remaining selections.
-      setFeedback(mapRelationError(outcome.result.firstFailure));
       return;
     }
     onClose();
@@ -203,9 +175,9 @@ function AddGoalsFlow({ project, onCommitted, onClose }: AddGoalsFlowProps) {
 
   return (
     <>
-      <Sheet visible title="Pursue Goals" onClose={onClose}>
+      <Sheet visible title="Pursue a Goal" onClose={onClose}>
         <Text style={styles.intro} maxFontSizeMultiplier={2}>
-          Select one or more Goals. Unavailable choices stay visible so the rule is understandable.
+          Select one Goal. Unavailable choices stay visible so the rule is understandable.
         </Text>
         {state.status === 'loading' && (
           <Text style={styles.notice} maxFontSizeMultiplier={2}>
@@ -226,7 +198,7 @@ function AddGoalsFlow({ project, onCommitted, onClose }: AddGoalsFlowProps) {
           <CandidateRow
             key={candidate.id}
             candidate={candidate}
-            selected={selected.has(candidate.id)}
+            selected={candidate.id === selectedId}
             onToggle={toggle}
           />
         ))}
@@ -235,22 +207,20 @@ function AddGoalsFlow({ project, onCommitted, onClose }: AddGoalsFlowProps) {
             onPress={() => {
               void pursueSelected();
             }}
-            disabled={availableSelected.length === 0 || submitting}
+            disabled={selected === undefined || submitting}
             accessibilityRole="button"
-            accessibilityLabel="Pursue selected goals"
+            accessibilityLabel="Pursue selected goal"
             accessibilityState={{
               busy: submitting,
-              disabled: availableSelected.length === 0 || submitting,
+              disabled: selected === undefined || submitting,
             }}
             style={[
               styles.submit,
-              (availableSelected.length === 0 || submitting) && styles.submitDisabled,
+              (selected === undefined || submitting) && styles.submitDisabled,
             ]}
           >
             <Text style={styles.submitText} maxFontSizeMultiplier={2}>
-              {submitting
-                ? 'Starting…'
-                : `Pursue ${availableSelected.length} goal${availableSelected.length === 1 ? '' : 's'}`}
+              {submitting ? 'Starting…' : 'Pursue goal'}
             </Text>
           </Pressable>
         )}

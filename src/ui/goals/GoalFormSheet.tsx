@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { Goal } from '../../domain/goal';
+import type { CreateGoalCommand } from '../../application/goalService';
 import { useAppServices } from '../composition/AppServicesProvider';
 import { Sheet } from '../shared/Sheet';
 import { colors, radius, spacing } from '../shared/theme';
@@ -13,6 +14,10 @@ export interface GoalFormSheetProps {
   mode: 'create' | 'edit';
   /** Required in edit mode; its values prefill the form. */
   goal?: Goal;
+  /** Optional create command override for contextual compound mutations. */
+  createGoal?: (command: CreateGoalCommand) => Promise<Goal>;
+  /** Contextual create heading; list creation keeps the default. */
+  createHeading?: string;
   /** Called only after the service has committed the mutation. */
   onSaved: (goal: Goal) => void;
   onCancel: () => void;
@@ -30,7 +35,14 @@ interface FieldErrors {
  * time; the sheet only translates structured validation failures into inline
  * feedback and preserves the entered draft on any failure.
  */
-export function GoalFormSheet({ mode, goal, onSaved, onCancel }: GoalFormSheetProps) {
+export function GoalFormSheet({
+  mode,
+  goal,
+  createGoal,
+  createHeading,
+  onSaved,
+  onCancel,
+}: GoalFormSheetProps) {
   const services = useAppServices();
   const [title, setTitle] = useState(goal?.title ?? '');
   const [targetState, setTargetState] = useState(goal?.targetState ?? '');
@@ -39,7 +51,7 @@ export function GoalFormSheet({ mode, goal, onSaved, onCancel }: GoalFormSheetPr
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const heading = mode === 'create' ? 'New goal' : 'Edit goal';
+  const heading = mode === 'create' ? (createHeading ?? 'New goal') : 'Edit goal';
 
   async function submit() {
     if (submitting) return;
@@ -51,7 +63,7 @@ export function GoalFormSheet({ mode, goal, onSaved, onCancel }: GoalFormSheetPr
       const optionalDescription = description.trim().length === 0 ? undefined : description;
       const optionalCriteria = successCriteria.trim().length === 0 ? undefined : successCriteria;
       const saved = mode === 'create'
-        ? await services.goals.createGoal({
+        ? await (createGoal ?? ((command) => services.goals.createGoal(command)))({
             actor: ACTOR,
             title,
             targetState,

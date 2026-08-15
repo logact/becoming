@@ -1,6 +1,9 @@
 import { createTestDatabase, listTables } from './helpers/testDatabase';
 import { NodeSqliteDatabase } from '../src/persistence/sqlite/nodeSqliteDatabase';
 import { migrate } from '../src/persistence/migrate';
+import { MIGRATIONS } from '../src/persistence/migrations';
+import { withTransaction } from '../src/persistence/transactions';
+import { nowIso } from '../src/domain/ids';
 
 const CORE_TABLES = [
   'entity_labels',
@@ -21,14 +24,16 @@ const CORE_TABLES = [
   'workflows',
 ];
 
+const MILESTONE_TABLES = ['milestone_goal_assignments', 'milestones'];
+
 describe('migrations', () => {
-  it('builds the complete 16-table V1 schema from an empty database', async () => {
+  it('builds the complete schema from an empty database', async () => {
     const db = new NodeSqliteDatabase(':memory:');
     const applied = await migrate(db);
 
-    expect(applied).toEqual([1, 2, 3, 4]);
+    expect(applied).toEqual([1, 2, 3, 4, 5]);
     expect(await listTables(db)).toEqual(
-      [...CORE_TABLES, 'schema_migrations'].sort(),
+      [...CORE_TABLES, ...MILESTONE_TABLES, 'schema_migrations'].sort(),
     );
     await db.closeAsync();
   });
@@ -61,7 +66,46 @@ describe('migrations', () => {
       { version: 2, name: 'workflow_version_lineage' },
       { version: 3, name: 'project_entity_state_current_invariant' },
       { version: 4, name: 'workflow_transition_active_edge_invariant' },
+      { version: 5, name: 'milestones' },
     ]);
+    await db.closeAsync();
+  });
+
+  it('upgrading from V4 preserves existing data and adds the milestone tables', async () => {
+    const db = new NodeSqliteDatabase(':memory:');
+    // Apply every migration before V5 exactly as migrate() would.
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        version    INTEGER PRIMARY KEY,
+        name       TEXT NOT NULL,
+        applied_at TEXT NOT NULL
+      );
+    `);
+    for (const migration of MIGRATIONS.filter((m) => m.version < 5)) {
+      await withTransaction(db, async (tx) => {
+        await migration.up(tx);
+        await tx.runAsync(
+          'INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
+          [migration.version, migration.name, nowIso()],
+        );
+      });
+    }
+    await db.runAsync(
+      `INSERT INTO projects (id, title, created_at, updated_at)
+       VALUES ('p-1', 'Life OS', '2026-08-12T00:00:00.000Z', '2026-08-12T00:00:00.000Z')`,
+    );
+
+    const applied = await migrate(db);
+
+    expect(applied).toEqual([5]);
+    const row = await db.getFirstAsync<{ title: string }>(
+      'SELECT title FROM projects WHERE id = ?',
+      ['p-1'],
+    );
+    expect(row?.title).toBe('Life OS');
+    const tables = await listTables(db);
+    expect(tables).toContain('milestones');
+    expect(tables).toContain('milestone_goal_assignments');
     await db.closeAsync();
   });
 

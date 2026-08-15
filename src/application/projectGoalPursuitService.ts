@@ -42,6 +42,26 @@ export class DuplicateActiveGoalPursuitError extends Error {
   }
 }
 
+/** Raised when a Project already actively pursues any Goal (strict 1:1). */
+export class ProjectAlreadyPursuesGoalError extends Error {
+  constructor(readonly existing: Relation) {
+    super(
+      `Project ${existing.sourceId} already actively pursues Goal ${existing.targetId} (${existing.id}); end that pursuit first`,
+    );
+    this.name = 'ProjectAlreadyPursuesGoalError';
+  }
+}
+
+/** Raised when a Goal is already actively pursued by any Project (strict 1:1). */
+export class GoalAlreadyPursuedByProjectError extends Error {
+  constructor(readonly existing: Relation) {
+    super(
+      `Goal ${existing.targetId} is already actively pursued by Project ${existing.sourceId} (${existing.id}); end that pursuit first`,
+    );
+    this.name = 'GoalAlreadyPursuedByProjectError';
+  }
+}
+
 /** Raised when the supplied relation is absent or is not a pursuit relation. */
 export class GoalPursuitNotFoundError extends Error {
   constructor(id: EntityId) {
@@ -96,8 +116,11 @@ export function projectGoalPursuitProvenancePort<TContext>(ports: {
 
 /**
  * Owns the typed Project -> Goal `contributes_to` use case.  Pursuit has no
- * membership columns: it is a directed, temporal Relation.  Starts require
- * both current endpoint aggregates, while ends deliberately do not re-check
+ * membership columns: it is a directed, temporal Relation.  Pursuit is strict
+ * 1:1 — a Project actively pursues exactly one Goal and a Goal is actively
+ * pursued by at most one Project — so re-aiming a Project or re-staffing a
+ * Goal requires ending the current pursuit first.  Starts require both
+ * current endpoint aggregates, while ends deliberately do not re-check
  * endpoint eligibility so archived historical facts remain endable and
  * inspectable.  Both relation writes and their structured provenance record
  * share this service's unit of work.
@@ -128,6 +151,22 @@ export class ProjectGoalPursuitService<TContext> {
         'goal', command.goalId,
       );
       if (existing !== null) throw new DuplicateActiveGoalPursuitError(existing);
+      const projectPursuits = await relations.listCurrent({
+        relationType: PROJECT_GOAL_PURSUIT_RELATION_TYPE,
+        source: { type: 'project', id: command.projectId },
+        limit: 1,
+      });
+      if (projectPursuits.length > 0) {
+        throw new ProjectAlreadyPursuesGoalError(projectPursuits[0]);
+      }
+      const goalPursuits = await relations.listCurrent({
+        relationType: PROJECT_GOAL_PURSUIT_RELATION_TYPE,
+        target: { type: 'goal', id: command.goalId },
+        limit: 1,
+      });
+      if (goalPursuits.length > 0) {
+        throw new GoalAlreadyPursuedByProjectError(goalPursuits[0]);
+      }
       await relations.add(relation);
       await this.append(context, 'created', relation, actor);
       return relation;

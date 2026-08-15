@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Becoming — Milestone 2 prototype</title>
+<title>Becoming — Mile 3 roadmap prototype</title>
 <style>
   :root {
     --ink:#18312b; --muted:#697873; --paper:#f7f5ee; --canvas:#e9eee9; --card:#fffdf8;
@@ -49,7 +49,7 @@
 <body>
 <main class="workspace">
   <aside class="panel brief">
-    <div class="brief-head"><div class="eyebrow">Milestone 2 · Native UI</div><h1>Make the plan visible.</h1><p>A reviewable, interactive sketch of the planning loop. Everything lives in temporary browser memory; refreshing restores the sample story.</p></div>
+    <div class="brief-head"><div class="eyebrow">Mile 3 · Roadmap</div><h1>Make the plan visible.</h1><p>A reviewable, interactive sketch of the planning loop. Everything lives in temporary browser memory; refreshing restores the sample story.</p></div>
     <div class="loop"><div class="loop-line"><span class="loop-chip">Goal</span><span class="loop-arrow">→</span><span class="loop-chip">Project</span><span class="loop-arrow">→</span><span class="loop-chip">Structure</span><span class="loop-arrow">→</span><span class="loop-chip">Roadmap</span></div></div>
     <div class="feature-list" id="featureList"></div>
   </aside>
@@ -64,7 +64,7 @@
   </section>
 
   <aside class="panel review">
-    <div class="review-head"><div class="eyebrow">Review shortcuts</div><h2>Stress the thinking</h2><p>Jump to happy paths and the explicit states M2 must keep visible.</p></div>
+    <div class="review-head"><div class="eyebrow">Review shortcuts</div><h2>Stress the thinking</h2><p>Jump to happy paths and the explicit states Mile 3 must keep visible.</p></div>
     <div class="review-body">
       <button class="scenario" data-scenario="loop"><span class="scenario-icon">↗</span><span><strong>Walk the core loop</strong><small>Goal → Project → structure → roadmap</small></span></button>
       <button class="scenario" data-scenario="relation"><span class="scenario-icon">⑂</span><span><strong>Relation rejection</strong><small>Duplicate, archived, or cross-project</small></span></button>
@@ -82,7 +82,7 @@
   'use strict';
   const initial = {
     goals:[
-      {id:'g1',title:'Ship Becoming M2',target:'A complete native planning loop',description:'Turn intent into inspectable, executable work.',achieved:false,targetDate:'2026-09-05',archived:false},
+      {id:'g1',title:'Ship Becoming Mile 3',target:'A complete native roadmap planning loop',description:'Turn the pursued Goal into inspectable milestone checkpoints.',achieved:false,targetDate:'2026-09-05',archived:false},
       {id:'g2',title:'Design the planning experience',target:'A coherent, accessible interaction model',description:'Keep exceptional states visible.',achieved:true,targetDate:'2026-08-18',archived:false},
       {id:'g3',title:'Learn conversational Spanish',target:'Hold a 15-minute conversation',description:'A separate personal goal.',achieved:false,targetDate:'2026-10-15',archived:false},
       {id:'g4',title:'Run a marathon',target:'Finish 42.2 km',description:'Paused for this season.',achieved:false,targetDate:'',archived:true},
@@ -94,7 +94,7 @@
       {id:'g10',title:'Confirm the navigation shell',target:'Goals, Projects, and Tasks remain easy to move between',description:'Review the complete native information architecture.',achieved:false,targetDate:'2026-09-02',archived:false}
     ],
     projects:[
-      {id:'p1',title:'Becoming for iOS',purpose:'Deliver the Milestone 2 planning loop',description:'Epic #3 · Goal planning and execution',archived:false},
+      {id:'p1',title:'Becoming for iOS',purpose:'Deliver the Mile 3 planning loop',description:'Epic #3 · Goal planning and execution',archived:false},
       {id:'p2',title:'Spanish sprint',purpose:'Build a daily practice habit',description:'90-day personal project',archived:false},
       {id:'p3',title:'Someday / Maybe',purpose:'Capture ideas without managed work',description:'Useful for the zero-denominator state',archived:false}
     ],
@@ -158,7 +158,7 @@
   function features(){const items=[['131','Goal planning','Create, edit, archive','goals'],['133','Relation feedback','Explain rejected changes','relation'],['134','Goal pursuit','Connect Projects to Goals','projects'],['132','Task planning','Priority and membership','tasks'],['135','Decomposition','Project-scoped hierarchy','structure'],['136','Roadmap planning','Milestones group Goals','roadmap']];$('#featureList').innerHTML=items.map(x=>`<button class="feature ${featureActive(x[3])?'active':''}" data-feature="${x[3]}"><span class="issue">#${x[0]}</span><span><strong>${x[1]}</strong><small>${x[2]}</small></span><span class="tick">›</span></button>`).join('')}
   function featureActive(f){return f===ui.tab||(f==='structure'&&ui.screen==='project'&&ui.projectView==='structure')||(f==='roadmap'&&ui.screen==='project'&&ui.projectView==='roadmap')}
   function render(){features();tabs();const app=$('#app');app.innerHTML=ui.screen==='list'?listScreen():ui.screen==='goal'?goalDetail():ui.screen==='project'?projectDetail():ui.screen==='task'?taskDetail():'';bind();renderLayer()}
-  function listScreen(){const map={goals:['Goals','What do you want to become?','Define outcomes before choosing the work.','New goal'],projects:['Projects','Where intent becomes work','Projects organize effort without owning the Goal.','New project'],tasks:['Tasks','The work in front of you','Tasks can stand alone or belong to a Project.','New task']};const [title,hero,copy,newLabel]=map[ui.tab];const rows=db[ui.tab].filter(x=>ui.filter==='archived'?x.archived:!x.archived);return `${nav(title)}<div class="screen"><div class="content"><div class="hero"><div class="hero-kicker">Milestone 2 planning</div><h2>${hero}</h2><p>${copy}</p></div><div class="toolbar"><input id="search" class="search" placeholder="Search ${ui.tab}"><button class="filter" data-act="filter">${ui.filter==='active'?'Active':'Archived'} ⌄</button></div><div id="rows">${rowsHtml(rows)}</div></div>${ui.filter==='active'?`<button class="fab" aria-label="${newLabel}" data-act="new">＋</button>`:''}</div>`}
+  function listScreen(){const map={goals:['Goals','What do you want to become?','Define outcomes before choosing the work.','New goal'],projects:['Projects','Where intent becomes work','Projects organize effort without owning the Goal.','New project'],tasks:['Tasks','The work in front of you','Tasks can stand alone or belong to a Project.','New task']};const [title,hero,copy,newLabel]=map[ui.tab];const rows=db[ui.tab].filter(x=>ui.filter==='archived'?x.archived:!x.archived);return `${nav(title)}<div class="screen"><div class="content"><div class="hero"><div class="hero-kicker">Mile 3 planning</div><h2>${hero}</h2><p>${copy}</p></div><div class="toolbar"><input id="search" class="search" placeholder="Search ${ui.tab}"><button class="filter" data-act="filter">${ui.filter==='active'?'Active':'Archived'} ⌄</button></div><div id="rows">${rowsHtml(rows)}</div></div>${ui.filter==='active'?`<button class="fab" aria-label="${newLabel}" data-act="new">＋</button>`:''}</div>`}
   function rowsHtml(rows){if(!rows.length)return emptyHtml('◌','Nothing here yet',ui.filter==='archived'?'Archived items will remain inspectable here.':'Create the first item to shape this plan.');return `<div class="list">${rows.map(x=>{let sub='',right='';if(ui.tab==='goals'){const n=db.pursuits.filter(r=>r.goalId===x.id&&!r.ended).length;sub=x.target;right=x.achieved?badge('complete','Achieved'):n?badge('incomplete',`${n} project${n>1?'s':''}`):badge('unmanaged','Unpursued')}if(ui.tab==='projects'){const n=db.tasks.filter(t=>t.projectId===x.id&&!t.archived).length;sub=x.purpose;right=badge(n?'incomplete':'unmanaged',`${n} task${n!==1?'s':''}`)}if(ui.tab==='tasks'){sub=`${x.target}${x.priority?' · P'+x.priority:''}`;right=badge(x.status,x.state)}return `<button class="list-row" data-open="${x.id}"><span class="row-icon">${ui.tab==='goals'?'◎':ui.tab==='projects'?'▦':'✓'}</span><span class="row-main"><span class="row-title">${esc(x.title)}</span><span class="row-sub">${esc(sub)}</span></span>${right}<span class="chev">›</span></button>`}).join('')}</div>`}
   function goalDetail(){const g=entity('goal',ui.detail);if(!g)return '';const active=db.pursuits.filter(r=>r.goalId===g.id&&!r.ended);return `${nav('Goal',true,'edit')}<div class="screen"><div class="detail-head"><div class="detail-type">Intended outcome</div><h2>${esc(g.title)}</h2><p>${esc(g.description||g.target)}</p><div class="meta-line">${g.archived?badge('unmanaged','Archived'):g.achieved?badge('complete','Achieved'):badge(active.length?'incomplete':'unmanaged',active.length?'Actively pursued':'Not pursued')}</div></div><div class="content"><div class="fact-grid"><div class="fact"><small>Target state</small><b>${esc(g.target)}</b></div><div class="fact"><small>Target date</small><b>${formatDate(g.targetDate)}</b></div></div><div class="section-label"><span>Pursued by</span><span>${active.length?'<button class="text-btn" data-act="end-pursuit">Remove from project…</button>':''}${!g.archived?'<button class="text-btn" data-act="add-pursuit">＋ Connect</button>':''}</span></div>${relationList(active,'projectId','This may be a sub-goal in a Project roadmap rather than a directly pursued Goal.')}${activityHtml('goal',g.id)}<div class="action-row"><button class="btn soft" data-act="edit">Edit goal</button><button class="btn danger" data-act="archive" ${g.archived?'disabled':''}>${g.archived?'Archived':'Archive'}</button></div></div></div>`}
   function relationList(rels,key,empty){if(!rels.length)return `<div class="note info"><span>○</span><div>${empty}</div></div>`;return `<div class="list">${rels.map(r=>{const p=entity('project',r[key]);return `<button class="list-row" data-project="${p?.id||''}"><span class="row-icon">▦</span><span class="row-main"><span class="row-title">${esc(p?.title||'Missing endpoint')}</span><span class="row-sub">${r.ended?'Previously pursued in this Project':'Actively pursued in this Project'}</span></span>${r.ended?badge('unmanaged','Removed'):badge('complete','Active')}<span class="chev">›</span></button>`}).join('')}</div>`}

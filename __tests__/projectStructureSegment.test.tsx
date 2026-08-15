@@ -40,8 +40,22 @@ function seedTask(title: string): Promise<Task> {
   });
 }
 
+// The pursuit service enforces strict 1:1, but the decomposition policy still
+// requires every Goal in a Project tree to hold an active pursuit relation, so
+// multi-Goal fixtures stage the pursuit rows directly (the same pattern the
+// execution-snapshot application tests use).
 function pursue(projectId: string, goalId: string) {
-  return harness.services.goalPursuit.startPursuit({ projectId, goalId, actor: 'test' });
+  return new SqliteRelationRepository(harness.db).add({
+    id: `pursuit-${projectId}-${goalId}`,
+    sourceType: 'project',
+    sourceId: projectId,
+    relationType: 'contributes_to',
+    targetType: 'goal',
+    targetId: goalId,
+    metadata: null,
+    createdAt: '2026-08-14T00:00:00.000Z',
+    endedAt: null,
+  });
 }
 
 function join(projectId: string, taskId: string) {
@@ -100,9 +114,9 @@ describe('Project Structure segment — rendering', () => {
       screen.getByText('A pursued Goal becomes the root of this Project hierarchy.'),
     ).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText('Add pursued goals'));
+    fireEvent.press(screen.getByLabelText('Add a pursued goal'));
     fireEvent.press(await screen.findByLabelText('Ship the beta'));
-    fireEvent.press(screen.getByLabelText('Pursue selected goals'));
+    fireEvent.press(screen.getByLabelText('Pursue selected goal'));
     await expectTransientToast('Pursuit started');
 
     // The pursued Goal becomes the tree root — no fabricated hierarchy root.
@@ -245,6 +259,70 @@ describe('Project Structure segment — mutations', () => {
     expect(children.edges.map((edge) => edge.child.id)).toEqual([sub.id]);
   });
 
+  it('creates a new sub-goal in place and attaches it without a second pursuit', async () => {
+    const project = await seedProject('Beta rollout');
+    const root = await seedGoal('Root goal');
+    await harness.services.goalPursuit.startPursuit({
+      projectId: project.id,
+      goalId: root.id,
+      actor: 'test',
+    });
+    await openStructure(project.title);
+
+    fireEvent.press(await screen.findByLabelText('Add a child to Root goal'));
+    fireEvent.press(screen.getByLabelText('Create a sub-goal under Root goal'));
+    expect(await screen.findByText('New sub-goal for Root goal')).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText('Goal title'), 'Measure adoption');
+    fireEvent.changeText(screen.getByLabelText('Goal target state'), 'Ten active teams');
+    fireEvent.press(screen.getByLabelText('Save new goal'));
+
+    await expectTransientToast('Sub-goal created');
+    expect(await screen.findByLabelText('Open goal Measure adoption')).toBeTruthy();
+    expect(await harness.services.goalPursuitQueries.listGoalsPursuedByProject(project.id))
+      .toHaveLength(1);
+    const children = await harness.services.decompositionQueries.listDirectChildren(
+      project.id,
+      { type: 'goal', id: root.id },
+    );
+    expect(children.edges).toHaveLength(1);
+    expect(children.edges[0].child.type).toBe('goal');
+  });
+
+  it('creates a new sub-task in place, adds Project membership, and attaches it', async () => {
+    const project = await seedProject('Beta rollout');
+    const root = await seedGoal('Root goal');
+    await harness.services.goalPursuit.startPursuit({
+      projectId: project.id,
+      goalId: root.id,
+      actor: 'test',
+    });
+    await openStructure(project.title);
+
+    fireEvent.press(await screen.findByLabelText('Add a child to Root goal'));
+    fireEvent.press(screen.getByLabelText('Create a sub-task under Root goal'));
+    expect(await screen.findByText('New sub-task for Root goal')).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText('Task title'), 'Interview pilot teams');
+    fireEvent.changeText(screen.getByLabelText('Task target description'), 'Ten interviews summarized');
+    fireEvent.press(screen.getByLabelText('Save new task'));
+
+    await expectTransientToast('Sub-task created');
+    expect(await screen.findByLabelText('Open task Interview pilot teams')).toBeTruthy();
+    const tasks = await harness.services.tasks.listActive();
+    const created = tasks.find((task) => task.title === 'Interview pilot teams');
+    expect(created).toBeDefined();
+    expect(
+      await harness.services.taskMembershipQueries.listActiveProjectsForTask(created!.id),
+    ).toEqual([expect.objectContaining({ projectId: project.id })]);
+    const children = await harness.services.decompositionQueries.listDirectChildren(
+      project.id,
+      { type: 'goal', id: root.id },
+    );
+    expect(children.edges.map((edge) => edge.child)).toContainEqual({
+      type: 'task',
+      id: created!.id,
+    });
+  });
+
   it('commits a Goal->Task child and refreshes the Project activity on the Overview', async () => {
     const { project, root, taskOne } = await seedRootWithChildren();
     await openStructure(project.title);
@@ -385,15 +463,15 @@ describe('Project Structure segment — rejections', () => {
     let attempts = 0;
     const services = {
       ...harness.services,
-      decomposition: overrideServiceMethod(
-        harness.services.decomposition,
-        'create',
-        async (command: Parameters<typeof harness.services.decomposition.create>[0]) => {
+      structureCreation: overrideServiceMethod(
+        harness.services.structureCreation,
+        'attachExistingChild',
+        async (command: Parameters<typeof harness.services.structureCreation.attachExistingChild>[0]) => {
           attempts += 1;
           if (attempts === 1) {
             throw Object.assign(new Error('would cycle'), { name: 'DecompositionCycleError' });
           }
-          return harness.services.decomposition.create(command);
+          return harness.services.structureCreation.attachExistingChild(command);
         },
       ),
     };

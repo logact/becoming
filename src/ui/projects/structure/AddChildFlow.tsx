@@ -10,8 +10,11 @@ import {
   useRelationCommit,
 } from '../../relations';
 import type { CandidateRejection, RelationErrorFeedback } from '../../relations';
+import { GoalFormSheet } from '../../goals/GoalFormSheet';
 import { Sheet } from '../../shared/Sheet';
 import { StatusBadge } from '../../shared/StatusBadge';
+import { useToast } from '../../shared/Toast';
+import { TaskFormSheet } from '../../tasks/TaskFormSheet';
 import { colors, radius, spacing } from '../../shared/theme';
 import {
   DECOMPOSITION_MANAGEMENT_LABEL_ID,
@@ -46,10 +49,13 @@ type CandidateState =
   | { status: 'error'; message: string }
   | { status: 'ready'; candidates: ChildCandidate[] };
 
+type AddChildMode = 'choose' | 'create-goal' | 'create-task';
+
 /**
  * The contextual add-child sheet (#135): explains the valid directions for
  * this parent (Goal -> Goal or Task; Task -> Task), combines eligible Goals
- * and Tasks in one list, and keeps rejected candidates visible with distinct
+ * and Tasks in one list, offers creation of a new valid child in place, and
+ * keeps rejected candidates visible with distinct
  * #133 reasons (invalid direction, already in structure, duplicate placement,
  * archived endpoint, cross-Project structure, self-link). Commits go through
  * the decomposition service via `useRelationCommit`; a rejection shows the
@@ -59,7 +65,9 @@ type CandidateState =
 export function AddChildFlow({ project, parent, edges, onCommitted, onClose }: AddChildFlowProps) {
   const services = useAppServices();
   const { commit } = useRelationCommit();
+  const { showToast } = useToast();
 
+  const [mode, setMode] = useState<AddChildMode>('choose');
   const [state, setState] = useState<CandidateState>({ status: 'loading' });
   const [reloadToken, setReloadToken] = useState(0);
   const [feedback, setFeedback] = useState<RelationErrorFeedback | null>(null);
@@ -140,7 +148,7 @@ export function AddChildFlow({ project, parent, edges, onCommitted, onClose }: A
     setPending(candidate);
     const outcome = await commit(
       () =>
-        services.decomposition.create({
+        services.structureCreation.attachExistingChild({
           projectId: project.id,
           parentType: parent.node.type,
           parentId: parent.node.id,
@@ -161,6 +169,60 @@ export function AddChildFlow({ project, parent, edges, onCommitted, onClose }: A
 
   const candidates = state.status === 'ready' ? state.candidates : [];
 
+  if (mode === 'create-goal') {
+    return (
+      <GoalFormSheet
+        mode="create"
+        createHeading={`New sub-goal for ${parent.title}`}
+        createGoal={async ({ actor, occurredAt, ...goal }) => {
+          const created = await services.structureCreation.createGoalChild({
+            projectId: project.id,
+            parentType: parent.node.type,
+            parentId: parent.node.id,
+            managementLabelId: DECOMPOSITION_MANAGEMENT_LABEL_ID,
+            actor,
+            occurredAt,
+            goal,
+          });
+          return created.goal;
+        }}
+        onSaved={() => {
+          showToast('Sub-goal created');
+          onCommitted();
+          onClose();
+        }}
+        onCancel={() => setMode('choose')}
+      />
+    );
+  }
+
+  if (mode === 'create-task') {
+    return (
+      <TaskFormSheet
+        mode="create"
+        createHeading={`New sub-task for ${parent.title}`}
+        createTask={async ({ actor, occurredAt, ...task }) => {
+          const created = await services.structureCreation.createTaskChild({
+            projectId: project.id,
+            parentType: parent.node.type,
+            parentId: parent.node.id,
+            managementLabelId: DECOMPOSITION_MANAGEMENT_LABEL_ID,
+            actor,
+            occurredAt,
+            task,
+          });
+          return created.task;
+        }}
+        onSaved={() => {
+          showToast('Sub-task created');
+          onCommitted();
+          onClose();
+        }}
+        onCancel={() => setMode('choose')}
+      />
+    );
+  }
+
   return (
     <>
       <Sheet visible title={`Add a child to ${parent.title}`} onClose={onClose}>
@@ -168,6 +230,41 @@ export function AddChildFlow({ project, parent, edges, onCommitted, onClose }: A
           {childDirectionNote(parent.node)} Unavailable choices stay visible so the rule is
           understandable.
         </Text>
+        <View style={styles.createActions}>
+          {parent.node.type === 'goal' && (
+            <Pressable
+              onPress={() => setMode('create-goal')}
+              accessibilityRole="button"
+              accessibilityLabel={`Create a sub-goal under ${parent.title}`}
+              style={({ pressed }) => [styles.createButton, pressed && styles.rowPressed]}
+            >
+              <Text style={[styles.typeDot, styles.typeGoal]}>GOAL</Text>
+              <View style={styles.rowBody}>
+                <Text style={styles.createTitle} maxFontSizeMultiplier={2}>Create sub-goal</Text>
+                <Text style={styles.rowDetail} maxFontSizeMultiplier={2}>
+                  Define a new outcome in this branch
+                </Text>
+              </View>
+              <Text style={styles.chevron} accessibilityElementsHidden importantForAccessibility="no">›</Text>
+            </Pressable>
+          )}
+          <Pressable
+            onPress={() => setMode('create-task')}
+            accessibilityRole="button"
+            accessibilityLabel={`Create a sub-task under ${parent.title}`}
+            style={({ pressed }) => [styles.createButton, pressed && styles.rowPressed]}
+          >
+            <Text style={[styles.typeDot, styles.typeTask]}>TASK</Text>
+            <View style={styles.rowBody}>
+              <Text style={styles.createTitle} maxFontSizeMultiplier={2}>Create sub-task</Text>
+              <Text style={styles.rowDetail} maxFontSizeMultiplier={2}>
+                Define new work in this branch
+              </Text>
+            </View>
+            <Text style={styles.chevron} accessibilityElementsHidden importantForAccessibility="no">›</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.existingLabel} maxFontSizeMultiplier={2}>OR CHOOSE EXISTING</Text>
         {state.status === 'loading' && (
           <Text style={styles.notice} maxFontSizeMultiplier={2}>
             Loading goals and tasks…
@@ -180,7 +277,7 @@ export function AddChildFlow({ project, parent, edges, onCommitted, onClose }: A
         )}
         {state.status === 'ready' && candidates.length === 0 && (
           <Text style={styles.notice} maxFontSizeMultiplier={2}>
-            No Goals or Tasks yet — create one first.
+            No existing Goals or Tasks are available.
           </Text>
         )}
         {candidates.map((candidate) => (
@@ -279,6 +376,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.muted,
     paddingVertical: spacing.lg,
+  },
+  createActions: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.brand,
+    borderRadius: radius.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  createTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.ink,
+  },
+  existingLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: spacing.sm,
   },
   row: {
     flexDirection: 'row',

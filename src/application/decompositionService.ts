@@ -15,6 +15,7 @@ import type { EntityId, IsoTimestamp } from '../domain/ids';
 import { createRelation, endRelation } from '../domain/relation';
 import type { Relation } from '../domain/relation';
 import type { GoalRepository } from '../persistence/goalRepository';
+import type { MilestoneGoalAssignmentRepository } from '../persistence/milestoneGoalAssignmentRepository';
 import type { ProjectRepository } from '../persistence/projectRepository';
 import type { RelationRepository } from '../persistence/relationRepository';
 import type { TaskRepository } from '../persistence/taskRepository';
@@ -47,6 +48,32 @@ export class DuplicateActiveDecompositionError extends Error {
 
 export class DecompositionNotFoundError extends Error {
   constructor(id: EntityId) { super(`Decomposition ${id} not found`); this.name = 'DecompositionNotFoundError'; }
+}
+
+/** An active Milestone Goal assignment that an edge removal would detach. */
+export interface MilestoneOrphanedAssignment {
+  assignmentId: EntityId;
+  milestoneId: EntityId;
+  pursuitRelationId: EntityId;
+  goalId: EntityId;
+}
+
+/**
+ * Ending the edge would move an actively assigned Goal outside its pursuit's
+ * hierarchy. Roadmap membership stays explicit: remove or move the Milestone
+ * Goal assignment first.
+ */
+export class DecompositionEndOrphansMilestoneGoalError extends Error {
+  constructor(
+    readonly relationId: EntityId,
+    readonly orphans: readonly MilestoneOrphanedAssignment[],
+  ) {
+    super(
+      `Ending decomposition ${relationId} would detach Goal(s) ${orphans.map((orphan) => orphan.goalId).join(', ')} ` +
+      'from their pursued hierarchy; remove or move the Milestone Goal assignment(s) first',
+    );
+    this.name = 'DecompositionEndOrphansMilestoneGoalError';
+  }
 }
 
 export interface DecompositionMutationNotice {
@@ -96,6 +123,14 @@ export interface DecompositionServicePorts<TContext> {
   relations: (context: TContext) => RelationRepository;
   workflowGuidance: DecompositionWorkflowGuidanceResolver;
   provenance: DecompositionProvenancePort<TContext>;
+  /**
+   * Optional Roadmap Milestone guard. When present, `end` rejects an edge
+   * removal that would detach an actively assigned Goal from its pursuit
+   * root; when absent, `end` keeps its pre-Roadmap behavior.
+   */
+  milestoneAssignments?: (
+    context: TContext,
+  ) => Pick<MilestoneGoalAssignmentRepository, 'listCurrentForPursuit'>;
   /** Limits protect preflight from corrupt legacy graph data. */
   traversal?: { maxDepth?: number; maxNodes?: number };
   clock?: Clock;
@@ -176,6 +211,7 @@ export class DecompositionService<TContext> {
       const current = await relations.getById(command.relationId);
       if (!isDecomposition(current)) throw new DecompositionNotFoundError(command.relationId);
       if (current.endedAt !== null) return current;
+      await this.assertNoMilestoneOrphans(context, relations, current);
       const endedAt = command.endedAt ?? this.clock.now();
       const ended = endRelation(current, endedAt);
       await relations.save(ended);
@@ -187,6 +223,109 @@ export class DecompositionService<TContext> {
     });
   }
 
+  /**
+   * Reject an edge removal that would detach an actively assigned Milestone
+   * Goal from its pursuit root. Reachability is computed over the active
+   * same-Project decomposition graph with and without the ending edge; an
+   * assigned Goal reachable only through that edge is orphaned by it. The
+   * bounded traversal fails closed on corrupt or oversized graphs.
+   */
+  private async assertNoMilestoneOrphans(
+    context: TContext,
+    relations: RelationRepository,
+    edge: Relation,
+  ): Promise<void> {
+    const port = this.ports.milestoneAssignments;
+    if (port === undefined) return;
+    let projectId: EntityId;
+    try {
+      projectId = readDecompositionMetadata(edge.metadata).project_id;
+    } catch {
+      return; // a malformed Project context is the hierarchy read side's finding
+    }
+    const pursuits = (
+      await relations.listCurrent({
+        relationType: 'contributes_to',
+        source: { type: 'project', id: projectId },
+        limit: 100,
+      })
+    ).filter((relation) => relation.targetType === 'goal');
+    if (pursuits.length === 0) return;
+    const assignments = port(context);
+    const byPursuit: Array<{ rootGoalId: EntityId; assigned: MilestoneOrphanedAssignment[] }> = [];
+    for (const pursuit of pursuits) {
+      const current = await assignments.listCurrentForPursuit(pursuit.id);
+      byPursuit.push({
+        rootGoalId: pursuit.targetId,
+        assigned: current.map((assignment) => ({
+          assignmentId: assignment.id,
+          milestoneId: assignment.milestoneId,
+          pursuitRelationId: assignment.pursuitRelationId,
+          goalId: assignment.goalId,
+        })),
+      });
+    }
+    if (byPursuit.every(({ assigned }) => assigned.length === 0)) return;
+    const active = await this.listActiveProjectEdges(relations, projectId);
+    const remaining = active.filter((relation) => relation.id !== edge.id);
+    for (const { rootGoalId, assigned } of byPursuit) {
+      if (assigned.length === 0) continue;
+      const before = this.reachableFrom(active, rootGoalId);
+      const after = this.reachableFrom(remaining, rootGoalId);
+      const orphans = assigned.filter(
+        (orphan) => before.has(`goal:${orphan.goalId}`) && !after.has(`goal:${orphan.goalId}`),
+      );
+      if (orphans.length > 0) throw new DecompositionEndOrphansMilestoneGoalError(edge.id, orphans);
+    }
+  }
+
+  /** Every active same-Project decomposition edge, paged deterministically. */
+  private async listActiveProjectEdges(
+    relations: RelationRepository,
+    projectId: EntityId,
+  ): Promise<Relation[]> {
+    const edges: Relation[] = [];
+    const pageSize = 100;
+    for (let offset = 0; ; offset += pageSize) {
+      const page = await relations.listCurrent({
+        relationType: DECOMPOSITION_RELATION_TYPE,
+        limit: pageSize,
+        offset,
+      });
+      edges.push(...page.filter((relation) => isInProject(relation, projectId)));
+      if (page.length < pageSize) return edges;
+    }
+  }
+
+  /** Bounded BFS over active edges from the pursuit root; fails closed. */
+  private reachableFrom(edges: readonly Relation[], rootGoalId: EntityId): Set<string> {
+    const children = new Map<string, Array<{ type: string; id: EntityId }>>();
+    for (const edge of edges) {
+      const key = `${edge.sourceType}:${edge.sourceId}`;
+      const entries = children.get(key) ?? [];
+      entries.push({ type: edge.targetType, id: edge.targetId });
+      children.set(key, entries);
+    }
+    const visited = new Set([`goal:${rootGoalId}`]);
+    const queue: Array<{ key: string; depth: number }> = [{ key: `goal:${rootGoalId}`, depth: 0 }];
+    for (let index = 0; index < queue.length; index += 1) {
+      const current = queue[index];
+      if (current.depth > this.maxDepth) {
+        throw new DecompositionGraphIntegrityError(`depth exceeds configured maximum ${this.maxDepth}`);
+      }
+      for (const next of children.get(current.key) ?? []) {
+        const key = `${next.type}:${next.id}`;
+        if (visited.has(key)) continue;
+        if (visited.size >= this.maxNodes) {
+          throw new DecompositionGraphIntegrityError(`node count exceeds configured maximum ${this.maxNodes}`);
+        }
+        visited.add(key);
+        queue.push({ key, depth: current.depth + 1 });
+      }
+    }
+    return visited;
+  }
+
   private lookup(context: TContext, relations: RelationRepository) {
     return {
       getProject: async (id: EntityId) => this.ports.projects(context).getById(id),
@@ -194,6 +333,12 @@ export class DecompositionService<TContext> {
       getTask: async (id: EntityId) => this.ports.tasks(context).getById(id),
       hasActiveGoalPursuit: async (projectId: EntityId, goalId: EntityId) =>
         (await relations.listCurrent({ source: { type: 'project', id: projectId }, target: { type: 'goal', id: goalId }, relationType: 'contributes_to', limit: 1 })).length > 0,
+      getActiveGoalPursuitProjectId: async (goalId: EntityId) =>
+        (await relations.listCurrent({ target: { type: 'goal', id: goalId }, relationType: 'contributes_to' }))
+          .find((relation) => relation.sourceType === 'project')?.sourceId ?? null,
+      isInProjectDecompositionTree: async (projectId: EntityId, goalId: EntityId) =>
+        (await relations.listCurrent({ target: { type: 'goal', id: goalId }, relationType: DECOMPOSITION_RELATION_TYPE }))
+          .some((relation) => isInProject(relation, projectId)),
       hasActiveTaskProjectMembership: async (projectId: EntityId, taskId: EntityId) =>
         (await relations.listCurrent({ source: { type: 'task', id: taskId }, target: { type: 'project', id: projectId }, relationType: 'belongs_to', limit: 1 })).length > 0,
       hasActiveDecompositionParent: async (projectId: EntityId, childType: DecompositionEndpointType, childId: EntityId) =>

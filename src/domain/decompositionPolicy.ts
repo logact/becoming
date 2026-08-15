@@ -106,13 +106,21 @@ export interface DecompositionReference {
 /**
  * Logical reference boundary for a planned decomposition mutation.  Projects,
  * Goals, and Tasks stay in separate aggregate stores; context is proven by
- * the active Project->Goal pursuit and Task->Project membership relations.
+ * the active Project->Goal pursuit, the Project's own decomposition tree,
+ * and Task->Project membership relations.
  */
 export interface ProjectScopedDecompositionLookup {
   getProject(id: EntityId): Promise<DecompositionReference | null>;
   getGoal(id: EntityId): Promise<DecompositionReference | null>;
   getTask(id: EntityId): Promise<DecompositionReference | null>;
   hasActiveGoalPursuit(projectId: EntityId, goalId: EntityId): Promise<boolean>;
+  /**
+   * The Project actively pursuing this Goal, if any. Pursuit is strict 1:1,
+   * so at most one Project can hold a Goal's active pursuit.
+   */
+  getActiveGoalPursuitProjectId(goalId: EntityId): Promise<EntityId | null>;
+  /** Whether the Goal already sits in the Project's tree via an active incoming decomposition edge. */
+  isInProjectDecompositionTree(projectId: EntityId, goalId: EntityId): Promise<boolean>;
   hasActiveTaskProjectMembership(projectId: EntityId, taskId: EntityId): Promise<boolean>;
   /** A child has at most one active direct parent within one Project context. */
   hasActiveDecompositionParent(
@@ -189,10 +197,27 @@ async function requireActiveEndpoint(
   const endpoint = entityType === 'goal' ? await lookup.getGoal(id) : await lookup.getTask(id);
   if (endpoint === null) throw new DecompositionEndpointNotFoundError(role, entityType, id);
   if (endpoint.archivedAt !== null) throw new DecompositionEndpointArchivedError(role, entityType, id);
-  const hasContext = entityType === 'goal'
-    ? await lookup.hasActiveGoalPursuit(projectId, id)
-    : await lookup.hasActiveTaskProjectMembership(projectId, id);
-  if (!hasContext) throw new DecompositionProjectContextError(role, entityType, id, projectId);
+  if (entityType === 'task') {
+    if (!(await lookup.hasActiveTaskProjectMembership(projectId, id))) {
+      throw new DecompositionProjectContextError(role, entityType, id, projectId);
+    }
+    return;
+  }
+  // Goal endpoints under strict 1:1 pursuit: a Project pursues exactly one
+  // root Goal, so sub-goals take their Project context from the tree itself.
+  if (role === 'parent') {
+    const hasContext =
+      (await lookup.hasActiveGoalPursuit(projectId, id)) ||
+      (await lookup.isInProjectDecompositionTree(projectId, id));
+    if (!hasContext) throw new DecompositionProjectContextError(role, entityType, id, projectId);
+    return;
+  }
+  // A child Goal gains this Project's context through the new edge; it must
+  // not already be pursued by a different Project.
+  const pursuingProjectId = await lookup.getActiveGoalPursuitProjectId(id);
+  if (pursuingProjectId !== null && pursuingProjectId !== projectId) {
+    throw new DecompositionProjectContextError(role, entityType, id, projectId);
+  }
 }
 
 /** The operation context used to select applicable workflow guidance. */

@@ -3,6 +3,7 @@ import { initialSchema } from './0001_initialSchema';
 import { workflowVersionLineage } from './0002_workflowVersionLineage';
 import { projectEntityStateCurrentInvariant } from './0003_projectEntityStateCurrentInvariant';
 import { workflowTransitionActiveEdgeInvariant } from './0004_workflowTransitionActiveEdgeInvariant';
+import { milestones } from './0005_milestones';
 
 /**
  * All migrations, in ascending version order. Never reorder or edit an entry
@@ -13,4 +14,5 @@ export const MIGRATIONS: readonly Migration[] = [
   workflowVersionLineage,
   projectEntityStateCurrentInvariant,
   workflowTransitionActiveEdgeInvariant,
+  milestones,
 ];

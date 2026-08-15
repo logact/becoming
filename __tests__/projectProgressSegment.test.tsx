@@ -1,3 +1,4 @@
+import React from 'react';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 
 import type { Goal } from '../src/domain/goal';
@@ -14,10 +15,13 @@ import { SqliteLabelRepository } from '../src/persistence/labelRepository';
 import { SqliteProjectEntityStateRepository } from '../src/persistence/projectEntityStateRepository';
 import { SqliteProjectStateRepository } from '../src/persistence/projectStateRepository';
 import { SqliteRelationRepository } from '../src/persistence/relationRepository';
+import { NavigationShell } from '../src/ui/navigation/NavigationShell';
+import { appDestinations } from '../src/ui/placeholderDestinations';
+import { ProjectProgressSegment } from '../src/ui/projects/progress/ProjectProgressSegment';
+import { ToastProvider } from '../src/ui/shared/Toast';
 import type { AppServices } from '../src/ui/composition/appServices';
 import { overrideServiceMethod } from './helpers/goalScreenHarness';
-import { renderPlanningApp } from './helpers/projectScreenHarness';
-import { closeUiTestHarness, createUiTestHarness } from './helpers/uiTestHarness';
+import { closeUiTestHarness, createUiTestHarness, renderWithServices } from './helpers/uiTestHarness';
 import type { UiTestHarness } from './helpers/uiTestHarness';
 
 const NOW = '2026-08-14T00:00:00.000Z';
@@ -49,8 +53,21 @@ function seedTask(title: string): Promise<Task> {
   });
 }
 
+// The pursuit service enforces strict 1:1, so fixtures that need several
+// pursued Goals (e.g. multiple roots) stage the pursuit rows directly, like
+// seedEdge does for decomposition edges.
 function pursue(projectId: string, goalId: string) {
-  return harness.services.goalPursuit.startPursuit({ projectId, goalId, actor: 'test' });
+  return new SqliteRelationRepository(harness.db).add({
+    id: `pursuit-${projectId}-${goalId}`,
+    sourceType: 'project',
+    sourceId: projectId,
+    relationType: 'contributes_to',
+    targetType: 'goal',
+    targetId: goalId,
+    metadata: null,
+    createdAt: NOW,
+    endedAt: null,
+  });
 }
 
 function join(projectId: string, taskId: string) {
@@ -132,19 +149,40 @@ function seedEdge(
   });
 }
 
-/** Render the full app (the production wiring) and open the Project's Progress segment. */
-async function openProgress(projectTitle: string, services: AppServices = harness.services) {
-  renderPlanningApp(services);
-  fireEvent.press(screen.getByLabelText('Projects tab'));
-  fireEvent.press(await screen.findByLabelText(`Open project ${projectTitle}`));
-  await screen.findByText('Execution context');
-  fireEvent.press(screen.getByLabelText('Show progress'));
+/**
+ * Render the retained Progress segment inside the real app shell. The Roadmap
+ * milestone task replaced the visible Progress tab on the Project detail
+ * screen, so these tests mount the segment directly as the Projects
+ * destination's list route — the Goals/Tasks destinations stay the production
+ * wiring, keeping cross-destination drill-in intact.
+ */
+function renderProgressProbe(project: Project, services: AppServices = harness.services) {
+  const destinations = appDestinations().map((destination) =>
+    destination.id === 'projects'
+      ? {
+          ...destination,
+          renderList: () => <ProjectProgressSegment project={project} refresh={() => {}} />,
+          renderDetail: undefined,
+        }
+      : destination,
+  );
+  return renderWithServices(
+    <ToastProvider>
+      <NavigationShell destinations={destinations} initialDestination="projects" />
+    </ToastProvider>,
+    services,
+  );
+}
+
+/** Render the shell with the Progress segment probe for this Project. */
+function openProgress(project: Project, services: AppServices = harness.services) {
+  renderProgressProbe(project, services);
 }
 
 describe('Project Progress segment — snapshot fixtures', () => {
   it('renders an empty Project as an explicit zero denominator, never 0%', async () => {
-    await seedProject('Beta rollout');
-    await openProgress('Beta rollout');
+    const project = await seedProject('Beta rollout');
+    openProgress(project);
 
     expect(
       await screen.findByLabelText('Derived progress: not measurable yet, 0 complete of 0 measurable'),
@@ -173,7 +211,7 @@ describe('Project Progress segment — snapshot fixtures', () => {
     const project = await seedProject('Beta rollout');
     const task = await seedTask('Solo task');
     await join(project.id, task.id);
-    await openProgress(project.title);
+    openProgress(project);
 
     expect(
       await screen.findByLabelText('Derived progress: not measurable yet, 0 complete of 0 measurable'),
@@ -224,7 +262,7 @@ describe('Project Progress segment — snapshot fixtures', () => {
       'cycle-b',
       '2026-08-14T00:01:00.000Z',
     );
-    await openProgress(project.title);
+    openProgress(project);
 
     // Numerator, denominator, and derived percentage straight from the snapshot.
     expect(
@@ -293,7 +331,7 @@ describe('Project Progress segment — snapshot fixtures', () => {
     await setCurrent(project.id, 'goal', root.id, 'Done');
     await setCurrent(project.id, 'task', task.id, 'Done');
     await seedEdge(project.id, { type: 'goal', id: root.id }, { type: 'task', id: task.id }, 'edge-1');
-    await openProgress(project.title);
+    openProgress(project);
 
     expect(
       await screen.findByLabelText('Derived progress: 100 percent, 2 complete of 2 measurable'),
@@ -345,7 +383,7 @@ describe('Project Progress segment — snapshot fixtures', () => {
         },
       ),
     };
-    await openProgress(project.title, services);
+    openProgress(project, services);
 
     expect(
       await screen.findByText(
@@ -368,7 +406,7 @@ describe('Project Progress segment — drill-in', () => {
     await join(project.id, taskWaiting.id);
     await assignFlow('goal', waiting.id);
     await assignFlow('task', taskWaiting.id);
-    await openProgress(project.title);
+    openProgress(project);
 
     fireEvent.press(await screen.findByLabelText('Open task Task waiting'));
     expect(await screen.findByText('Executable work')).toBeTruthy();
@@ -376,8 +414,6 @@ describe('Project Progress segment — drill-in', () => {
     expect(screen.getByText(/Lifecycle is inspect-only/)).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Projects tab'));
-    await screen.findByText('Execution context');
-    fireEvent.press(screen.getByLabelText('Show progress'));
     fireEvent.press(await screen.findByLabelText('Open goal Goal waiting'));
     expect(await screen.findByText('Intended outcome')).toBeTruthy();
   });
@@ -405,7 +441,7 @@ describe('Project Progress segment — load states', () => {
         },
       ),
     };
-    await openProgress(project.title, services);
+    openProgress(project, services);
 
     expect(await screen.findByLabelText('Loading progress')).toBeTruthy();
     expect(screen.queryByText(/^Work categories$/)).toBeNull();
@@ -436,7 +472,7 @@ describe('Project Progress segment — load states', () => {
         },
       ),
     };
-    await openProgress(project.title, services);
+    openProgress(project, services);
 
     expect(await screen.findByText('Snapshot unavailable')).toBeTruthy();
     expect(screen.getByText('database unavailable')).toBeTruthy();
@@ -461,7 +497,7 @@ describe('Project Progress segment — load states', () => {
         },
       ),
     };
-    await openProgress(project.title, services);
+    openProgress(project, services);
 
     expect(await screen.findByText('Snapshot unavailable')).toBeTruthy();
     fireEvent.press(screen.getByLabelText('Retry snapshot'));
@@ -471,13 +507,13 @@ describe('Project Progress segment — load states', () => {
 
   it('re-queries after a membership mutation when the segment is re-entered', async () => {
     const project = await seedProject('Beta rollout');
-    await openProgress(project.title);
+    openProgress(project);
     expect(await screen.findByLabelText('Unmanaged: 0')).toBeTruthy();
 
     const task = await seedTask('Late task');
     await join(project.id, task.id);
-    fireEvent.press(screen.getByLabelText('Show overview'));
-    fireEvent.press(screen.getByLabelText('Show progress'));
+    fireEvent.press(screen.getByLabelText('Goals tab'));
+    fireEvent.press(screen.getByLabelText('Projects tab'));
 
     expect(await screen.findByLabelText('Unmanaged: 1')).toBeTruthy();
     expect(
@@ -487,7 +523,6 @@ describe('Project Progress segment — load states', () => {
 
   it('drops a stale snapshot response that resolves after the screen was left', async () => {
     const alpha = await seedProject('Alpha project');
-    await seedProject('Beta project');
     await seedFlowLabel();
     await defineState(alpha.id, 'goal', 'Done', { isTerminal: true });
     const root = await seedGoal('Alpha goal');
@@ -502,6 +537,7 @@ describe('Project Progress segment — load states', () => {
     const gate = new Promise<void>((resolve) => {
       release = resolve;
     });
+    let calls = 0;
     const services = {
       ...harness.services,
       executionSnapshots: overrideServiceMethod(
@@ -509,28 +545,47 @@ describe('Project Progress segment — load states', () => {
         'getSnapshot',
         async (projectId: string, options?: ProjectExecutionSnapshotOptions) => {
           const snapshot = await real(projectId, options);
-          if (projectId === alpha.id) await gate;
-          return snapshot;
+          calls += 1;
+          if (calls === 1) {
+            // The stale load: gated, and it would report Alpha's real 100%.
+            await gate;
+            return snapshot;
+          }
+          // The fresh load after re-entry reports a zero denominator.
+          return {
+            ...snapshot,
+            findings: [],
+            progress: {
+              ...snapshot.progress,
+              numerator: 0,
+              denominator: 0,
+              percentage: null,
+              counts: {
+                complete: 0,
+                incomplete: 0,
+                blocked: 0,
+                unmanaged: 0,
+                no_machine: 0,
+                uninitialized: 0,
+                invalid: 0,
+              },
+              findings: [],
+            },
+          };
         },
       ),
     };
-    renderPlanningApp(services);
-    fireEvent.press(screen.getByLabelText('Projects tab'));
-    fireEvent.press(await screen.findByLabelText('Open project Alpha project'));
-    await screen.findByText('Execution context');
-    fireEvent.press(screen.getByLabelText('Show progress'));
+    openProgress(alpha, services);
     expect(await screen.findByLabelText('Loading progress')).toBeTruthy();
 
-    // Leave before the slow snapshot resolves; open the other Project instead.
-    fireEvent.press(screen.getByLabelText('Back to projects'));
-    fireEvent.press(await screen.findByLabelText('Open project Beta project'));
-    await screen.findByText('Execution context');
-    fireEvent.press(screen.getByLabelText('Show progress'));
+    // Leave before the slow snapshot resolves, then return — a fresh load runs.
+    fireEvent.press(screen.getByLabelText('Goals tab'));
+    fireEvent.press(screen.getByLabelText('Projects tab'));
     expect(
       await screen.findByLabelText('Derived progress: not measurable yet, 0 complete of 0 measurable'),
     ).toBeTruthy();
 
-    // The stale Alpha response arrives late and must not clobber the screen.
+    // The stale response arrives late and must not clobber the screen.
     await act(async () => {
       release();
     });
@@ -544,13 +599,11 @@ describe('Project Progress segment — load states', () => {
     const project = await seedProject('Beta rollout');
     const task = await seedTask('Member task');
     await join(project.id, task.id);
-    await openProgress(project.title);
+    openProgress(project);
     expect(await screen.findByLabelText('Unmanaged: 1')).toBeTruthy();
 
-    fireEvent.press(screen.getByLabelText('Back to projects'));
-    fireEvent.press(await screen.findByLabelText('Open project Beta rollout'));
-    await screen.findByText('Execution context');
-    fireEvent.press(screen.getByLabelText('Show progress'));
+    fireEvent.press(screen.getByLabelText('Goals tab'));
+    fireEvent.press(screen.getByLabelText('Projects tab'));
 
     expect(await screen.findByLabelText('Unmanaged: 1')).toBeTruthy();
     expect(
@@ -601,7 +654,7 @@ describe('Project Progress segment — snapshot authority guard', () => {
         },
       ),
     };
-    await openProgress(project.title, services);
+    openProgress(project, services);
 
     expect(
       await screen.findByLabelText('Derived progress: 12.5 percent, 7 complete of 11 measurable'),

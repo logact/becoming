@@ -8,6 +8,7 @@ import {
   DecompositionService,
 } from '../src/application/decompositionService';
 import { RecordDecompositionProvenancePort } from '../src/application/decompositionProvenanceService';
+import { DecompositionProjectContextError } from '../src/domain/decompositionPolicy';
 import { createGoal } from '../src/domain/goal';
 import { createProject } from '../src/domain/project';
 import { createTask } from '../src/domain/task';
@@ -92,6 +93,32 @@ describe('DecompositionService', () => {
     const restarted = await decompositions.create({ projectId: 'project', parentType: 'goal', parentId: 'goal-a', childType: 'goal', childId: 'goal-b', managementLabelId: 'label', actor: 'planner', occurredAt: T1 });
     expect(ended).toEqual({ ...first.relation, endedAt: T1 }); expect(repeated).toEqual(ended); expect(restarted.relation.id).not.toBe(first.relation.id);
     expect(await db.getAllAsync('SELECT id FROM records')).toHaveLength(3);
+  });
+
+  it('decomposes a single pursued Goal into sub-goals under strict 1:1 pursuit', async () => {
+    const project = createProject({ title: 'Project' }, { id: 'project', now: T0 });
+    const goals = ['goal-a', 'goal-b', 'goal-c'].map((id) => createGoal({ title: id, targetState: 'Done' }, { id, now: T0 }));
+    await new SqliteProjectRepository(db).add(project);
+    for (const goal of goals) await new SqliteGoalRepository(db).add(goal);
+    // Only the root Goal is pursued — sub-goals take Project context from the tree.
+    await new SqliteRelationRepository(db).add({ id: 'pursuit-goal-a', sourceType: 'project', sourceId: project.id, relationType: 'contributes_to', targetType: 'goal', targetId: 'goal-a', metadata: null, createdAt: T0, endedAt: null });
+    const decompositions = service(db);
+    await decompositions.create({ projectId: 'project', parentType: 'goal', parentId: 'goal-a', childType: 'goal', childId: 'goal-b', managementLabelId: 'label', actor: 'planner' });
+    const nested = await decompositions.create({ projectId: 'project', parentType: 'goal', parentId: 'goal-b', childType: 'goal', childId: 'goal-c', managementLabelId: 'label', actor: 'planner' });
+    expect(nested.relation.endedAt).toBeNull();
+  });
+
+  it('rejects attaching a Goal actively pursued by a different Project', async () => {
+    const project = createProject({ title: 'Project' }, { id: 'project', now: T0 });
+    const other = createProject({ title: 'Other' }, { id: 'project-2', now: T0 });
+    const goals = ['goal-a', 'goal-b'].map((id) => createGoal({ title: id, targetState: 'Done' }, { id, now: T0 }));
+    await new SqliteProjectRepository(db).add(project);
+    await new SqliteProjectRepository(db).add(other);
+    for (const goal of goals) await new SqliteGoalRepository(db).add(goal);
+    const relations = new SqliteRelationRepository(db);
+    await relations.add({ id: 'pursuit-a', sourceType: 'project', sourceId: project.id, relationType: 'contributes_to', targetType: 'goal', targetId: 'goal-a', metadata: null, createdAt: T0, endedAt: null });
+    await relations.add({ id: 'pursuit-b', sourceType: 'project', sourceId: other.id, relationType: 'contributes_to', targetType: 'goal', targetId: 'goal-b', metadata: null, createdAt: T0, endedAt: null });
+    await expect(service(db).create({ projectId: 'project', parentType: 'goal', parentId: 'goal-a', childType: 'goal', childId: 'goal-b', managementLabelId: 'label', actor: 'planner' })).rejects.toBeInstanceOf(DecompositionProjectContextError);
   });
 
   it('rolls the relation back when decomposition provenance fails', async () => {

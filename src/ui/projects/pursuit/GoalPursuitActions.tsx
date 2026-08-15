@@ -21,9 +21,11 @@ const ACTOR = 'local-user';
 /**
  * The Goal-detail pursuit actions wired into the GoalDetailSlots
  * `renderPursuitActions` slot (#134): Connect to an existing Project, create
- * a New Project for this Goal, and Remove an active pursuit. All commits go
- * through `useRelationCommit`; rejections surface the #133 "Change not
- * allowed" sheet without clearing the user's place in the flow.
+ * a New Project for this Goal, and Remove an active pursuit. Pursuit is
+ * strict 1:1, so Connect/New Project are offered only while the Goal has no
+ * active Project. All commits go through `useRelationCommit`; rejections
+ * surface the #133 "Change not allowed" sheet without clearing the user's
+ * place in the flow.
  */
 export function GoalPursuitActions({ goal, refresh }: GoalPursuitSlotContext) {
   const services = useAppServices();
@@ -81,14 +83,18 @@ export function GoalPursuitActions({ goal, refresh }: GoalPursuitSlotContext) {
 
   return (
     <View style={styles.actions}>
-      <Text style={styles.action} onPress={openConnect} accessibilityRole="button"
-        accessibilityLabel="Connect goal to a project">
-        ＋ Connect
-      </Text>
-      <Text style={styles.action} onPress={openNewProject} accessibilityRole="button"
-        accessibilityLabel="Create a project for this goal">
-        ＋ New Project
-      </Text>
+      {pursuits.length === 0 && (
+        <>
+          <Text style={styles.action} onPress={openConnect} accessibilityRole="button"
+            accessibilityLabel="Connect goal to a project">
+            ＋ Connect
+          </Text>
+          <Text style={styles.action} onPress={openNewProject} accessibilityRole="button"
+            accessibilityLabel="Create a project for this goal">
+            ＋ New Project
+          </Text>
+        </>
+      )}
       {pursuits.length > 0 && (
         <Text style={styles.action} onPress={openEnd} accessibilityRole="button"
           accessibilityLabel="Remove goal from a project">
@@ -113,7 +119,8 @@ type CandidateState =
 /**
  * Connect an existing Project to this Goal. Unavailable Projects stay visible
  * with #133 rejection reasons (duplicate active relationship, archived
- * endpoint); commit-time validation stays authoritative.
+ * endpoint, already pursuing another Goal — pursuit is strict 1:1);
+ * commit-time validation stays authoritative.
  */
 function ConnectProjectFlow({ goal, onCommitted, onClose }: FlowProps) {
   const services = useAppServices();
@@ -127,25 +134,30 @@ function ConnectProjectFlow({ goal, onCommitted, onClose }: FlowProps) {
     let cancelled = false;
     async function load() {
       try {
-        const [projects, pursuits] = await Promise.all([
-          services.projects.listProjectHistory(),
-          services.goalPursuitQueries.listProjectsPursuingGoal(goal.id),
-        ]);
-        const pursuingIds = new Set(pursuits.map((pursuit) => pursuit.projectId));
+        const projects = await services.projects.listProjectHistory();
+        const pursuitLists = await Promise.all(
+          projects.map((project) =>
+            services.goalPursuitQueries.listGoalsPursuedByProject(project.id)),
+        );
         if (!cancelled) {
           setState({
             status: 'ready',
-            candidates: projects.map((project) => ({
-              id: project.id,
-              title: project.title,
-              detail: project.purpose ?? project.description ?? undefined,
-              rejection:
-                project.archivedAt !== null
-                  ? { kind: 'archived-endpoint' }
-                  : pursuingIds.has(project.id)
-                    ? { kind: 'duplicate-active-relation' }
-                    : undefined,
-            })),
+            candidates: projects.map((project, index) => {
+              const activePursuits = pursuitLists[index];
+              return {
+                id: project.id,
+                title: project.title,
+                detail: project.purpose ?? project.description ?? undefined,
+                rejection:
+                  project.archivedAt !== null
+                    ? { kind: 'archived-endpoint' as const }
+                    : activePursuits.some((pursuit) => pursuit.goalId === goal.id)
+                      ? { kind: 'duplicate-active-relation' as const }
+                      : activePursuits.length > 0
+                        ? { kind: 'cardinality-violation' as const, reason: 'Already pursues a goal' }
+                        : undefined,
+              };
+            }),
           });
         }
       } catch (error) {

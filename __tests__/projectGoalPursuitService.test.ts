@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { ProjectGoalPursuitService, DuplicateActiveGoalPursuitError, GoalPursuitNotFoundError, ProjectGoalPursuitEndpointArchivedError, ProjectGoalPursuitEndpointNotFoundError, projectGoalPursuitProvenancePort } from '../src/application/projectGoalPursuitService';
+import { ProjectGoalPursuitService, DuplicateActiveGoalPursuitError, GoalAlreadyPursuedByProjectError, GoalPursuitNotFoundError, ProjectAlreadyPursuesGoalError, ProjectGoalPursuitEndpointArchivedError, ProjectGoalPursuitEndpointNotFoundError, projectGoalPursuitProvenancePort } from '../src/application/projectGoalPursuitService';
 import { PROJECT_GOAL_PURSUIT_POLICY, PROJECT_GOAL_PURSUIT_RELATION_TYPE } from '../src/domain/relationPolicy';
 import { archiveGoal, createGoal } from '../src/domain/goal';
 import { archiveProject, createProject } from '../src/domain/project';
@@ -57,17 +57,11 @@ describe('ProjectGoalPursuitService', () => {
     expect(PROJECT_GOAL_PURSUIT_POLICY.allowsMultipleActive).toBe(false);
   });
 
-  it('allows active many-to-many pursuit and appends directional provenance atomically', async () => {
+  it('starts a pursuit and appends directional provenance atomically', async () => {
     const { project, goal } = await seed(db, '-one');
-    const secondGoal = createGoal({ title: 'Second', targetState: 'Done' }, { id: 'goal-two', now: T0 });
-    const secondProject = createProject({ title: 'Second project' }, { id: 'project-two', now: T0 });
-    await new SqliteGoalRepository(db).add(secondGoal);
-    await new SqliteProjectRepository(db).add(secondProject);
     const pursuits = service(db);
 
     const first = await pursuits.startPursuit({ projectId: project.id, goalId: goal.id, metadata: { rationale: 'primary' }, actor: 'planner' });
-    await pursuits.startPursuit({ projectId: project.id, goalId: secondGoal.id, actor: 'planner' });
-    await pursuits.startPursuit({ projectId: secondProject.id, goalId: goal.id, actor: 'planner' });
 
     expect(first).toMatchObject({
       sourceType: 'project', sourceId: project.id, relationType: 'contributes_to',
@@ -75,9 +69,9 @@ describe('ProjectGoalPursuitService', () => {
       createdAt: T0, endedAt: null,
     });
     const rows = await new SqliteRelationRepository(db).listCurrent({ relationType: PROJECT_GOAL_PURSUIT_RELATION_TYPE });
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(1);
     const records = await db.getAllAsync<{ payload: string }>('SELECT payload FROM records');
-    expect(records).toHaveLength(3);
+    expect(records).toHaveLength(1);
     const firstPayload = records.map(({ payload }) => JSON.parse(payload))
       .find((payload) => payload.relationId === first.id);
     expect(firstPayload).toMatchObject({
@@ -85,6 +79,56 @@ describe('ProjectGoalPursuitService', () => {
       relationType: 'contributes_to', targetType: 'goal', targetId: goal.id,
       metadata: { rationale: 'primary' }, actor: 'planner', occurredAt: T0,
     });
+  });
+
+  it('rejects a second active pursuit for the same Project toward a different Goal', async () => {
+    const { project, goal } = await seed(db, '-busy-project');
+    const secondGoal = createGoal({ title: 'Second', targetState: 'Done' }, { id: 'goal-busy-two', now: T0 });
+    await new SqliteGoalRepository(db).add(secondGoal);
+    const pursuits = service(db);
+
+    await pursuits.startPursuit({ projectId: project.id, goalId: goal.id, actor: 'planner' });
+    await expect(pursuits.startPursuit({ projectId: project.id, goalId: secondGoal.id, actor: 'planner' }))
+      .rejects.toBeInstanceOf(ProjectAlreadyPursuesGoalError);
+
+    // Nothing was written for the rejected start.
+    expect(await new SqliteRelationRepository(db).listCurrent({ relationType: PROJECT_GOAL_PURSUIT_RELATION_TYPE })).toHaveLength(1);
+    expect(await db.getAllAsync('SELECT id FROM records')).toHaveLength(1);
+  });
+
+  it('rejects a pursuit toward a Goal already actively pursued by another Project', async () => {
+    const { project, goal } = await seed(db, '-busy-goal');
+    const secondProject = createProject({ title: 'Second project' }, { id: 'project-busy-two', now: T0 });
+    await new SqliteProjectRepository(db).add(secondProject);
+    const pursuits = service(db);
+
+    await pursuits.startPursuit({ projectId: project.id, goalId: goal.id, actor: 'planner' });
+    await expect(pursuits.startPursuit({ projectId: secondProject.id, goalId: goal.id, actor: 'planner' }))
+      .rejects.toBeInstanceOf(GoalAlreadyPursuedByProjectError);
+
+    expect(await new SqliteRelationRepository(db).listCurrent({ relationType: PROJECT_GOAL_PURSUIT_RELATION_TYPE })).toHaveLength(1);
+    expect(await db.getAllAsync('SELECT id FROM records')).toHaveLength(1);
+  });
+
+  it('frees both sides after endPursuit so each can start a replacement pursuit', async () => {
+    const { project, goal } = await seed(db, '-swap');
+    const secondGoal = createGoal({ title: 'Second', targetState: 'Done' }, { id: 'goal-swap-two', now: T0 });
+    const secondProject = createProject({ title: 'Second project' }, { id: 'project-swap-two', now: T0 });
+    await new SqliteGoalRepository(db).add(secondGoal);
+    await new SqliteProjectRepository(db).add(secondProject);
+    const pursuits = service(db);
+
+    const first = await pursuits.startPursuit({ projectId: project.id, goalId: goal.id, actor: 'planner' });
+    await pursuits.endPursuit({ relationId: first.id, actor: 'planner', endedAt: T1 });
+
+    // The Project can pursue a new Goal and the Goal can be pursued by a new Project.
+    const reAimed = await pursuits.startPursuit({ projectId: project.id, goalId: secondGoal.id, actor: 'planner', occurredAt: T1 });
+    const restaffed = await pursuits.startPursuit({ projectId: secondProject.id, goalId: goal.id, actor: 'planner', occurredAt: T1 });
+    expect(reAimed).toMatchObject({ sourceId: project.id, targetId: secondGoal.id, createdAt: T1, endedAt: null });
+    expect(restaffed).toMatchObject({ sourceId: secondProject.id, targetId: goal.id, createdAt: T1, endedAt: null });
+
+    const current = await new SqliteRelationRepository(db).listCurrent({ relationType: PROJECT_GOAL_PURSUIT_RELATION_TYPE });
+    expect(current.map((row) => row.id).sort()).toEqual([reAimed.id, restaffed.id].sort());
   });
 
   it('rejects missing and archived typed endpoints before writing a relation or provenance', async () => {

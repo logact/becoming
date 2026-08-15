@@ -35,6 +35,8 @@ function lookup(overrides: Record<string, unknown> = {}) {
     getGoal: async (id: string) => ({ id, archivedAt: null }),
     getTask: async (id: string) => ({ id, archivedAt: null }),
     hasActiveGoalPursuit: async () => true,
+    getActiveGoalPursuitProjectId: async () => null,
+    isInProjectDecompositionTree: async () => false,
     hasActiveTaskProjectMembership: async () => true,
     hasActiveDecompositionParent: async () => false,
     ...overrides,
@@ -74,10 +76,31 @@ describe('project-scoped decomposition policy', () => {
     await expect(validateProjectScopedDecomposition(proposal(), lookup({ getTask: async () => ({ id: 'child-task', archivedAt: 'now' }) }))).rejects.toBeInstanceOf(DecompositionEndpointArchivedError);
   });
 
-  it('requires active pursuit/membership context on both endpoints and a free child parent slot', async () => {
+  it('requires Project context on both endpoints and a free child parent slot', async () => {
     await expect(validateProjectScopedDecomposition(proposal(), lookup({ hasActiveGoalPursuit: async () => false }))).rejects.toBeInstanceOf(DecompositionProjectContextError);
     await expect(validateProjectScopedDecomposition(proposal(), lookup({ hasActiveTaskProjectMembership: async () => false }))).rejects.toBeInstanceOf(DecompositionProjectContextError);
     await expect(validateProjectScopedDecomposition(proposal(), lookup({ hasActiveDecompositionParent: async () => true }))).rejects.toBeInstanceOf(DecompositionParentCardinalityError);
+  });
+
+  it('lets an in-tree Goal parent sub-goals under strict 1:1 pursuit', async () => {
+    const edge = proposal({ childType: 'goal', childId: 'child-goal' });
+    // The pursued root Goal parents a sub-goal: only one pursuit exists.
+    await expect(validateProjectScopedDecomposition(edge, lookup())).resolves.toEqual(decompositionMetadata('project-1'));
+    // A sub-goal already in the tree parents further sub-goals without any pursuit of its own.
+    const parentInTree = lookup({
+      hasActiveGoalPursuit: async () => false,
+      isInProjectDecompositionTree: async (_projectId: string, id: string) => id === 'parent-goal',
+    });
+    await expect(validateProjectScopedDecomposition(edge, parentInTree)).resolves.toEqual(decompositionMetadata('project-1'));
+    // A parent Goal with neither pursuit nor tree context is still rejected.
+    await expect(validateProjectScopedDecomposition(edge, lookup({ hasActiveGoalPursuit: async () => false }))).rejects.toBeInstanceOf(DecompositionProjectContextError);
+  });
+
+  it('rejects a child Goal actively pursued by a different Project', async () => {
+    const edge = proposal({ childType: 'goal', childId: 'child-goal' });
+    await expect(validateProjectScopedDecomposition(edge, lookup({ getActiveGoalPursuitProjectId: async () => 'project-2' }))).rejects.toBeInstanceOf(DecompositionProjectContextError);
+    // Pursuit by the same Project (the pursued root itself) stays attachable.
+    await expect(validateProjectScopedDecomposition(edge, lookup({ getActiveGoalPursuitProjectId: async () => 'project-1' }))).resolves.toEqual(decompositionMetadata('project-1'));
   });
 });
 
