@@ -1,28 +1,16 @@
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+
+import { AppServicesProvider } from './src/ui/composition/AppServicesProvider';
+import { NavigationShell } from './src/ui/navigation/NavigationShell';
+import { placeholderDestinations } from './src/ui/placeholderDestinations';
+import { ToastProvider } from './src/ui/shared/Toast';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Becoming</Text>
-      <Text style={styles.subtitle}>Record what you do. Shape what you become.</Text>
-    </View>
+    <AppServicesProvider>
+      <ToastProvider>
+        <NavigationShell destinations={placeholderDestinations()} />
+      </ToastProvider>
+    </AppServicesProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#555555',
-  },
-});
