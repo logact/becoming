@@ -83,7 +83,10 @@ The project develop mange with the github 
 #### When the user ask for implementation of mile-x ,perform acording the following workflow:
 Implement the plan of mile-x , implement the task one by one according to the implementation plan ,update the tasks status ,and record the time( accurate to the seconds) and token consumption in the docs .
 
+Each time your finish a task,you should create a dependent commit for it. 
+
 
 
 ## Not Do
-Don't load the Dev directory when you don't execute the related tasks.
+Don't load the Dev directory when you don't execute the related tasks
+.
