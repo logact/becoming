@@ -68,7 +68,7 @@ The project develop mange with the github 
 ## Development workflow
 
 #### structure of the dev directory
-- Dev
+- .Dev
 	-mile-x (in this dev system all milestone are mini milestone which can be verified in serval 2 hours so there won’t be too much item under it  (max to 4))
 		-feat-x1
 		-feat-x2
