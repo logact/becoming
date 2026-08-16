@@ -67,9 +67,13 @@ The project develop mange with the github 
 
 ## Development workflow
 
+We name the group of some tasks including features-impl or bug-fix as the step , it means it is a very short term span verifiable work-unit. which follow the quick-advance-small-step.
+
+In this dev system all milestone are mini milestone which can be verified in serval 2 hours so there won’t be too much item under it  (max to 4).
+
 #### structure of the dev directory
 - .Dev
-	-mile-x (in this dev system all milestone are mini milestone which can be verified in serval 2 hours so there won’t be too much item under it  (max to 4))
+	-Step-x
 		-feat-x1
 		-feat-x2
 		-bug-x
