@@ -20,8 +20,11 @@ the bottom navigation has the buttons (Dashboard,Library,Setting)
 
 ## pages
 1. dashboard  page show 
-   1. what we are doing?
-   2. what need our attention?
+   1. Doing items (doing goals/tasks + unexplored ideas)
+   2. Needs attention
+   3. Recent activity
+
+   the attention section combines built-in rules (failed items, approaching overdue — goal/project 1 day, task 2 h — and projects whose quantity resource is >=90% consumed) with user control: the user can pin any item into the section and remove (dismiss) items from it.
 
 
 

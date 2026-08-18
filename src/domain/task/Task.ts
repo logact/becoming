@@ -80,27 +80,32 @@ export class Task {
 
   /** todo → doing */
   start(now: Date): void {
-    this.transition('todo', 'doing', now);
+    this.transition(['todo'], 'doing', now);
   }
 
   /** doing → paused */
   pause(now: Date): void {
-    this.transition('doing', 'paused', now);
+    this.transition(['doing'], 'paused', now);
   }
 
   /** paused → doing */
   resume(now: Date): void {
-    this.transition('paused', 'doing', now);
+    this.transition(['paused'], 'doing', now);
   }
 
   /** doing → done */
   complete(now: Date): void {
-    this.transition('doing', 'done', now);
+    this.transition(['doing'], 'done', now);
   }
 
-  /** done → todo */
+  /** doing|paused → failed */
+  fail(now: Date): void {
+    this.transition(['doing', 'paused'], 'failed', now);
+  }
+
+  /** done|failed → todo */
   reopen(now: Date): void {
-    this.transition('done', 'todo', now);
+    this.transition(['done', 'failed'], 'todo', now);
   }
 
   rename(title: string, now: Date): void {
@@ -119,6 +124,22 @@ export class Task {
   clearDue(now: Date): void {
     this._due = undefined;
     this._updatedAt = now;
+  }
+
+  /**
+   * True when the task is not archived, not done/failed, has a due, and the
+   * due is within `windowMs` from `now`; an already-passed due also counts.
+   */
+  isDueImminent(windowMs: number, now: Date): boolean {
+    if (
+      this._archived ||
+      this._status === 'done' ||
+      this._status === 'failed' ||
+      this._due === undefined
+    ) {
+      return false;
+    }
+    return this._due.getTime() - now.getTime() <= windowMs;
   }
 
   /** Archive is an independent flag and never overwrites status. */
@@ -145,8 +166,8 @@ export class Task {
     }
   }
 
-  private transition(from: TaskStatus, to: TaskStatus, now: Date): void {
-    if (this._status !== from) {
+  private transition(from: TaskStatus[], to: TaskStatus, now: Date): void {
+    if (!from.includes(this._status)) {
       throw new DomainError(`Cannot transition Task from ${this._status} to ${to}`);
     }
     this._status = to;

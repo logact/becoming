@@ -1,6 +1,6 @@
 import type { RecordId } from '../shared/ids';
 
-
+export type RecordTargetType = 'goal' | 'task' | 'idea' | 'project' | 'resource' | 'note';
 
 /**
  * An append-only, immutable entry describing a change to a domain model or

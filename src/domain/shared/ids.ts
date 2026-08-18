@@ -14,3 +14,4 @@ export type NoteId = string;
 export type RecordId = string;
 export type LabelId = string;
 export type RelationId = string;
+export type AttentionEntryId = string;

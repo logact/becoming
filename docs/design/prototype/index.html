@@ -294,16 +294,31 @@ const SCREENS = {
 
     sec('Needs attention') +
     '<div class="blist">' +
-      '<div class="row press" data-go="goals"><span class="chip">' + ic('pauseCircle', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Learn Japanese N3</div><div class="row-sub">Paused · no activity for 3 weeks</div></div>' +
-        '<button class="chip-btn">Resume</button></div>' +
-      '<div class="row press" data-go="goals"><span class="chip">' + ic('alert', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">No tasks planned this week</div></div>' +
-        '<button class="chip-btn">Plan</button></div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('alert', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">Failed yesterday</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
+      '<div class="row press" data-go="goals"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Book race-day hotel</div><div class="row-sub">Due in 1 h</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Due in 22 h</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('banknote', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Spring training plan</div><div class="row-sub">Budget 92% used</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
       '<div class="row press" data-go="ideas"><span class="chip">' + ic('bulb', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Idea “Habit streak widget”</div><div class="row-sub">Captured 2 weeks ago · unexplored</div></div>' +
-        '<button class="chip-btn">Explore</button></div>' +
+        '<div class="row-main"><div class="row-title">Idea “Habit streak widget”</div><div class="row-sub">Pinned</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
     '</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'check', t:'Completed “Long run 14 km”', s:'Task · Run a half marathon', w:'2 h' },
+      { i:'plus', t:'Created task “Book race-day hotel”', s:'Run a half marathon', w:'5 h' },
+      { i:'banknote', t:'Consumed ¥120 from “Gear budget”', s:'Spring training plan', w:'1 d' },
+      { i:'alert', t:'Goal “Ship Becoming MVP” failed', s:'Goal · Work', w:'1 d' },
+      { i:'bulb', t:'Captured “Habit streak widget”', s:'Idea', w:'3 d' },
+    ]) +
   '</div>' +
   tabbar('dashboard'),
 

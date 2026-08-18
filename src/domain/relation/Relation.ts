@@ -1,7 +1,7 @@
 import { DomainError } from '../shared/errors';
 import type { RelationId } from '../shared/ids';
 
-export type RelationEndType = 'goal' | 'task' | 'idea' | 'project' | 'resource' | 'note';
+export type RelationEndType = 'goal' | 'task' | 'idea' | 'project' | 'resource' | 'note' | 'record';
 
 /**
  * A directed link between two core models (e.g. a task derived from an idea,

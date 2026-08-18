@@ -4,6 +4,7 @@ import { DomainError } from '../../shared/errors';
 const t0 = new Date('2026-01-01T00:00:00Z');
 const t1 = new Date('2026-01-01T01:00:00Z');
 const t2 = new Date('2026-01-01T02:00:00Z');
+const HOUR_MS = 60 * 60 * 1000;
 
 describe('Project', () => {
   it('is created in planning status serving a goal', () => {
@@ -92,5 +93,50 @@ describe('Project', () => {
     ).toThrow(DomainError);
     const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', due: t1, goalDue: t2, now: t0 });
     expect(project.due).toBe(t1);
+  });
+
+  it('fails from active or paused and rejects other statuses', () => {
+    const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
+    expect(() => project.fail(t1)).toThrow(DomainError);
+
+    project.activate(t1);
+    project.fail(t2);
+    expect(project.status).toBe('failed');
+    expect(project.updatedAt).toBe(t2);
+    expect(() => project.fail(t2)).toThrow(DomainError);
+
+    const paused = Project.create({ id: 'p2', name: 'Q2 plan', goalId: 'g1', now: t0 });
+    paused.activate(t1);
+    paused.pause(t2);
+    paused.fail(t2);
+    expect(paused.status).toBe('failed');
+  });
+
+  it('flags a due within the window or already past as imminent', () => {
+    const dueSoon = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', due: t1, now: t0 });
+    expect(dueSoon.isDueImminent(HOUR_MS, t0)).toBe(true);
+    expect(dueSoon.isDueImminent(HOUR_MS - 1, t0)).toBe(false);
+
+    const pastDue = Project.create({ id: 'p2', name: 'Q2 plan', goalId: 'g1', due: t0, now: t0 });
+    expect(pastDue.isDueImminent(HOUR_MS, t1)).toBe(true);
+  });
+
+  it('does not flag a due outside the window or a missing due', () => {
+    const dueLater = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', due: t2, now: t0 });
+    expect(dueLater.isDueImminent(HOUR_MS, t0)).toBe(false);
+
+    const noDue = Project.create({ id: 'p2', name: 'Q2 plan', goalId: 'g1', now: t0 });
+    expect(noDue.isDueImminent(HOUR_MS, t0)).toBe(false);
+  });
+
+  it('does not flag failed or archived projects', () => {
+    const failed = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', due: t1, now: t0 });
+    failed.activate(t0);
+    failed.fail(t0);
+    expect(failed.isDueImminent(HOUR_MS, t0)).toBe(false);
+
+    const archived = Project.create({ id: 'p2', name: 'Q2 plan', goalId: 'g1', due: t1, now: t0 });
+    archived.archive(t0);
+    expect(archived.isDueImminent(HOUR_MS, t0)).toBe(false);
   });
 });

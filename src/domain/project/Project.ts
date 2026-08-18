@@ -90,6 +90,15 @@ export class Project {
     this._updatedAt = now;
   }
 
+  /** active|paused → failed */
+  fail(now: Date): void {
+    if (this._status !== 'active' && this._status !== 'paused') {
+      throw new DomainError(`Cannot fail Project from ${this._status}`);
+    }
+    this._status = 'failed';
+    this._updatedAt = now;
+  }
+
   rename(name: string, now: Date): void {
     if (name.trim().length === 0) {
       throw new DomainError('Project name must not be empty');
@@ -113,6 +122,22 @@ export class Project {
   clearDue(now: Date): void {
     this._due = undefined;
     this._updatedAt = now;
+  }
+
+  /**
+   * True when the project is not archived, not done/failed, has a due, and the
+   * due is within `windowMs` from `now`; an already-passed due also counts.
+   */
+  isDueImminent(windowMs: number, now: Date): boolean {
+    if (
+      this._archived ||
+      this._status === 'done' ||
+      this._status === 'failed' ||
+      this._due === undefined
+    ) {
+      return false;
+    }
+    return this._due.getTime() - now.getTime() <= windowMs;
   }
 
   /** Archive is an independent flag and never overwrites status. */
