@@ -1,7 +1,7 @@
 import { DomainError } from '../shared/errors';
 import type { GoalId, LabelId } from '../shared/ids';
 
-export type GoalStatus = 'todo' | 'doing' | 'done' | 'paused';
+export type GoalStatus = 'todo' | 'doing' | 'done' | 'paused' | 'failed';
 
 /** A target state the user aims to achieve. */
 export class Goal {
@@ -12,6 +12,8 @@ export class Goal {
     private _title: string,
     /** Optional longer explanation of what achieving the goal means. */
     private _description: string | undefined,
+    /** Optional deadline by which the goal should be achieved. */
+    private _due: Date | undefined,
     /** Lifecycle status, changed only through start/pause/resume/complete/reopen. */
     private _status: GoalStatus,
     /** Independent archive flag; archiving never overwrites the status. */
@@ -28,12 +30,14 @@ export class Goal {
     id: GoalId;
     title: string;
     description?: string;
+    due?: Date;
     now: Date;
   }): Goal {
     return new Goal(
       params.id,
       params.title,
       params.description,
+      params.due,
       'todo',
       false,
       [],
@@ -48,6 +52,10 @@ export class Goal {
 
   get description(): string | undefined {
     return this._description;
+  }
+
+  get due(): Date | undefined {
+    return this._due;
   }
 
   get status(): GoalStatus {
@@ -92,6 +100,16 @@ export class Goal {
       throw new DomainError('Goal title must not be empty');
     }
     this._title = title;
+    this._updatedAt = now;
+  }
+
+  setDue(due: Date, now: Date): void {
+    this._due = due;
+    this._updatedAt = now;
+  }
+
+  clearDue(now: Date): void {
+    this._due = undefined;
     this._updatedAt = now;
   }
 

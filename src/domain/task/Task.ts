@@ -1,7 +1,7 @@
 import { DomainError } from '../shared/errors';
 import type { GoalId, LabelId, ProjectId, TaskId } from '../shared/ids';
 
-export type TaskStatus = 'todo' | 'doing' | 'done' | 'paused';
+export type TaskStatus = 'todo' | 'doing' | 'done' | 'paused' | 'failed';
 
 /** An action that implements a goal. */
 export class Task {
@@ -12,6 +12,8 @@ export class Task {
     private _title: string,
     /** Optional longer explanation of what the task involves. */
     private _description: string | undefined,
+    /** Optional deadline by which the task should be done. */
+    private _due: Date | undefined,
     /** Lifecycle status, changed only through start/pause/resume/complete/reopen. */
     private _status: TaskStatus,
     /** Independent archive flag; archiving never overwrites the status. */
@@ -32,6 +34,7 @@ export class Task {
     id: TaskId;
     title: string;
     description?: string;
+    due?: Date;
     goalId?: GoalId;
     projectId?: ProjectId;
     now: Date;
@@ -40,6 +43,7 @@ export class Task {
       params.id,
       params.title,
       params.description,
+      params.due,
       'todo',
       false,
       [],
@@ -56,6 +60,10 @@ export class Task {
 
   get description(): string | undefined {
     return this._description;
+  }
+
+  get due(): Date | undefined {
+    return this._due;
   }
 
   get status(): TaskStatus {
@@ -100,6 +108,16 @@ export class Task {
       throw new DomainError('Task title must not be empty');
     }
     this._title = title;
+    this._updatedAt = now;
+  }
+
+  setDue(due: Date, now: Date): void {
+    this._due = due;
+    this._updatedAt = now;
+  }
+
+  clearDue(now: Date): void {
+    this._due = undefined;
     this._updatedAt = now;
   }
 

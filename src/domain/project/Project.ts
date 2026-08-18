@@ -1,7 +1,7 @@
 import { DomainError } from '../shared/errors';
 import type { GoalId, LabelId, ProjectId } from '../shared/ids';
 
-export type ProjectStatus = 'planning' | 'active' | 'paused';
+export type ProjectStatus = 'planning' | 'active' | 'paused' | 'done' | 'failed';
 
 /** A plan that serves a goal; a goal may have several projects. */
 export class Project {
@@ -12,6 +12,8 @@ export class Project {
     private _name: string,
     /** The goal this project serves. */
     readonly goalId: GoalId,
+    /** Optional deadline; must be earlier than the serving goal's due. */
+    private _due: Date | undefined,
     /** Lifecycle status, changed only through activate/pause. */
     private _status: ProjectStatus,
     /** Independent archive flag; archiving never overwrites the status. */
@@ -28,22 +30,34 @@ export class Project {
     id: ProjectId;
     name: string;
     goalId: GoalId;
+    due?: Date;
+    /** Due of the serving goal, used to validate the project due. */
+    goalDue?: Date;
     now: Date;
   }): Project {
-    return new Project(
+    const project = new Project(
       params.id,
       params.name,
       params.goalId,
+      undefined,
       'planning',
       false,
       [],
       params.now,
       params.now,
     );
+    if (params.due !== undefined) {
+      project.setDue(params.due, params.goalDue, params.now);
+    }
+    return project;
   }
 
   get name(): string {
     return this._name;
+  }
+
+  get due(): Date | undefined {
+    return this._due;
   }
 
   get status(): ProjectStatus {
@@ -81,6 +95,23 @@ export class Project {
       throw new DomainError('Project name must not be empty');
     }
     this._name = name;
+    this._updatedAt = now;
+  }
+
+  /**
+   * Set the project deadline. When the serving goal has a due, the project's
+   * due must be strictly earlier than it.
+   */
+  setDue(due: Date, goalDue: Date | undefined, now: Date): void {
+    if (goalDue !== undefined && due.getTime() >= goalDue.getTime()) {
+      throw new DomainError('Project due must be earlier than its goal due');
+    }
+    this._due = due;
+    this._updatedAt = now;
+  }
+
+  clearDue(now: Date): void {
+    this._due = undefined;
     this._updatedAt = now;
   }
 

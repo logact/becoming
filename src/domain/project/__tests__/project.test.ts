@@ -61,4 +61,36 @@ describe('Project', () => {
     project.removeLabel('l1');
     expect(project.labelIds).toEqual([]);
   });
+
+  it('sets and clears a due date', () => {
+    const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
+    expect(project.due).toBeUndefined();
+    project.setDue(t1, t2, t1);
+    expect(project.due).toBe(t1);
+    expect(project.updatedAt).toBe(t1);
+    project.clearDue(t2);
+    expect(project.due).toBeUndefined();
+  });
+
+  it('requires the due to be earlier than the goal due', () => {
+    const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
+    expect(() => project.setDue(t2, t2, t1)).toThrow(DomainError);
+    expect(() => project.setDue(t2, t1, t1)).toThrow(DomainError);
+    project.setDue(t1, t2, t1);
+    expect(project.due).toBe(t1);
+  });
+
+  it('allows any due when the goal has none', () => {
+    const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
+    project.setDue(t2, undefined, t1);
+    expect(project.due).toBe(t2);
+  });
+
+  it('validates the due at creation against the goal due', () => {
+    expect(() =>
+      Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', due: t2, goalDue: t1, now: t0 }),
+    ).toThrow(DomainError);
+    const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', due: t1, goalDue: t2, now: t0 });
+    expect(project.due).toBe(t1);
+  });
 });

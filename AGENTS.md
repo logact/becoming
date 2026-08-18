@@ -21,3 +21,9 @@ docs/models/: something related to the model define and behaviour
  ## git
 
 The project has been fully refactored,don't refer the git history before 7513dbc2c3a573562f1bcb56c4bb04e1e0568ba6.
+
+## exec plan
+when ask for you execute the plan ,you should spawn a new sub-agent to excute each task by the depency of the task in the plan, and spawn a new sub-agent to review 
+- If it follow the ## Development Rules?
+- If it meet with the task's exit criterial.
+  

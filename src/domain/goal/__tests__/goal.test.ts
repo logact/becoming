@@ -69,4 +69,20 @@ describe('Goal', () => {
     expect(goal.title).toBe('Swim');
     expect(goal.updatedAt).toBe(t1);
   });
+
+  it('sets and clears a due date', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
+    expect(goal.due).toBeUndefined();
+    goal.setDue(t1, t1);
+    expect(goal.due).toBe(t1);
+    expect(goal.updatedAt).toBe(t1);
+    goal.clearDue(t2);
+    expect(goal.due).toBeUndefined();
+    expect(goal.updatedAt).toBe(t2);
+  });
+
+  it('accepts a due at creation', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run', due: t1, now: t0 });
+    expect(goal.due).toBe(t1);
+  });
 });

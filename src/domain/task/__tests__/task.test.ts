@@ -62,4 +62,20 @@ describe('Task', () => {
     task.removeLabel('l1');
     expect(task.labelIds).toEqual([]);
   });
+
+  it('sets and clears a due date', () => {
+    const task = Task.create({ id: 't1', title: 'Train', now: t0 });
+    expect(task.due).toBeUndefined();
+    task.setDue(t1, t1);
+    expect(task.due).toBe(t1);
+    expect(task.updatedAt).toBe(t1);
+    task.clearDue(t2);
+    expect(task.due).toBeUndefined();
+    expect(task.updatedAt).toBe(t2);
+  });
+
+  it('accepts a due at creation', () => {
+    const task = Task.create({ id: 't1', title: 'Train', due: t1, now: t0 });
+    expect(task.due).toBe(t1);
+  });
 });
