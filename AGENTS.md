@@ -18,4 +18,6 @@ docs/models/: something related to the model define and behaviour
 3. When you make some plan you should consider from the layers (domain,application,ui).
 4. prefer create new application service not modify the exsiting application service
 
- 
+ ## git
+
+The project has been fully refactored,don't refer the git history before 7513dbc2c3a573562f1bcb56c4bb04e1e0568ba6.

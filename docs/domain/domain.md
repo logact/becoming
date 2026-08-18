@@ -1,3 +1,4 @@
+## Core Models
 The project has the following core model:
 1. Goal: target state aim to achieve
 3. Task: the action to implement some goal
@@ -7,12 +8,15 @@ The project has the following core model:
 6. Note: The extract thought,methodlogy from the user
 7. Record: System model's change ,user's record have done for some tasks.
 
+## Other models
 and some other models:
 1. label: the Goal,Task,Idea,Project,Resouce,Note all have the labels for classification.
+2. relation: store the relation between the 7 core models.
 
 ## States:
 Goal: Todo Doing Done Paused
 Task: Todo Doing Done Paused
+
 Idea: Captured Exploring Paused
 Project: Planning Active Paused
 
@@ -21,3 +25,5 @@ Archive is a indepent filed so that when archieve a item we won't cover its stat
 
 
 
+## Decisions
+1. The Relation between the records and other core models should be represent by the relation

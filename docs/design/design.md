@@ -27,3 +27,8 @@ the bottom navigation has the buttons (Dashboard,Library,Setting)
 
 ## Show Recent Activity under each model pages
 show the recent record realted the current page's topic on the bottom of the page.
+
+
+## Decisions
+1. Every core models' page's bottom should show the activity(record) refer to it, including the list page,and the detail page.
+   
