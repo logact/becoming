@@ -48,3 +48,5 @@ each time you finish a task in the cycle workflow you should add commit and comm
   
 ## About prototype
 when the user ask you to generate/modify the prototype ,the user just need to quickly verify their idea ,so just quckly finish it, without too much verification work .
+
+when you create or remove the prototype's page you should modify the index in the prototype index.html.
