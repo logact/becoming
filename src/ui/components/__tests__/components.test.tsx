@@ -9,6 +9,7 @@ import { ListSection } from '../ListSection';
 import { PrimaryChipButton } from '../PrimaryChipButton';
 import { ProgressBar } from '../ProgressBar';
 import { SectionHeader } from '../SectionHeader';
+import { SegmentedControl } from '../SegmentedControl';
 import { SectionNote } from '../SectionNote';
 import { StatTile } from '../StatTile';
 import { StatusPill } from '../StatusPill';
@@ -54,6 +55,39 @@ describe('ListSection', () => {
     );
     expect(screen.getByText('Only')).toBeTruthy();
     expect(screen.queryAllByTestId('list-section-separator')).toHaveLength(0);
+  });
+});
+
+describe('SegmentedControl', () => {
+  const options = [
+    { key: 'tree', label: 'Tree' },
+    { key: 'list', label: 'List' },
+    { key: 'roadmap', label: 'Roadmap' },
+  ] as const;
+
+  it('renders every option and marks the selected one', () => {
+    render(
+      <SegmentedControl
+        testID="seg"
+        options={[...options]}
+        selected="list"
+        onSelect={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('Tree')).toBeTruthy();
+    expect(screen.getByText('List')).toBeTruthy();
+    expect(screen.getByText('Roadmap')).toBeTruthy();
+    expect(screen.getByTestId('seg-list').props.accessibilityState).toEqual({ selected: true });
+    expect(screen.getByTestId('seg-tree').props.accessibilityState).toEqual({ selected: false });
+  });
+
+  it('calls onSelect with the pressed option key', () => {
+    const onSelect = jest.fn();
+    render(
+      <SegmentedControl testID="seg" options={[...options]} selected="tree" onSelect={onSelect} />,
+    );
+    fireEvent.press(screen.getByTestId('seg-roadmap'));
+    expect(onSelect).toHaveBeenCalledWith('roadmap');
   });
 });
 

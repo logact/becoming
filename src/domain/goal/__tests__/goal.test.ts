@@ -1,4 +1,5 @@
 import { Goal } from '../Goal';
+import { Project } from '../../project/Project';
 import { DomainError } from '../../shared/errors';
 
 const t0 = new Date('2026-01-01T00:00:00Z');
@@ -11,8 +12,22 @@ describe('Goal', () => {
     const goal = Goal.create({ id: 'g1', title: 'Run a marathon', now: t0 });
     expect(goal.status).toBe('todo');
     expect(goal.archived).toBe(false);
+    expect(goal.milestoneId).toBeUndefined();
     expect(goal.createdAt).toBe(t0);
     expect(goal.updatedAt).toBe(t0);
+  });
+
+  it('carries an optional milestone link and can assign or clear it', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run a marathon', milestoneId: 'm1', now: t0 });
+    expect(goal.milestoneId).toBe('m1');
+
+    goal.assignMilestone('m2', t1);
+    expect(goal.milestoneId).toBe('m2');
+    expect(goal.updatedAt).toBe(t1);
+
+    goal.assignMilestone(undefined, t2);
+    expect(goal.milestoneId).toBeUndefined();
+    expect(goal.updatedAt).toBe(t2);
   });
 
   it('carries optional sub-goal membership and parent links', () => {
@@ -25,10 +40,12 @@ describe('Goal', () => {
       title: '10 km under 50 min',
       projectId: 'p1',
       parentGoalId: 'g1',
+      milestoneId: 'm1',
       now: t0,
     });
     expect(subGoal.projectId).toBe('p1');
     expect(subGoal.parentGoalId).toBe('g1');
+    expect(subGoal.milestoneId).toBe('m1');
 
     const restored = Goal.restore({
       id: subGoal.id,
@@ -38,11 +55,13 @@ describe('Goal', () => {
       labelIds: subGoal.labelIds,
       projectId: subGoal.projectId,
       parentGoalId: subGoal.parentGoalId,
+      milestoneId: subGoal.milestoneId,
       createdAt: subGoal.createdAt,
       updatedAt: subGoal.updatedAt,
     });
     expect(restored.projectId).toBe('p1');
     expect(restored.parentGoalId).toBe('g1');
+    expect(restored.milestoneId).toBe('m1');
   });
 
   it('follows the valid transition path and bumps updatedAt', () => {
@@ -212,5 +231,52 @@ describe('Goal', () => {
     expect(restored.labelIds).not.toBe(goal.labelIds);
     expect(restored.createdAt).toBe(goal.createdAt);
     expect(restored.updatedAt).toBe(goal.updatedAt);
+  });
+
+  describe('activateProject', () => {
+    it('activates a planning project of the goal', () => {
+      const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
+      const project = Project.create({ id: 'p1', name: 'Plan A', goalId: 'g1', now: t0 });
+      goal.activateProject(project, undefined, t1);
+      expect(project.status).toBe('active');
+      expect(project.updatedAt).toBe(t1);
+    });
+
+    it('pauses the previously active project and activates the new one', () => {
+      const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
+      const current = Project.create({ id: 'p1', name: 'Plan A', goalId: 'g1', now: t0 });
+      current.activate(t0);
+      const next = Project.create({ id: 'p2', name: 'Plan B', goalId: 'g1', now: t0 });
+      goal.activateProject(next, current, t1);
+      expect(current.status).toBe('paused');
+      expect(current.updatedAt).toBe(t1);
+      expect(next.status).toBe('active');
+      expect(next.updatedAt).toBe(t1);
+    });
+
+    it('rejects a project whose goalId is another goal', () => {
+      const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
+      const foreign = Project.create({ id: 'p1', name: 'Plan A', goalId: 'g2', now: t0 });
+      expect(() => goal.activateProject(foreign, undefined, t1)).toThrow(DomainError);
+      expect(foreign.status).toBe('planning');
+    });
+
+    it('rejects a currentActive belonging to another goal', () => {
+      const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
+      const foreign = Project.create({ id: 'p1', name: 'Plan A', goalId: 'g2', now: t0 });
+      foreign.activate(t0);
+      const project = Project.create({ id: 'p2', name: 'Plan B', goalId: 'g1', now: t0 });
+      expect(() => goal.activateProject(project, foreign, t1)).toThrow(DomainError);
+      expect(foreign.status).toBe('active');
+      expect(project.status).toBe('planning');
+    });
+
+    it('activating the already-active project throws (via Project.activate)', () => {
+      const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
+      const project = Project.create({ id: 'p1', name: 'Plan A', goalId: 'g1', now: t0 });
+      project.activate(t0);
+      expect(() => goal.activateProject(project, project, t1)).toThrow(DomainError);
+      expect(project.status).toBe('active');
+    });
   });
 });

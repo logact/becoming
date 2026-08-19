@@ -7,6 +7,7 @@ export type GoalId = string;
 export type TaskId = string;
 export type IdeaId = string;
 export type ProjectId = string;
+export type MilestoneId = string;
 export type ResourceId = string;
 export type ResourceTypeId = string;
 export type AllocationId = string;

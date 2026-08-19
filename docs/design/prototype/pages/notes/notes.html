@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Notes</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Notes';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Notes') +
+  '<div class="scroll">' +
+    '<div style="height:12px"></div>' +
+    '<div class="panel"><div class="capture"><span class="plus-c">' + ic('plus', 15) + '</span><span>Extract a thought…</span><button class="chip-btn">Add</button></div></div>' +
+
+    '<div class="segmented">' +
+      '<button class="seg active" data-seg="active">Active · 12</button>' +
+      '<button class="seg" data-seg="archived">Archived · 2</button>' +
+    '</div>' +
+
+    '<div data-panel="active">' +
+      sec('Pinned') +
+      '<div class="blist">' +
+        '<div class="row press note-row" data-go="note-detail"><span class="chip">' + ic('doc', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title"><span class="pin-mark">' + ic('pin', 11) + '</span>Energy beats time</div>' +
+          '<div class="row-sub">' + lbl('Health') + '<span class="idea-sep">·</span><span>Pinned 3 d ago</span></div></div>' + CHEV + '</div>' +
+        '<div class="row press note-row" data-go="note-detail"><span class="chip">' + ic('doc', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title"><span class="pin-mark">' + ic('pin', 11) + '</span>Weekly review methodology</div>' +
+          '<div class="row-sub">' + lbl('Growth') + '<span class="idea-sep">·</span><span>Pinned 1 w ago</span></div></div>' + CHEV + '</div>' +
+      '</div>' +
+      sec('All notes') +
+      '<div class="blist">' +
+        '<div class="row press note-row" data-go="note-detail"><span class="chip">' + ic('doc', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title">Small scope, shipped daily</div>' +
+          '<div class="row-sub">' + lbl('Work') + '<span class="idea-sep">·</span><span>Updated 2 h ago</span></div></div>' + CHEV + '</div>' +
+        '<div class="row press note-row" data-go="note-detail"><span class="chip">' + ic('doc', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title">Decide once, revisit monthly</div>' +
+          '<div class="row-sub">' + lbl('Growth') + '<span class="idea-sep">·</span><span>Updated 1 d ago</span></div></div>' + CHEV + '</div>' +
+        '<div class="row press note-row" data-go="note-detail"><span class="chip">' + ic('doc', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title">Budget is a resource, not a mood</div>' +
+          '<div class="row-sub">' + lbl('Finance') + '<span class="idea-sep">·</span><span>Updated 4 d ago</span></div></div>' + CHEV + '</div>' +
+        '<div class="row press note-row" data-go="note-detail"><span class="chip">' + ic('doc', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title">Shadowing beats flashcards</div>' +
+          '<div class="row-sub">' + lbl('Language') + '<span class="idea-sep">·</span><span>Updated 1 w ago</span></div></div>' + CHEV + '</div>' +
+      '</div>' +
+      '<div class="sec-note">Pinned notes stay on top; everything else sorts by last update.</div>' +
+    '</div>' +
+
+    '<div data-panel="archived" class="hidden">' +
+      sec('Archived') +
+      '<div class="blist">' +
+        '<div class="row press note-row archived" data-go="note-detail"><span class="chip">' + ic('archive', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title">Inbox zero every Friday</div>' +
+          '<div class="row-sub"><span>Archived 3 w ago</span></div></div>' + CHEV + '</div>' +
+        '<div class="row press note-row archived" data-go="note-detail"><span class="chip">' + ic('archive', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title">No meetings before noon</div>' +
+          '<div class="row-sub"><span>Archived 2 mo ago</span></div></div>' + CHEV + '</div>' +
+      '</div>' +
+      '<div class="sec-note">Archive is an independent flag — it never changes labels or links, and archived notes ignore pinning.</div>' +
+    '</div>' +
+  '</div>' +
+  tabbar('library')
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

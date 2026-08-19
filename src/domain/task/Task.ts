@@ -1,5 +1,5 @@
 import { DomainError } from '../shared/errors';
-import type { LabelId, ProjectId, TaskId } from '../shared/ids';
+import type { GoalId, LabelId, MilestoneId, ProjectId, TaskId } from '../shared/ids';
 
 export type TaskStatus = 'todo' | 'doing' | 'done' | 'paused' | 'failed';
 
@@ -20,8 +20,12 @@ export class Task {
     private _archived: boolean,
     /** Labels attached to the task for classification. */
     readonly labelIds: LabelId[],
-    /** The project this task belongs to; the goal is derived via the project. */
+    /** The project this task belongs to. */
     readonly projectId: ProjectId,
+    /** The goal within the project this task is assigned to, if any. */
+    private _goalId: GoalId | undefined,
+    /** The milestone this task is linked to, if any. */
+    private _milestoneId: MilestoneId | undefined,
     /** When the task was created. */
     readonly createdAt: Date,
     /** When the task was last modified. */
@@ -34,6 +38,8 @@ export class Task {
     description?: string;
     due?: Date;
     projectId: ProjectId;
+    goalId?: GoalId;
+    milestoneId?: MilestoneId;
     now: Date;
   }): Task {
     return new Task(
@@ -45,6 +51,8 @@ export class Task {
       false,
       [],
       params.projectId,
+      params.goalId,
+      params.milestoneId,
       params.now,
       params.now,
     );
@@ -60,6 +68,8 @@ export class Task {
     archived: boolean;
     labelIds: LabelId[];
     projectId: ProjectId;
+    goalId?: GoalId;
+    milestoneId?: MilestoneId;
     createdAt: Date;
     updatedAt: Date;
   }): Task {
@@ -72,6 +82,8 @@ export class Task {
       params.archived,
       [...params.labelIds],
       params.projectId,
+      params.goalId,
+      params.milestoneId,
       params.createdAt,
       params.updatedAt,
     );
@@ -95,6 +107,14 @@ export class Task {
 
   get archived(): boolean {
     return this._archived;
+  }
+
+  get goalId(): GoalId | undefined {
+    return this._goalId;
+  }
+
+  get milestoneId(): MilestoneId | undefined {
+    return this._milestoneId;
   }
 
   get updatedAt(): Date {
@@ -141,6 +161,18 @@ export class Task {
 
   setDue(due: Date, now: Date): void {
     this._due = due;
+    this._updatedAt = now;
+  }
+
+  /** Assigns the task to a goal within its project. */
+  assignGoal(goalId: GoalId, now: Date): void {
+    this._goalId = goalId;
+    this._updatedAt = now;
+  }
+
+  /** Links the task to a milestone; passing undefined clears the link. */
+  assignMilestone(milestoneId: MilestoneId | undefined, now: Date): void {
+    this._milestoneId = milestoneId;
     this._updatedAt = now;
   }
 

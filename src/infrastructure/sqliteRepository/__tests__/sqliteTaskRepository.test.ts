@@ -21,6 +21,8 @@ function makeTask(): Task {
     description: 'Cover the repositories',
     due,
     projectId: 'p1',
+    goalId: 'g1',
+    milestoneId: 'm1',
     now: t0,
   });
   task.addLabel('l1');
@@ -47,6 +49,8 @@ describe('SqliteTaskRepository', () => {
     expect(loaded!.archived).toBe(true);
     expect(loaded!.labelIds).toEqual(['l1']);
     expect(loaded!.projectId).toBe('p1');
+    expect(loaded!.goalId).toBe('g1');
+    expect(loaded!.milestoneId).toBe('m1');
     expect(loaded!.createdAt).toEqual(t0);
     expect(loaded!.updatedAt).toEqual(t2);
   });
@@ -72,13 +76,13 @@ describe('SqliteTaskRepository', () => {
     expect(loaded!.labelIds).toEqual([]);
   });
 
-  it('list filters by status, archived, labelId, and projectId', async () => {
+  it('list filters by status, archived, labelId, projectId, and goalId', async () => {
     const { repo } = await makeRepo();
-    const tA = Task.create({ id: 't1', title: 'A', projectId: 'p1', now: t0 });
+    const tA = Task.create({ id: 't1', title: 'A', projectId: 'p1', goalId: 'g1', now: t0 });
     tA.addLabel('l1');
     const tB = Task.create({ id: 't2', title: 'B', projectId: 'p3', now: t0 });
     tB.start(t1);
-    const tC = Task.create({ id: 't3', title: 'C', projectId: 'p2', now: t0 });
+    const tC = Task.create({ id: 't3', title: 'C', projectId: 'p2', goalId: 'g2', now: t0 });
     tC.archive(t1);
     await repo.save(tA);
     await repo.save(tB);
@@ -90,6 +94,8 @@ describe('SqliteTaskRepository', () => {
     expect(ids(await repo.list({ labelId: 'l1' }))).toEqual(['t1']);
     expect(ids(await repo.list({ projectId: 'p1' }))).toEqual(['t1']);
     expect(ids(await repo.list({ projectId: 'p2' }))).toEqual(['t3']);
+    expect(ids(await repo.list({ goalId: 'g1' }))).toEqual(['t1']);
+    expect(ids(await repo.list({ goalId: 'g2' }))).toEqual(['t3']);
   });
 
   it('delete removes the task and its label rows', async () => {
@@ -114,6 +120,8 @@ describe('SqliteTaskRepository', () => {
     expect(loaded!.description).toBeUndefined();
     expect(loaded!.due).toBeUndefined();
     expect(loaded!.projectId).toBe('p1');
+    expect(loaded!.goalId).toBeUndefined();
+    expect(loaded!.milestoneId).toBeUndefined();
     expect(loaded!.labelIds).toEqual([]);
   });
 });

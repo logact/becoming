@@ -17,7 +17,14 @@ import type {
   ProjectFilter,
   ProjectRepository,
 } from '../../domain/project/repository/ProjectRepository';
-import type { Record as DomainRecord } from '../../domain/record/Record';
+import type { Label } from '../../domain/label/Label';
+import type { LabelRepository } from '../../domain/label/repository/LabelRepository';
+import type { Milestone } from '../../domain/milestone/Milestone';
+import type {
+  MilestoneFilter,
+  MilestoneRepository,
+} from '../../domain/milestone/repository/MilestoneRepository';
+import type { Record as DomainRecord, RecordTargetType } from '../../domain/record/Record';
 import type { RecordRepository } from '../../domain/record/repository/RecordRepository';
 import type { Relation } from '../../domain/relation/Relation';
 import type {
@@ -92,7 +99,8 @@ export class FakeTaskRepository implements TaskRepository {
         (filter?.status === undefined || task.status === filter.status) &&
         (filter?.archived === undefined || task.archived === filter.archived) &&
         (filter?.labelId === undefined || task.labelIds.includes(filter.labelId)) &&
-        (filter?.projectId === undefined || task.projectId === filter.projectId),
+        (filter?.projectId === undefined || task.projectId === filter.projectId) &&
+        (filter?.goalId === undefined || task.goalId === filter.goalId),
     );
   }
 
@@ -210,12 +218,36 @@ export class FakeRelationRepository implements RelationRepository {
 export class FakeRecordRepository implements RecordRepository {
   readonly items: DomainRecord[] = [];
 
+  /**
+   * Record-to-model links live in relations, so the fake resolves
+   * `listByTarget` through a relation repository (empty by default).
+   */
+  constructor(private readonly relations: FakeRelationRepository = new FakeRelationRepository()) {}
+
   async append(record: DomainRecord): Promise<void> {
     this.items.push(record);
   }
 
-  async listByTarget(): Promise<DomainRecord[]> {
-    throw new Error('FakeRecordRepository.listByTarget is not implemented');
+  /**
+   * Records linked to the target through a relation in either direction;
+   * newest first, a record linked in both directions appears once.
+   */
+  async listByTarget(targetType: RecordTargetType, targetId: string): Promise<DomainRecord[]> {
+    const linkedRecordIds = new Set<string>();
+    for (const relation of this.relations.items) {
+      if (relation.sourceType === 'record' && relation.targetType === targetType && relation.targetId === targetId) {
+        linkedRecordIds.add(relation.sourceId);
+      }
+      if (relation.targetType === 'record' && relation.sourceType === targetType && relation.sourceId === targetId) {
+        linkedRecordIds.add(relation.targetId);
+      }
+    }
+    return this.items
+      .filter((record) => linkedRecordIds.has(record.id))
+      .sort(
+        (a, b) =>
+          b.occurredAt.getTime() - a.occurredAt.getTime() || b.id.localeCompare(a.id),
+      );
   }
 
   /** Newest first, capped at `limit`. */
@@ -241,6 +273,48 @@ export class FakeAttentionEntryRepository implements AttentionEntryRepository {
         (filter?.kind === undefined || entry.kind === filter.kind) &&
         (filter?.targetType === undefined || entry.targetType === filter.targetType) &&
         (filter?.targetId === undefined || entry.targetId === filter.targetId),
+    );
+  }
+
+  async delete(id: string): Promise<void> {
+    remove(this.items, id);
+  }
+}
+
+export class FakeLabelRepository implements LabelRepository {
+  readonly items: Label[] = [];
+
+  async save(label: Label): Promise<void> {
+    upsert(this.items, label);
+  }
+
+  async findById(id: string): Promise<Label | null> {
+    return this.items.find((label) => label.id === id) ?? null;
+  }
+
+  async list(): Promise<Label[]> {
+    return [...this.items];
+  }
+
+  async delete(id: string): Promise<void> {
+    remove(this.items, id);
+  }
+}
+
+export class FakeMilestoneRepository implements MilestoneRepository {
+  readonly items: Milestone[] = [];
+
+  async save(milestone: Milestone): Promise<void> {
+    upsert(this.items, milestone);
+  }
+
+  async findById(id: string): Promise<Milestone | null> {
+    return this.items.find((milestone) => milestone.id === id) ?? null;
+  }
+
+  async list(filter?: MilestoneFilter): Promise<Milestone[]> {
+    return this.items.filter(
+      (milestone) => filter?.projectId === undefined || milestone.projectId === filter.projectId,
     );
   }
 

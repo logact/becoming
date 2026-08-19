@@ -84,11 +84,18 @@ describe('migrate upgrade paths', () => {
 
     await migrate(db);
 
-    expect(await userVersion(db)).toBe(2);
+    expect(await userVersion(db)).toBe(3);
     expect(await columnNames(db, 'goals')).toEqual(
-      expect.arrayContaining(['project_id', 'parent_goal_id']),
+      expect.arrayContaining(['project_id', 'parent_goal_id', 'milestone_id']),
     );
-    expect(await columnNames(db, 'tasks')).not.toContain('goal_id');
+    // v2 dropped the original tasks.goal_id; v3 adds it back as an optional
+    // sub-goal link, alongside milestone_id.
+    expect(await columnNames(db, 'tasks')).toEqual(
+      expect.arrayContaining(['goal_id', 'milestone_id']),
+    );
+    expect(await columnNames(db, 'milestones')).toEqual(
+      expect.arrayContaining(['id', 'project_id', 'title', 'date', 'created_at', 'updated_at']),
+    );
 
     const dashboard = new DashboardService(
       new SqliteGoalRepository(db),
@@ -106,7 +113,7 @@ describe('migrate upgrade paths', () => {
 
   it('heals an intermediate dev database (new-shape tables stamped v1)', async () => {
     const db = new NodeSqliteDatabase(':memory:');
-    // Tables already in the current shape but stamped user_version = 1 — the
+    // Tables already in the v2 shape but stamped user_version = 1 — the
     // state a dev device holds after running a mid-refactor build.
     await db.exec(
       `CREATE TABLE goals (
@@ -124,7 +131,46 @@ describe('migrate upgrade paths', () => {
     await db.exec('PRAGMA user_version = 1');
 
     await expect(migrate(db)).resolves.toBeUndefined();
-    expect(await userVersion(db)).toBe(2);
+    expect(await userVersion(db)).toBe(3);
+  });
+
+  it('upgrades a v2 database, adding goal/milestone links and the milestones table', async () => {
+    const db = new NodeSqliteDatabase(':memory:');
+    await db.exec(
+      `CREATE TABLE goals (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, due INTEGER,
+        status TEXT NOT NULL, archived INTEGER NOT NULL,
+        project_id TEXT, parent_goal_id TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    );
+    await db.exec(
+      `CREATE TABLE tasks (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, due INTEGER,
+        status TEXT NOT NULL, archived INTEGER NOT NULL, project_id TEXT NOT NULL,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    );
+    const now = Date.now();
+    await db.run(
+      `INSERT INTO goals (id, title, status, archived, created_at, updated_at)
+       VALUES ('g1', 'Goal', 'doing', 0, ?, ?)`,
+      [now, now],
+    );
+    await db.exec('PRAGMA user_version = 2');
+
+    await migrate(db);
+
+    expect(await userVersion(db)).toBe(3);
+    expect(await columnNames(db, 'goals')).toContain('milestone_id');
+    expect(await columnNames(db, 'tasks')).toEqual(
+      expect.arrayContaining(['goal_id', 'milestone_id']),
+    );
+    expect(await columnNames(db, 'milestones')).toEqual(
+      expect.arrayContaining(['id', 'project_id', 'title', 'date', 'created_at', 'updated_at']),
+    );
+    // Existing rows survive and are readable through the repository.
+    const goal = await new SqliteGoalRepository(db).findById('g1');
+    expect(goal?.title).toBe('Goal');
+    expect(goal?.milestoneId).toBeUndefined();
   });
 
   it('rebuilds a legacy table whose shape no migration covers', async () => {
@@ -141,7 +187,7 @@ describe('migrate upgrade paths', () => {
 
     await migrate(db);
 
-    expect(await userVersion(db)).toBe(2);
+    expect(await userVersion(db)).toBe(3);
     expect(await columnNames(db, 'goals')).toEqual(
       expect.arrayContaining(['status', 'project_id', 'parent_goal_id']),
     );

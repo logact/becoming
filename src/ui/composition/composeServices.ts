@@ -1,12 +1,24 @@
 import { AttentionService } from '../../application/attention/AttentionService';
 import { PinCandidatesService } from '../../application/attention/PinCandidatesService';
 import { DashboardService } from '../../application/dashboard/DashboardService';
+import { GoalDetailService } from '../../application/goal/GoalDetailService';
+import { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
+import { LibraryOverviewService } from '../../application/library/LibraryOverviewService';
+import { AddMilestoneService } from '../../application/project/AddMilestoneService';
+import { AddSubGoalService } from '../../application/project/AddSubGoalService';
+import { AddTaskService } from '../../application/project/AddTaskService';
+import { ProjectDetailService } from '../../application/project/ProjectDetailService';
+import { ProjectsOverviewService } from '../../application/project/ProjectsOverviewService';
+import { AllocateResourceService } from '../../application/resource/AllocateResourceService';
 import { ConsumeResourceService } from '../../application/resource/ConsumeResourceService';
+import { ResourcePoolsService } from '../../application/resource/ResourcePoolsService';
 import { openExpoDatabase } from '../../infrastructure/sqliteRepository/ExpoSqliteDatabase';
 import { migrate } from '../../infrastructure/sqliteRepository/schema';
 import { SqliteAttentionEntryRepository } from '../../infrastructure/sqliteRepository/SqliteAttentionEntryRepository';
 import { SqliteGoalRepository } from '../../infrastructure/sqliteRepository/SqliteGoalRepository';
 import { SqliteIdeaRepository } from '../../infrastructure/sqliteRepository/SqliteIdeaRepository';
+import { SqliteLabelRepository } from '../../infrastructure/sqliteRepository/SqliteLabelRepository';
+import { SqliteMilestoneRepository } from '../../infrastructure/sqliteRepository/SqliteMilestoneRepository';
 import { SqliteProjectRepository } from '../../infrastructure/sqliteRepository/SqliteProjectRepository';
 import { SqliteRecordRepository } from '../../infrastructure/sqliteRepository/SqliteRecordRepository';
 import { SqliteRelationRepository } from '../../infrastructure/sqliteRepository/SqliteRelationRepository';
@@ -42,6 +54,8 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
   const relations = new SqliteRelationRepository(db);
   const records = new SqliteRecordRepository(db);
   const attentionEntries = new SqliteAttentionEntryRepository(db);
+  const labels = new SqliteLabelRepository(db);
+  const milestones = new SqliteMilestoneRepository(db);
 
   if (options.seed === true && (await goals.list()).length === 0) {
     await seedDevData({
@@ -51,6 +65,7 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
       projects,
       resources,
       records,
+      milestones,
       consumeResource: new ConsumeResourceService(resources, relations, records),
     });
   }
@@ -68,5 +83,15 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
     ),
     attention: new AttentionService(attentionEntries),
     pinCandidates: new PinCandidatesService(goals, tasks, ideas, attentionEntries),
+    goalsOverview: new GoalsOverviewService(goals, labels),
+    goalDetail: new GoalDetailService(goals, projects, records),
+    projectsOverview: new ProjectsOverviewService(projects, goals, labels),
+    projectDetail: new ProjectDetailService(projects, goals, tasks, resources, records, milestones),
+    libraryOverview: new LibraryOverviewService(goals, tasks, projects, ideas, resources),
+    addSubGoal: new AddSubGoalService(projects, goals),
+    addTask: new AddTaskService(projects, goals, tasks),
+    addMilestone: new AddMilestoneService(projects, milestones),
+    allocateResource: new AllocateResourceService(resources),
+    resourcePools: new ResourcePoolsService(resources),
   };
 }

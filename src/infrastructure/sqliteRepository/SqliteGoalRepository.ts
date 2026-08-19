@@ -16,6 +16,7 @@ interface GoalRow {
   archived: number;
   project_id: string | null;
   parent_goal_id: string | null;
+  milestone_id: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -26,8 +27,8 @@ export class SqliteGoalRepository implements GoalRepository {
 
   async save(goal: Goal): Promise<void> {
     await this.db.run(
-      `INSERT INTO goals (id, title, description, due, status, archived, project_id, parent_goal_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO goals (id, title, description, due, status, archived, project_id, parent_goal_id, milestone_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          title = excluded.title,
          description = excluded.description,
@@ -36,6 +37,7 @@ export class SqliteGoalRepository implements GoalRepository {
          archived = excluded.archived,
          project_id = excluded.project_id,
          parent_goal_id = excluded.parent_goal_id,
+         milestone_id = excluded.milestone_id,
          created_at = excluded.created_at,
          updated_at = excluded.updated_at`,
       [
@@ -47,6 +49,7 @@ export class SqliteGoalRepository implements GoalRepository {
         goal.archived ? 1 : 0,
         goal.projectId ?? null,
         goal.parentGoalId ?? null,
+        goal.milestoneId ?? null,
         goal.createdAt.getTime(),
         goal.updatedAt.getTime(),
       ],
@@ -106,6 +109,7 @@ export class SqliteGoalRepository implements GoalRepository {
       labelIds: await loadLabelIds(this.db, 'goal', row.id),
       projectId: row.project_id ?? undefined,
       parentGoalId: row.parent_goal_id ?? undefined,
+      milestoneId: row.milestone_id ?? undefined,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     });

@@ -111,4 +111,81 @@ describe('SqliteRecordRepository', () => {
     expect(ids(await records.listByTarget('task', 't1'))).toEqual(['rec3']);
     expect(await records.listByTarget('goal', 'g2')).toEqual([]);
   });
+
+  it('listByTarget returns a record linked as the relation target end', async () => {
+    const { records, relations } = await makeRepos();
+    await records.append(Record.create({ id: 'rec1', kind: 'goalCreated', occurredAt: t0 }));
+    await relations.save(
+      Relation.create({
+        id: 'rel1',
+        sourceType: 'goal',
+        sourceId: 'g1',
+        targetType: 'record',
+        targetId: 'rec1',
+        kind: 'about',
+        now: t0,
+      }),
+    );
+
+    expect(ids(await records.listByTarget('goal', 'g1'))).toEqual(['rec1']);
+  });
+
+  it('listByTarget returns a record linked in both directions only once', async () => {
+    const { records, relations } = await makeRepos();
+    await records.append(Record.create({ id: 'rec1', kind: 'goalCreated', occurredAt: t0 }));
+    await relations.save(
+      Relation.create({
+        id: 'rel1',
+        sourceType: 'record',
+        sourceId: 'rec1',
+        targetType: 'goal',
+        targetId: 'g1',
+        kind: 'about',
+        now: t0,
+      }),
+    );
+    await relations.save(
+      Relation.create({
+        id: 'rel2',
+        sourceType: 'goal',
+        sourceId: 'g1',
+        targetType: 'record',
+        targetId: 'rec1',
+        kind: 'about',
+        now: t0,
+      }),
+    );
+
+    expect(ids(await records.listByTarget('goal', 'g1'))).toEqual(['rec1']);
+  });
+
+  it('listByTarget does not return records linked to other entities', async () => {
+    const { records, relations } = await makeRepos();
+    await records.append(Record.create({ id: 'rec1', kind: 'goalCreated', occurredAt: t0 }));
+    await records.append(Record.create({ id: 'rec2', kind: 'goalRenamed', occurredAt: t1 }));
+    await relations.save(
+      Relation.create({
+        id: 'rel1',
+        sourceType: 'goal',
+        sourceId: 'g2',
+        targetType: 'record',
+        targetId: 'rec2',
+        kind: 'about',
+        now: t0,
+      }),
+    );
+    await relations.save(
+      Relation.create({
+        id: 'rel2',
+        sourceType: 'record',
+        sourceId: 'rec1',
+        targetType: 'goal',
+        targetId: 'g1',
+        kind: 'about',
+        now: t0,
+      }),
+    );
+
+    expect(ids(await records.listByTarget('goal', 'g1'))).toEqual(['rec1']);
+  });
 });

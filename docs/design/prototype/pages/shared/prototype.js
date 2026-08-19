@@ -29,6 +29,7 @@ const P = {
   share:'<path d="M12 15.5V4M8.2 7.6 12 3.8l3.8 3.8"/><path d="M5 12.5v7h14v-7"/>',
   archive:'<rect x="3.5" y="4" width="17" height="4.4" rx="1.2"/><path d="M5 8.4v10.1h14V8.4M9.8 12.2h4.4"/>',
   bell:'<path d="M12 4a5.5 5.5 0 0 1 5.5 5.5c0 4 1.5 5.5 1.5 5.5H5s1.5-1.5 1.5-5.5A5.5 5.5 0 0 1 12 4Z"/><path d="M10 18.5a2 2 0 0 0 4 0"/>',
+  pin:'<path d="M9 3.8h6"/><path d="M10 3.8 9.2 9.6 6.8 12v1.6h10.4V12L14.8 9.6 14 3.8"/><path d="M12 13.6v6.6"/>',
   cloud:'<path d="M7 18.5a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18.2 11a3.8 3.8 0 0 1-.7 7.5Z"/>'
 };
 let gear = '<circle cx="12" cy="12" r="3.1"/>';
@@ -71,6 +72,21 @@ function activityPanel(rows) {
 }
 const CHEV = '<span class="chev">' + ic('chevron', 9) + '</span>';
 
+/* ================= goal labels ================= */
+const LABEL_COLORS = { Health:'green', Work:'amber', Growth:'blue', Finance:'red', Language:'gray' };
+function lbl(name, editable) {
+  const c = LABEL_COLORS[name] || 'gray';
+  return '<span class="lbl ' + c + '" data-label="' + name + '"><i></i>' + name +
+    (editable ? '<b class="lbl-x" data-label-del>×</b>' : '') + '</span>';
+}
+function lblRow(labels) {
+  return '<div class="gd-labels" data-labels>' +
+    labels.map(n => lbl(n, true)).join('') +
+    '<button class="lbl-add" data-label-add>' + ic('plus', 11) + 'Add</button>' +
+    '<button class="lbl-edit" data-label-edit>' + ic('pencil', 11) + '<span>Edit</span></button>' +
+  '</div>';
+}
+
 /* ================= page map (screen id -> file) ================= */
 const PAGE_MAP = {
   'dashboard':      '../dashboard/dashboard.html',
@@ -79,9 +95,95 @@ const PAGE_MAP = {
   'goals':          '../goals/goals.html',
   'goal-detail':    '../goals/goal-detail.html',
   'project-detail': '../goals/project-detail.html',
+  'tasks':          '../tasks/tasks.html',
+  'task-detail':    '../tasks/task-detail.html',
+  'add-plan-item':  '../goals/add-plan-item.html',
+  'select-span':    '../goals/select-span.html',
+  'allocate-resource': '../goals/allocate-resource.html',
   'ideas':          '../ideas/ideas.html',
+  'idea-detail':    '../ideas/idea-detail.html',
+  'notes':          '../notes/notes.html',
+  'note-detail':    '../notes/note-detail.html',
   'setting':        '../setting/setting.html',
 };
+
+/* ================= create from idea ================= */
+function ideaSourceTitle(trigger) {
+  return trigger.dataset.ideaTitle || 'Auto-generate a weekly review';
+}
+
+function deriveChoices(title) {
+  return '<div class="idea-sheet-head"><span class="idea-sheet-spacer"></span><h2>Create from idea</h2><button class="idea-sheet-icon" data-sheet-close>' + ic('minus', 18) + '</button></div>' +
+    '<div class="idea-sheet-source">' + title + '</div>' +
+    '<button class="derive-choice" data-create-type="goal" data-idea-title="' + title + '"><span class="chip">' + ic('target', 19) + '</span><span class="derive-choice-main"><span class="derive-choice-title">Goal</span><span class="derive-choice-sub">Turn the idea into a target to achieve</span></span>' + CHEV + '</button>' +
+    '<button class="derive-choice" data-create-type="task" data-idea-title="' + title + '"><span class="chip">' + ic('checkCircle', 19) + '</span><span class="derive-choice-main"><span class="derive-choice-title">Task</span><span class="derive-choice-sub">Add an action to an existing project</span></span>' + CHEV + '</button>' +
+    '<button class="derive-choice" data-create-type="note" data-idea-title="' + title + '"><span class="chip">' + ic('doc', 19) + '</span><span class="derive-choice-main"><span class="derive-choice-title">Note</span><span class="derive-choice-sub">Keep the thought as reusable knowledge</span></span>' + CHEV + '</button>';
+}
+
+function deriveForm(type, title) {
+  const names = { goal: 'New goal', task: 'New task', note: 'New note' };
+  const icons = { goal: 'target', task: 'checkCircle', note: 'doc' };
+  let fields = '';
+  if (type === 'goal') {
+    fields = '<div class="derive-field"><label>Title</label><input value="' + title + '"></div>' +
+      '<div class="derive-field"><label>Description</label><textarea>Summarize records and completed work every Sunday.</textarea></div>' +
+      '<div class="derive-field"><label>Target date</label><input placeholder="Optional"></div>';
+  } else if (type === 'task') {
+    fields = '<div class="derive-field"><label>Title</label><input value="' + title + '"></div>' +
+      '<div class="derive-field"><label>Project · required</label><div class="derive-picker"><span>Becoming MVP</span>' + CHEV + '</div></div>' +
+      '<div class="derive-field"><label>Goal</label><div class="derive-picker"><span>Weekly reflection</span>' + CHEV + '</div></div>';
+  } else {
+    fields = '<div class="derive-field"><label>Content</label><textarea>' + title + '\n\nSummarize records and completed work every Sunday.</textarea></div>';
+  }
+  return '<div class="idea-sheet-head"><button class="idea-sheet-icon" data-sheet-back>' + ic('back', 13) + '</button><h2>' + names[type] + '</h2><button class="idea-sheet-icon" data-sheet-close>' + ic('minus', 18) + '</button></div>' +
+    '<div class="idea-sheet-source"><span class="idea-state exploring">Derived from idea</span> · ' + title + '</div>' + fields +
+    '<button class="derive-save" data-derive-save data-create-type="' + type + '">' + ic(icons[type], 14) + ' Create ' + type + '</button>' +
+    '<div class="derive-hint">The idea is preserved, linked to the new ' + type + ', and moved to Handled.</div>';
+}
+
+function openDeriveSheet(trigger, selectedType) {
+  const phone = trigger.closest('.phone');
+  if (!phone) return;
+  const title = ideaSourceTitle(trigger);
+  const layer = document.createElement('div');
+  layer.className = 'idea-sheet-layer';
+  layer.dataset.ideaTitle = title;
+  layer.innerHTML = '<button class="idea-sheet-dismiss" data-sheet-close aria-label="Close"></button><div class="idea-sheet"><div class="idea-sheet-handle"></div><div data-sheet-content>' + (selectedType ? deriveForm(selectedType, title) : deriveChoices(title)) + '</div></div>';
+  phone.appendChild(layer);
+}
+
+function showPrototypeToast(phone, message) {
+  phone.querySelector('.prototype-toast')?.remove();
+  const toast = document.createElement('div');
+  toast.className = 'prototype-toast';
+  toast.textContent = message;
+  phone.appendChild(toast);
+  window.setTimeout(() => toast.remove(), 2200);
+}
+
+const IDEA_STATUS = {
+  captured: { label: 'Captured', icon: 'circle', description: 'Saved and waiting to be processed' },
+  exploring: { label: 'Exploring', icon: 'sparkle', description: 'Actively developing this idea' },
+  paused: { label: 'Paused', icon: 'pauseCircle', description: 'Set aside for now' },
+  handled: { label: 'Handled', icon: 'check', description: 'Processed into useful outcomes' },
+};
+
+function statusChoices(current) {
+  return '<div class="idea-sheet-head"><span class="idea-sheet-spacer"></span><h2>Change status</h2><button class="idea-sheet-icon" data-sheet-close>' + ic('minus', 18) + '</button></div>' +
+    '<div class="idea-sheet-source">Choose where this idea belongs in your thinking workflow.</div>' +
+    Object.entries(IDEA_STATUS).map(([key, status]) =>
+      '<button class="derive-choice" data-status-select="' + key + '"><span class="pill ' + key + '">' + ic(status.icon, 11) + status.label + '</span><span class="derive-choice-main"><span class="derive-choice-sub">' + status.description + '</span></span><span class="status-choice-mark">' + (key === current ? ic('check', 15) : '') + '</span></button>'
+    ).join('');
+}
+
+function openStatusSheet(trigger) {
+  const phone = trigger.closest('.phone');
+  if (!phone) return;
+  const layer = document.createElement('div');
+  layer.className = 'idea-sheet-layer';
+  layer.innerHTML = '<button class="idea-sheet-dismiss" data-sheet-close aria-label="Close"></button><div class="idea-sheet"><div class="idea-sheet-handle"></div><div data-sheet-content>' + statusChoices(trigger.dataset.statusCurrent) + '</div></div>';
+  phone.appendChild(layer);
+}
 
 /* ================= render this page's phone ================= */
 // Each page file defines SCREEN (a function returning the screen HTML)
@@ -101,6 +203,77 @@ document.getElementById('board').appendChild(wrap);
 
 /* ================= interactions ================= */
 document.addEventListener('click', e => {
+  const statusOpen = e.target.closest('[data-status-open]');
+  if (statusOpen) { openStatusSheet(statusOpen); return; }
+  const statusSelect = e.target.closest('[data-status-select]');
+  if (statusSelect) {
+    const phone = statusSelect.closest('.phone');
+    const key = statusSelect.dataset.statusSelect;
+    const status = IDEA_STATUS[key];
+    const control = phone.querySelector('[data-status-open]');
+    control.dataset.statusCurrent = key;
+    control.querySelector('[data-status-pill]').className = 'pill ' + key;
+    control.querySelector('[data-status-pill]').innerHTML = ic(status.icon, 11) + status.label;
+    statusSelect.closest('.idea-sheet-layer').remove();
+    showPrototypeToast(phone, 'Idea moved to ' + status.label);
+    return;
+  }
+  const deriveOpen = e.target.closest('[data-derive-open]');
+  if (deriveOpen) { openDeriveSheet(deriveOpen); return; }
+  const createType = e.target.closest('[data-create-type]');
+  if (createType && !createType.matches('[data-derive-save]')) {
+    const layer = createType.closest('.idea-sheet-layer');
+    if (!layer) { openDeriveSheet(createType, createType.dataset.createType); return; }
+    layer.querySelector('[data-sheet-content]').innerHTML = deriveForm(createType.dataset.createType, layer.dataset.ideaTitle);
+    return;
+  }
+  const sheetBack = e.target.closest('[data-sheet-back]');
+  if (sheetBack) {
+    const layer = sheetBack.closest('.idea-sheet-layer');
+    layer.querySelector('[data-sheet-content]').innerHTML = deriveChoices(layer.dataset.ideaTitle);
+    return;
+  }
+  const sheetClose = e.target.closest('[data-sheet-close]');
+  if (sheetClose) { sheetClose.closest('.idea-sheet-layer').remove(); return; }
+  const deriveSave = e.target.closest('[data-derive-save]');
+  if (deriveSave) {
+    const phone = deriveSave.closest('.phone');
+    const type = deriveSave.dataset.createType;
+    deriveSave.closest('.idea-sheet-layer').remove();
+    const statusControl = phone.querySelector('[data-status-open]');
+    if (statusControl) {
+      statusControl.dataset.statusCurrent = 'handled';
+      statusControl.querySelector('[data-status-pill]').className = 'pill handled';
+      statusControl.querySelector('[data-status-pill]').innerHTML = ic('check', 11) + 'Handled';
+    }
+    if (type === 'note' && PAGE_MAP['note-detail']) {
+      location.href = PAGE_MAP['note-detail'];
+      return;
+    }
+    showPrototypeToast(phone, type[0].toUpperCase() + type.slice(1) + ' created from idea');
+    return;
+  }
+  const pinToggle = e.target.closest('[data-pin-toggle]');
+  if (pinToggle) {
+    const on = pinToggle.classList.toggle('on');
+    showPrototypeToast(pinToggle.closest('.phone'), on ? 'Pinned to top of Notes' : 'Unpinned');
+    return;
+  }
+  const noteArchive = e.target.closest('[data-note-archive]');
+  if (noteArchive) {
+    const title = noteArchive.querySelector('.row-title');
+    const archiving = title.textContent.trim() === 'Archive note';
+    title.textContent = archiving ? 'Unarchive note' : 'Archive note';
+    showPrototypeToast(noteArchive.closest('.phone'), archiving ? 'Note archived' : 'Note restored');
+    return;
+  }
+  const linkAdd = e.target.closest('[data-link-add]');
+  if (linkAdd) {
+    linkAdd.insertAdjacentHTML('beforebegin',
+      '<div class="row press" data-go="project-detail"><span class="chip">' + ic('box', 17) + '</span><div class="row-main"><div class="row-title">Becoming MVP</div><div class="row-sub">Project · linked just now</div></div>' + CHEV + '</div>');
+    showPrototypeToast(linkAdd.closest('.phone'), 'Linked to project');
+    return;
+  }
   const root = e.target.closest('[data-root]');
   if (root) { location.href = PAGE_MAP[root.dataset.root]; return; }
   const back = e.target.closest('[data-back]');
@@ -112,6 +285,24 @@ document.addEventListener('click', e => {
     const screen = segBtn.closest('.screen');
     screen.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== segBtn.dataset.seg));
     return;
+  }
+  const lbWrap = e.target.closest('[data-labels]');
+  if (lbWrap) {
+    const lbDel = e.target.closest('[data-label-del]');
+    if (lbDel) { lbDel.closest('.lbl').remove(); return; }
+    const lbAdd = e.target.closest('[data-label-add]');
+    if (lbAdd) {
+      const used = Array.from(lbWrap.querySelectorAll('.lbl')).map(x => x.dataset.label);
+      const next = Object.keys(LABEL_COLORS).find(n => !used.includes(n));
+      if (next) lbAdd.insertAdjacentHTML('beforebegin', lbl(next, true));
+      return;
+    }
+    const lbEdit = e.target.closest('[data-label-edit]');
+    if (lbEdit) {
+      const on = lbWrap.classList.toggle('editing');
+      lbEdit.querySelector('span').textContent = on ? 'Done' : 'Edit';
+      return;
+    }
   }
   const go = e.target.closest('[data-go]');
   if (go && PAGE_MAP[go.dataset.go]) location.href = PAGE_MAP[go.dataset.go];

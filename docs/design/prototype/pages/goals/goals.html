@@ -14,20 +14,18 @@ const SCREEN = () =>
 statusBar() +
   inlineNav('Goals', 'plus') +
   '<div class="scroll">' +
-    // overview: the state of all goals at a glance
+    // overview: goal counts at a glance
     '<div class="stats">' +
-      '<div class="stat"><div class="stat-num">4</div><div class="stat-label">Active goals</div></div>' +
-      '<div class="stat"><div class="stat-num">33%</div><div class="stat-label">Avg. progress</div></div>' +
-      '<div class="stat"><div class="stat-num">1</div><div class="stat-label">Done</div></div>' +
+      '<div class="stat"><div class="stat-num">4<em> / 6</em></div><div class="stat-label">Active goals</div></div>' +
     '</div>' +
 
     sec('Needs attention') +
     '<div class="panel">' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('alert', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">Failed yesterday · 7 / 19 tasks</div></div>' +
+        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">Failed yesterday</div></div>' +
         '<span class="pill conflict">' + ic('alert', 11) + 'Failed</span></div>' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('clock', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Doing · 13 / 21 tasks</div></div>' +
+        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Doing · Target Oct 18</div></div>' +
         '<span class="pill blocked">' + ic('clock', 11) + 'Due in 22 h</span></div>' +
     '</div>' +
     '<div class="sec-note">Failed goals and goals due within 1 day surface here automatically.</div>' +
@@ -35,15 +33,13 @@ statusBar() +
     sec('Focus') +
     '<div class="goal-card press" data-go="goal-detail">' +
       '<div class="goal-top"><span class="chip">' + ic('target', 17) + '</span><div class="goal-name">Run a half marathon</div><span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
-      '<div class="goal-sub">2 projects · Active: Spring training plan · Week 6 of 16 · Target Oct 18</div>' +
-      '<div class="progress"><i style="width:62%"></i></div>' +
-      '<div class="goal-foot"><span class="row-meta">13 / 21 tasks · 62%</span><span class="tag">Health</span></div>' +
+      '<div class="goal-sub">2 projects · Active: Spring training plan · Target Oct 18</div>' +
+      '<div class="goal-foot"><span class="goal-labels">' + lbl('Health') + '</span></div>' +
     '</div>' +
     '<div class="goal-card press" data-go="goal-detail">' +
       '<div class="goal-top"><span class="chip">' + ic('target', 17) + '</span><div class="goal-name">Read 12 books in 2026</div><span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
-      '<div class="goal-sub">1 project · Evening reading plan · Currently: Atomic Habits ch. 7</div>' +
-      '<div class="progress green"><i style="width:42%"></i></div>' +
-      '<div class="goal-foot"><span class="row-meta">5 / 12 books · 42%</span><span class="tag">Growth</span></div>' +
+      '<div class="goal-sub">1 project · Evening reading plan</div>' +
+      '<div class="goal-foot"><span class="goal-labels">' + lbl('Growth') + '</span></div>' +
     '</div>' +
 
     sec('By status') +
@@ -68,27 +64,27 @@ statusBar() +
     '<div class="panel">' +
       '<div class="group-label">Doing</div>' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Health · 2 projects · Spring training plan</div></div>' +
-        '<span class="row-meta">62%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">' + lbl('Health') + ' 2 projects · Spring training plan</div></div>' +
+        CHEV + '</div>' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Read 12 books in 2026</div><div class="row-sub">Growth · 1 project · Atomic Habits ch. 7</div></div>' +
-        '<span class="row-meta">42%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Read 12 books in 2026</div><div class="row-sub">' + lbl('Growth') + ' 1 project · Evening reading plan</div></div>' +
+        CHEV + '</div>' +
       '<div class="group-label">Todo</div>' +
       '<div class="row press"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Emergency fund ¥100,000</div><div class="row-sub">Finance · No project yet</div></div>' +
-        '<span class="row-meta">0%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Emergency fund ¥100,000</div><div class="row-sub">' + lbl('Finance') + ' No project yet</div></div>' +
+        CHEV + '</div>' +
       '<div class="group-label">Paused</div>' +
       '<div class="row press"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Learn Japanese N3</div><div class="row-sub">Language · Paused 3 w ago</div></div>' +
-        '<span class="row-meta">28%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Learn Japanese N3</div><div class="row-sub">' + lbl('Language') + ' Paused 3 w ago</div></div>' +
+        CHEV + '</div>' +
       '<div class="group-label">Failed</div>' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">Work · Failed yesterday</div></div>' +
-        '<span class="row-meta">34%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">' + lbl('Work') + ' Failed yesterday</div></div>' +
+        CHEV + '</div>' +
       '<div class="group-label">Done</div>' +
       '<div class="row press"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Run 10 km under 50 min</div><div class="row-sub">Health · Completed Jun 30</div></div>' +
-        '<span class="row-meta">100%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Run 10 km under 50 min</div><div class="row-sub">' + lbl('Health') + ' Completed Jun 30</div></div>' +
+        CHEV + '</div>' +
     '</div>' +
 
     sec('Recent activity') +

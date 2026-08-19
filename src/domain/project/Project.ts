@@ -115,6 +115,15 @@ export class Project {
     this._updatedAt = now;
   }
 
+  /** active → done */
+  complete(now: Date): void {
+    if (this._status !== 'active') {
+      throw new DomainError(`Cannot complete Project from ${this._status}`);
+    }
+    this._status = 'done';
+    this._updatedAt = now;
+  }
+
   /** active|paused → failed */
   fail(now: Date): void {
     if (this._status !== 'active' && this._status !== 'paused') {

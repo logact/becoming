@@ -15,6 +15,7 @@ const MIGRATION_V1: string[] = [
     archived INTEGER NOT NULL,
     project_id TEXT,
     parent_goal_id TEXT,
+    milestone_id TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -26,6 +27,8 @@ const MIGRATION_V1: string[] = [
     status TEXT NOT NULL,
     archived INTEGER NOT NULL,
     project_id TEXT NOT NULL,
+    goal_id TEXT,
+    milestone_id TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -44,6 +47,14 @@ const MIGRATION_V1: string[] = [
     due INTEGER,
     status TEXT NOT NULL,
     archived INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS milestones (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    date INTEGER NOT NULL,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
@@ -96,6 +107,11 @@ const MIGRATION_V1: string[] = [
     label_id TEXT NOT NULL,
     PRIMARY KEY (entity_type, entity_id, label_id)
   )`,
+  `CREATE TABLE IF NOT EXISTS labels (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    color TEXT
+  )`,
 ];
 
 /**
@@ -134,6 +150,42 @@ const MIGRATION_V2: ColumnStep[] = [
   },
 ];
 
+/**
+ * v3 brings back task.goal_id (now an optional link to a sub-goal of the
+ * project) and introduces milestones: tasks and goals can each point at one.
+ * The column steps stay conditional for the same heal-instead-of-crash
+ * reason as v2; the milestones table is created with IF NOT EXISTS.
+ */
+const CREATE_MILESTONES = `CREATE TABLE IF NOT EXISTS milestones (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  date INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+)`;
+
+const MIGRATION_V3: ColumnStep[] = [
+  {
+    table: 'tasks',
+    column: 'goal_id',
+    action: 'add',
+    statement: 'ALTER TABLE tasks ADD COLUMN goal_id TEXT',
+  },
+  {
+    table: 'tasks',
+    column: 'milestone_id',
+    action: 'add',
+    statement: 'ALTER TABLE tasks ADD COLUMN milestone_id TEXT',
+  },
+  {
+    table: 'goals',
+    column: 'milestone_id',
+    action: 'add',
+    statement: 'ALTER TABLE goals ADD COLUMN milestone_id TEXT',
+  },
+];
+
 /** Live column names of a table, used to apply column steps conditionally. */
 async function tableColumns(db: SqliteDatabase, table: string): Promise<Set<string>> {
   const rows = await db.all<{ name: string }>(`PRAGMA table_info(${table})`);
@@ -142,6 +194,10 @@ async function tableColumns(db: SqliteDatabase, table: string): Promise<Set<stri
 
 async function applyColumnStep(db: SqliteDatabase, step: ColumnStep): Promise<void> {
   const columns = await tableColumns(db, step.table);
+  // A missing table is ensureTables' job, not a column step's.
+  if (columns.size === 0) {
+    return;
+  }
   if (step.action === 'add' && !columns.has(step.column)) {
     await db.exec(step.statement);
   }
@@ -151,22 +207,23 @@ async function applyColumnStep(db: SqliteDatabase, step: ColumnStep): Promise<vo
 }
 
 /**
- * Columns every table must have in the current schema (post-v2 shape). Keep
- * in sync with MIGRATION_V1 and MIGRATION_V2.
+ * Columns every table must have in the current schema (post-v3 shape). Keep
+ * in sync with MIGRATION_V1, MIGRATION_V2 and MIGRATION_V3.
  */
 const EXPECTED_COLUMNS: Record<string, string[]> = {
   goals: [
     'id', 'title', 'description', 'due', 'status', 'archived',
-    'project_id', 'parent_goal_id', 'created_at', 'updated_at',
+    'project_id', 'parent_goal_id', 'milestone_id', 'created_at', 'updated_at',
   ],
   tasks: [
     'id', 'title', 'description', 'due', 'status', 'archived',
-    'project_id', 'created_at', 'updated_at',
+    'project_id', 'goal_id', 'milestone_id', 'created_at', 'updated_at',
   ],
   ideas: ['id', 'content', 'status', 'archived', 'created_at', 'updated_at'],
   projects: [
     'id', 'name', 'goal_id', 'due', 'status', 'archived', 'created_at', 'updated_at',
   ],
+  milestones: ['id', 'project_id', 'title', 'date', 'created_at', 'updated_at'],
   resources: [
     'id', 'type_id', 'kind', 'name', 'amount', 'archived', 'created_at', 'updated_at',
   ],
@@ -181,6 +238,7 @@ const EXPECTED_COLUMNS: Record<string, string[]> = {
   records: ['id', 'kind', 'detail', 'occurred_at'],
   attention_entries: ['id', 'target_type', 'target_id', 'kind', 'created_at'],
   entity_labels: ['entity_type', 'entity_id', 'label_id'],
+  labels: ['id', 'name', 'color'],
 };
 
 /**
@@ -215,8 +273,9 @@ async function ensureTables(db: SqliteDatabase): Promise<void> {
 /**
  * Brings the database schema up to date. Migrations are keyed on
  * `PRAGMA user_version`; v2 reshapes the goal/project/task hierarchy of
- * original-v1 databases, and ensureTables creates or rebuilds whatever is
- * still not in the current shape.
+ * original-v1 databases, v3 adds the goal/milestone links and the milestones
+ * table, and ensureTables creates or rebuilds whatever is still not in the
+ * current shape.
  */
 export async function migrate(db: SqliteDatabase): Promise<void> {
   const row = await db.first<{ user_version: number }>('PRAGMA user_version');
@@ -228,6 +287,14 @@ export async function migrate(db: SqliteDatabase): Promise<void> {
       await applyColumnStep(db, step);
     }
   }
+  // v1 databases upgraded above also need the v3 additions; fresh databases
+  // get them from ensureTables below.
+  if (version >= 1 && version < 3) {
+    for (const step of MIGRATION_V3) {
+      await applyColumnStep(db, step);
+    }
+    await db.exec(CREATE_MILESTONES);
+  }
   await ensureTables(db);
-  await db.exec('PRAGMA user_version = 2');
+  await db.exec('PRAGMA user_version = 3');
 }

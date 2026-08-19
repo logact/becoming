@@ -15,6 +15,8 @@ interface TaskRow {
   status: TaskStatus;
   archived: number;
   project_id: string;
+  goal_id: string | null;
+  milestone_id: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -25,8 +27,8 @@ export class SqliteTaskRepository implements TaskRepository {
 
   async save(task: Task): Promise<void> {
     await this.db.run(
-      `INSERT INTO tasks (id, title, description, due, status, archived, project_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO tasks (id, title, description, due, status, archived, project_id, goal_id, milestone_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          title = excluded.title,
          description = excluded.description,
@@ -34,6 +36,8 @@ export class SqliteTaskRepository implements TaskRepository {
          status = excluded.status,
          archived = excluded.archived,
          project_id = excluded.project_id,
+         goal_id = excluded.goal_id,
+         milestone_id = excluded.milestone_id,
          created_at = excluded.created_at,
          updated_at = excluded.updated_at`,
       [
@@ -44,6 +48,8 @@ export class SqliteTaskRepository implements TaskRepository {
         task.status,
         task.archived ? 1 : 0,
         task.projectId,
+        task.goalId ?? null,
+        task.milestoneId ?? null,
         task.createdAt.getTime(),
         task.updatedAt.getTime(),
       ],
@@ -70,6 +76,10 @@ export class SqliteTaskRepository implements TaskRepository {
     if (filter?.projectId !== undefined) {
       conditions.push('project_id = ?');
       params.push(filter.projectId);
+    }
+    if (filter?.goalId !== undefined) {
+      conditions.push('goal_id = ?');
+      params.push(filter.goalId);
     }
     if (filter?.labelId !== undefined) {
       conditions.push(
@@ -98,6 +108,8 @@ export class SqliteTaskRepository implements TaskRepository {
       archived: row.archived === 1,
       labelIds: await loadLabelIds(this.db, 'task', row.id),
       projectId: row.project_id,
+      goalId: row.goal_id ?? undefined,
+      milestoneId: row.milestone_id ?? undefined,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     });

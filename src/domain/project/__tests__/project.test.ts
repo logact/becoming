@@ -95,6 +95,34 @@ describe('Project', () => {
     expect(project.due).toBe(t1);
   });
 
+  it('completes from active, bumps updatedAt', () => {
+    const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
+    project.activate(t1);
+    project.complete(t2);
+    expect(project.status).toBe('done');
+    expect(project.updatedAt).toBe(t2);
+  });
+
+  it('rejects complete from planning / paused / done / failed', () => {
+    const planning = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
+    expect(() => planning.complete(t1)).toThrow(DomainError);
+
+    const paused = Project.create({ id: 'p2', name: 'Q2 plan', goalId: 'g1', now: t0 });
+    paused.activate(t1);
+    paused.pause(t2);
+    expect(() => paused.complete(t2)).toThrow(DomainError);
+
+    const done = Project.create({ id: 'p3', name: 'Q3 plan', goalId: 'g1', now: t0 });
+    done.activate(t1);
+    done.complete(t2);
+    expect(() => done.complete(t2)).toThrow(DomainError);
+
+    const failed = Project.create({ id: 'p4', name: 'Q4 plan', goalId: 'g1', now: t0 });
+    failed.activate(t1);
+    failed.fail(t2);
+    expect(() => failed.complete(t2)).toThrow(DomainError);
+  });
+
   it('fails from active or paused and rejects other statuses', () => {
     const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
     expect(() => project.fail(t1)).toThrow(DomainError);

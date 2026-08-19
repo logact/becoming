@@ -107,22 +107,39 @@
   .pill svg{width:11px;height:11px}
   .pill.doing,.pill.exploring{color:var(--blue)}
   .pill.todo,.pill.captured{color:var(--grayp)}
-  .pill.done,.pill.active{color:var(--sage)}
+  .pill.done,.pill.active,.pill.handled{color:var(--sage)}
   .pill.paused,.pill.planning,.pill.blocked{color:var(--amber)}
   .pill.conflict{color:var(--red)}
 
   .tag{font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--panel)}
+
+  /* labels: colored chips, editable in goal detail */
+  .lbl{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.02em}
+  .lbl i{width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
+  .lbl.green{color:var(--sage);background:#DEEBE1}
+  .lbl.blue{color:var(--blue);background:#E0E9F4}
+  .lbl.amber{color:var(--amber);background:#F2E8D4}
+  .lbl.red{color:var(--red);background:#F5E1DE}
+  .lbl.gray{color:var(--grayp);background:#E8E9E3}
 
   .progress{height:5px;border-radius:3px;background:#E3E0D1;overflow:hidden;margin-top:9px}
   .progress i{display:block;height:100%;border-radius:3px;background:var(--green)}
   .progress.green i{background:var(--sage)}
 
   .chip-btn{flex:none;border:0;background:var(--green);color:#F2F0E6;font-family:inherit;font-size:12.5px;font-weight:700;padding:7px 15px;border-radius:999px;cursor:pointer;letter-spacing:.01em}
+  .task-actions{display:flex;gap:9px;margin:14px 18px 0}
+  .task-actions .chip-btn{flex:1;padding:10px 0;font-size:13.5px;text-align:center}
+  .btn-ghost{flex:1;border:1.5px solid var(--green);color:var(--green);background:none;font-family:inherit;font-size:13.5px;font-weight:700;padding:9px 0;border-radius:999px;cursor:pointer}
+  .btn-ghost.danger{border-color:var(--red);color:var(--red)}
+  .desc{font-size:15px;line-height:1.65;color:var(--ink);padding:16px 18px}
 
   /* ---------- dashboard ---------- */
   .stats{display:flex;gap:10px;margin:6px 18px 0}
   .stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:13px 14px 11px}
   .stat-num{font-family:var(--serif);font-size:24px;font-weight:700;color:var(--green)}
+  .stat-num em{font-style:normal;font-size:14px;color:var(--faint)}
+  .stat-num.c-amber,.gd-count-num.c-amber{color:var(--amber)}
+  .stat-num.c-ink,.gd-count-num.c-ink{color:var(--ink)}
   .stat-label{font-size:11px;color:var(--muted);margin-top:3px;font-weight:600;letter-spacing:.03em}
 
   /* ---------- library ---------- */
@@ -154,6 +171,21 @@
   .gd-target{font-size:12.5px;color:var(--muted)}
   .gd-progress-label{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:11px}
   .gd-progress-label b{color:var(--ink);font-size:13px}
+  .gd-labels{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:12px}
+  .gd-labels .lbl{font-size:11.5px;padding:4px 11px}
+  .lbl-x{display:none;margin:0 -3px 0 2px;font-style:normal;cursor:pointer;opacity:.75}
+  .gd-labels.editing .lbl-x{display:inline}
+  .lbl-add{display:none;align-items:center;gap:3px;border:1px dashed #C9CDBC;background:none;color:var(--muted);font-family:inherit;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;cursor:pointer}
+  .gd-labels.editing .lbl-add{display:inline-flex}
+  .lbl-edit{display:inline-flex;align-items:center;gap:4px;border:0;background:none;color:var(--faint);font-family:inherit;font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer}
+  .gd-labels.editing .lbl-edit{color:var(--green)}
+
+  /* count strips inside the goal header: active/all, todo/done/all */
+  .gd-counts{display:flex;gap:10px;margin-top:14px}
+  .gd-count{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px 13px 9px}
+  .gd-count-num{font-family:var(--serif);font-size:19px;font-weight:700;color:var(--green)}
+  .gd-count-num em{font-style:normal;font-size:12.5px;color:var(--faint)}
+  .gd-count-label{font-size:10.5px;color:var(--muted);margin-top:2px;font-weight:600;letter-spacing:.03em}
 
   /* task checkboxes: mint rounded-square chips, per reference */
   .check{width:32px;height:32px;border-radius:10px;flex:none;display:grid;place-items:center;border:1.6px solid #C9CDBC;color:var(--green);background:transparent}
@@ -172,6 +204,23 @@
   .capture .chip-btn{margin-left:auto}
   .capture .plus-c{width:30px;height:30px;border-radius:9px;background:var(--mint);color:var(--green);display:grid;place-items:center}
   .capture svg{width:15px;height:15px}
+  .idea-row{padding-right:16px}
+  .idea-state{display:inline-flex;align-items:center;gap:5px;font-weight:700}
+  .idea-state::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .idea-state.captured{color:var(--grayp)}
+  .idea-state.exploring{color:var(--blue)}
+  .idea-state.paused{color:var(--amber)}
+  .idea-state.handled{color:var(--sage)}
+  .idea-derive{width:34px;height:34px;border:1px solid #C9CDBC;border-radius:11px;background:transparent;color:var(--green);display:grid;place-items:center;flex:none}
+  .idea-card{background:var(--panel);border:1px solid var(--line);border-radius:22px;margin:0 18px;padding:19px 18px 18px}
+  .idea-card-top{display:flex;align-items:center;justify-content:space-between}
+  .idea-status-button{border:0;background:transparent;padding:0;display:flex;align-items:center;gap:6px;color:inherit;font-family:inherit}
+  .idea-status-button .status-edit{width:23px;height:23px;border-radius:8px;background:var(--track);color:var(--muted);display:grid;place-items:center}
+  .idea-card-content{font-family:var(--serif);font-size:22px;font-weight:650;line-height:1.38;letter-spacing:-.25px;margin-top:17px}
+  .idea-card-note{font-size:12.5px;color:var(--faint);margin-top:13px}
+  .derive-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:0 18px}
+  .derive-tile{border:1px solid var(--line);background:var(--panel);border-radius:18px;padding:14px 8px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--green);font-family:inherit;font-size:13px;font-weight:700}
+  .derive-tile .chip{width:38px;height:38px;border-radius:12px}
 
   /* ---------- setting ---------- */
   .switch{width:50px;height:30px;border-radius:999px;background:#DCD9C9;position:relative;flex:none;transition:background .2s}
@@ -196,7 +245,12 @@
     <a href="pages/goals/goals.html">Goals</a> ·
     <a href="pages/goals/goal-detail.html">Goal detail</a> ·
     <a href="pages/goals/project-detail.html">Project detail</a> ·
+    <a href="pages/tasks/tasks.html">Tasks</a> ·
+    <a href="pages/tasks/task-detail.html">Task detail</a> ·
     <a href="pages/ideas/ideas.html">Ideas</a> ·
+    <a href="pages/ideas/idea-detail.html">Idea detail</a> ·
+    <a href="pages/notes/notes.html">Notes</a> ·
+    <a href="pages/notes/note-detail.html">Note detail</a> ·
     <a href="pages/setting/setting.html">Setting</a></p>
 </header>
 
@@ -276,6 +330,21 @@ function activityPanel(rows) {
   ).join('') + '</div>';
 }
 const CHEV = '<span class="chev">' + ic('chevron', 9) + '</span>';
+
+/* ================= goal labels ================= */
+const LABEL_COLORS = { Health:'green', Work:'amber', Growth:'blue', Finance:'red', Language:'gray' };
+function lbl(name, editable) {
+  const c = LABEL_COLORS[name] || 'gray';
+  return '<span class="lbl ' + c + '" data-label="' + name + '"><i></i>' + name +
+    (editable ? '<b class="lbl-x" data-label-del>×</b>' : '') + '</span>';
+}
+function lblRow(labels) {
+  return '<div class="gd-labels" data-labels>' +
+    labels.map(n => lbl(n, true)).join('') +
+    '<button class="lbl-add" data-label-add>' + ic('plus', 11) + 'Add</button>' +
+    '<button class="lbl-edit" data-label-edit>' + ic('pencil', 11) + '<span>Edit</span></button>' +
+  '</div>';
+}
 
 /* ================= screens ================= */
 const SCREENS = {
@@ -394,7 +463,7 @@ const SCREENS = {
       '<div class="row press" data-go="goals"><span class="chip">' + ic('target', 17) + '</span>' +
         '<div class="row-main"><div class="row-title">Goals</div><div class="row-sub">Targets you aim to achieve</div></div>' +
         '<span class="count">5</span>' + CHEV + '</div>' +
-      '<div class="row press"><span class="chip">' + ic('checkCircle', 17) + '</span>' +
+      '<div class="row press" data-go="tasks"><span class="chip">' + ic('checkCircle', 17) + '</span>' +
         '<div class="row-main"><div class="row-title">Tasks</div><div class="row-sub">Actions that implement goals</div></div>' +
         '<span class="count">18</span>' + CHEV + '</div>' +
       '<div class="row press"><span class="chip">' + ic('box', 17) + '</span>' +
@@ -432,20 +501,18 @@ const SCREENS = {
   goals: () => statusbar() +
   inlineNav('Goals', 'plus') +
   '<div class="scroll">' +
-    // overview: the state of all goals at a glance
+    // overview: goal counts at a glance
     '<div class="stats">' +
-      '<div class="stat"><div class="stat-num">4</div><div class="stat-label">Active goals</div></div>' +
-      '<div class="stat"><div class="stat-num">33%</div><div class="stat-label">Avg. progress</div></div>' +
-      '<div class="stat"><div class="stat-num">1</div><div class="stat-label">Done</div></div>' +
+      '<div class="stat"><div class="stat-num">4<em> / 6</em></div><div class="stat-label">Active goals</div></div>' +
     '</div>' +
 
     sec('Needs attention') +
     '<div class="panel">' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('alert', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">Failed yesterday · 7 / 19 tasks</div></div>' +
+        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">Failed yesterday</div></div>' +
         '<span class="pill conflict">' + ic('alert', 11) + 'Failed</span></div>' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('clock', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Doing · 13 / 21 tasks</div></div>' +
+        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Doing · Target Oct 18</div></div>' +
         '<span class="pill blocked">' + ic('clock', 11) + 'Due in 22 h</span></div>' +
     '</div>' +
     '<div class="sec-note">Failed goals and goals due within 1 day surface here automatically.</div>' +
@@ -453,15 +520,13 @@ const SCREENS = {
     sec('Focus') +
     '<div class="goal-card press" data-go="goal-detail">' +
       '<div class="goal-top"><span class="chip">' + ic('target', 17) + '</span><div class="goal-name">Run a half marathon</div><span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
-      '<div class="goal-sub">2 projects · Active: Spring training plan · Week 6 of 16 · Target Oct 18</div>' +
-      '<div class="progress"><i style="width:62%"></i></div>' +
-      '<div class="goal-foot"><span class="row-meta">13 / 21 tasks · 62%</span><span class="tag">Health</span></div>' +
+      '<div class="goal-sub">2 projects · Active: Spring training plan · Target Oct 18</div>' +
+      '<div class="goal-foot"><span class="goal-labels">' + lbl('Health') + '</span></div>' +
     '</div>' +
     '<div class="goal-card press" data-go="goal-detail">' +
       '<div class="goal-top"><span class="chip">' + ic('target', 17) + '</span><div class="goal-name">Read 12 books in 2026</div><span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
-      '<div class="goal-sub">1 project · Evening reading plan · Currently: Atomic Habits ch. 7</div>' +
-      '<div class="progress green"><i style="width:42%"></i></div>' +
-      '<div class="goal-foot"><span class="row-meta">5 / 12 books · 42%</span><span class="tag">Growth</span></div>' +
+      '<div class="goal-sub">1 project · Evening reading plan</div>' +
+      '<div class="goal-foot"><span class="goal-labels">' + lbl('Growth') + '</span></div>' +
     '</div>' +
 
     sec('By status') +
@@ -486,27 +551,27 @@ const SCREENS = {
     '<div class="panel">' +
       '<div class="group-label">Doing</div>' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Health · 2 projects · Spring training plan</div></div>' +
-        '<span class="row-meta">62%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">' + lbl('Health') + ' 2 projects · Spring training plan</div></div>' +
+        CHEV + '</div>' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Read 12 books in 2026</div><div class="row-sub">Growth · 1 project · Atomic Habits ch. 7</div></div>' +
-        '<span class="row-meta">42%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Read 12 books in 2026</div><div class="row-sub">' + lbl('Growth') + ' 1 project · Evening reading plan</div></div>' +
+        CHEV + '</div>' +
       '<div class="group-label">Todo</div>' +
       '<div class="row press"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Emergency fund ¥100,000</div><div class="row-sub">Finance · No project yet</div></div>' +
-        '<span class="row-meta">0%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Emergency fund ¥100,000</div><div class="row-sub">' + lbl('Finance') + ' No project yet</div></div>' +
+        CHEV + '</div>' +
       '<div class="group-label">Paused</div>' +
       '<div class="row press"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Learn Japanese N3</div><div class="row-sub">Language · Paused 3 w ago</div></div>' +
-        '<span class="row-meta">28%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Learn Japanese N3</div><div class="row-sub">' + lbl('Language') + ' Paused 3 w ago</div></div>' +
+        CHEV + '</div>' +
       '<div class="group-label">Failed</div>' +
       '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">Work · Failed yesterday</div></div>' +
-        '<span class="row-meta">34%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">' + lbl('Work') + ' Failed yesterday</div></div>' +
+        CHEV + '</div>' +
       '<div class="group-label">Done</div>' +
       '<div class="row press"><span class="chip">' + ic('target', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Run 10 km under 50 min</div><div class="row-sub">Health · Completed Jun 30</div></div>' +
-        '<span class="row-meta">100%</span>' + CHEV + '</div>' +
+        '<div class="row-main"><div class="row-title">Run 10 km under 50 min</div><div class="row-sub">' + lbl('Health') + ' Completed Jun 30</div></div>' +
+        CHEV + '</div>' +
     '</div>' +
 
     sec('Recent activity') +
@@ -524,22 +589,22 @@ const SCREENS = {
     '<div class="gd">' +
       '<span class="chip lg">' + ic('target', 24) + '</span>' +
       '<h1>Run a half marathon</h1>' +
-      '<div class="gd-meta"><span class="pill doing">' + ic('circle', 11) + 'Doing</span><span class="tag">Health</span><span class="dot">·</span><span class="gd-target">Target Oct 18</span></div>' +
-      '<div class="progress" style="height:7px;margin-top:15px"><i style="width:62%"></i></div>' +
-      '<div class="gd-progress-label"><span><b>62%</b> complete</span><span>across 2 projects</span></div>' +
+      '<div class="gd-meta"><span class="pill doing">' + ic('circle', 11) + 'Doing</span><span class="dot">·</span><span class="gd-target">Target Oct 18</span></div>' +
+      lblRow(['Health']) +
+      '<div class="gd-counts">' +
+        '<div class="gd-count"><div class="gd-count-num">1<em> / 2</em></div><div class="gd-count-label">Active projects</div></div>' +
+      '</div>' +
     '</div>' +
 
     sec('Projects — plans for this goal') +
     '<div class="goal-card press" data-go="project-detail">' +
       '<div class="goal-top"><span class="chip">' + ic('box', 17) + '</span><div class="goal-name">Spring training plan</div><span class="pill active">' + ic('circle', 11) + 'Active</span></div>' +
-      '<div class="goal-sub">Week 6 of 16 · 3 sub-goals · 2 sessions this week</div>' +
-      '<div class="progress"><i style="width:62%"></i></div>' +
-      '<div class="goal-foot"><span class="row-meta">13 / 21 tasks · 62%</span><span class="tag">Current plan</span></div>' +
+      '<div class="goal-sub">3 sub-goals · Target Oct 18</div>' +
+      '<div class="goal-foot"><span class="tag">Current plan</span></div>' +
     '</div>' +
     '<div class="goal-card press" data-go="project-detail">' +
       '<div class="goal-top"><span class="chip">' + ic('box', 17) + '</span><div class="goal-name">Off-season base building</div><span class="pill planning">' + ic('circle', 11) + 'Planning</span></div>' +
       '<div class="goal-sub">Alternative plan · starts Nov · 2 sub-goals drafted</div>' +
-      '<div class="goal-foot"><span class="row-meta">0 / 9 tasks · 0%</span></div>' +
     '</div>' +
     '<div class="blist"><div class="row press"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>New project — another way to reach this goal</span></div></div>' +
     '<div class="sec-note">A goal only sets the target. Each project is one plan that decomposes it into sub-goals and the tasks that implement them.</div>' +
@@ -601,28 +666,159 @@ const SCREENS = {
     ]) +
   '</div>',
 
+  tasks: () => statusbar() +
+  inlineNav('Tasks', 'plus') +
+  '<div class="scroll">' +
+    '<div class="stats">' +
+      '<div class="stat"><div class="stat-num">3</div><div class="stat-label">Doing</div></div>' +
+      '<div class="stat"><div class="stat-num c-ink">8</div><div class="stat-label">Todo</div></div>' +
+      '<div class="stat"><div class="stat-num">12</div><div class="stat-label">Done</div></div>' +
+      '<div class="stat"><div class="stat-num c-amber">2</div><div class="stat-label">Overdue</div></div>' +
+    '</div>' +
+
+    sec('Needs attention') +
+    '<div class="panel">' +
+      '<div class="row press" data-go="task-detail"><span class="chip">' + ic('alert', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Intervals 6 × 800 m</div><div class="row-sub">Spring training plan · Due yesterday</div></div>' +
+        '<span class="pill conflict">' + ic('alert', 11) + 'Overdue 1 d</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Book race slot — city half</div><div class="row-sub">Spring training plan · Registration closes soon</div></div>' +
+        '<span class="pill blocked">' + ic('clock', 11) + 'Due in 1 h</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="chip">' + ic('alert', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Draft release checklist</div><div class="row-sub">Becoming MVP · Failed yesterday</div></div>' +
+        '<span class="pill conflict">' + ic('alert', 11) + 'Failed</span></div>' +
+    '</div>' +
+    '<div class="sec-note">Overdue tasks, tasks due within 2 hours, and failed tasks surface here automatically.</div>' +
+
+    sec('Doing now') +
+    '<div class="blist">' +
+      '<div class="row press" data-go="task-detail"><span class="check doing"></span>' +
+        '<div class="row-main"><div class="row-title">Long run 14 km</div><div class="row-sub">Spring training plan · Due Sat</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="check doing"></span>' +
+        '<div class="row-main"><div class="row-title">Write chapter 3 outline</div><div class="row-sub">Evening reading plan</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Review N3 grammar deck</div><div class="row-sub">Japanese immersion</div></div>' +
+        '<span class="pill paused">' + ic('pause', 11) + 'Paused</span></div>' +
+    '</div>' +
+
+    sec('By status') +
+    '<div class="panel">' +
+      '<div class="row"><span class="pill doing">' + ic('circle', 11) + 'Doing</span><div class="row-main"></div><span class="count">3</span></div>' +
+      '<div class="row"><span class="pill todo">' + ic('circle', 11) + 'Todo</span><div class="row-main"></div><span class="count">8</span></div>' +
+      '<div class="row"><span class="pill paused">' + ic('pause', 11) + 'Paused</span><div class="row-main"></div><span class="count">2</span></div>' +
+      '<div class="row"><span class="pill conflict">' + ic('alert', 11) + 'Failed</span><div class="row-main"></div><span class="count">1</span></div>' +
+      '<div class="row"><span class="pill done">' + ic('check', 11) + 'Done</span><div class="row-main"></div><span class="count">12</span></div>' +
+    '</div>' +
+
+    sec('By label') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('tag', 17) + '</span><div class="row-main"><div class="row-title">Health</div></div><span class="count">6</span></div>' +
+      '<div class="row"><span class="chip">' + ic('tag', 17) + '</span><div class="row-main"><div class="row-title">Work</div></div><span class="count">4</span></div>' +
+      '<div class="row"><span class="chip">' + ic('tag', 17) + '</span><div class="row-main"><div class="row-title">Growth</div></div><span class="count">5</span></div>' +
+    '</div>' +
+
+    sec('All tasks') +
+    '<div class="panel">' +
+      '<div class="group-label">Doing</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check doing"></span>' +
+        '<div class="row-main"><div class="row-title">Long run 14 km</div><div class="row-sub">Spring training plan · Due Sat</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="check doing"></span>' +
+        '<div class="row-main"><div class="row-title">Write chapter 3 outline</div><div class="row-sub">Evening reading plan</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="group-label">Todo</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Buy new running shoes</div><div class="row-sub">Spring training plan · Due next Mon</div></div>' +
+        CHEV + '</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Plan tempo session week 7</div><div class="row-sub">Spring training plan</div></div>' +
+        CHEV + '</div>' +
+      '<div class="group-label">Paused</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Review N3 grammar deck</div><div class="row-sub">Japanese immersion · Paused 3 d ago</div></div>' +
+        '<span class="pill paused">' + ic('pause', 11) + 'Paused</span></div>' +
+      '<div class="group-label">Failed</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Draft release checklist</div><div class="row-sub">Becoming MVP · Failed yesterday</div></div>' +
+        '<span class="pill conflict">' + ic('alert', 11) + 'Failed</span></div>' +
+      '<div class="group-label">Done</div>' +
+      '<div class="row press t-done" data-go="task-detail"><span class="check done">' + ic('check', 15) + '</span>' +
+        '<div class="row-main"><div class="row-title">Recovery run 6 km</div><div class="row-sub">Spring training plan · Completed Tue</div></div>' +
+        '<span class="pill done">' + ic('check', 11) + 'Done</span></div>' +
+    '</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'check', t:'Completed “Recovery run 6 km”', s:'Task · Spring training plan', w:'2 d' },
+      { i:'play', t:'Started “Long run 14 km”', s:'Task · Spring training plan', w:'3 d' },
+      { i:'alert', t:'Failed “Draft release checklist”', s:'Task · Becoming MVP', w:'1 d' },
+    ]) +
+  '</div>' +
+  tabbar('library'),
+
+  'task-detail': () => statusbar() +
+  inlineNav('Task', 'pencil') +
+  '<div class="scroll">' +
+    '<div class="gd">' +
+      '<span class="chip lg">' + ic('checkCircle', 24) + '</span>' +
+      '<h1>Long run 14 km</h1>' +
+      '<div class="gd-meta"><span class="pill doing">' + ic('circle', 11) + 'Doing</span><span class="dot">·</span><span class="gd-target">Due Sat, Aug 22</span></div>' +
+      lblRow(['Health']) +
+    '</div>' +
+
+    '<div class="task-actions">' +
+      '<button class="chip-btn press">' + ic('check', 13) + ' Complete</button>' +
+      '<button class="btn-ghost press">' + ic('pause', 12) + ' Pause</button>' +
+      '<button class="btn-ghost danger press">' + ic('alert', 12) + ' Fail</button>' +
+    '</div>' +
+
+    sec('Belongs to') +
+    '<div class="panel">' +
+      '<div class="row press" data-go="project-detail"><span class="chip">' + ic('box', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Spring training plan</div><div class="row-sub">Project</div></div>' + CHEV + '</div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Build base fitness</div><div class="row-sub">Goal · Run a half marathon</div></div>' + CHEV + '</div>' +
+    '</div>' +
+
+    sec('Description') +
+    '<div class="panel"><div class="desc">Easy aerobic run at conversational pace, heart rate zone 2. Route: riverside loop. Fuel: one gel at km 8, water at both fountains. If it rains, swap with Sunday\'s recovery run instead of skipping.</div></div>' +
+
+    sec('Execution records') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('play', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Started</div><div class="row-sub">taskStarted</div></div>' +
+        '<span class="row-meta">Mon 7:12</span></div>' +
+      '<div class="row"><span class="chip">' + ic('pauseCircle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Paused — waiting for new shoes</div><div class="row-sub">taskPaused</div></div>' +
+        '<span class="row-meta">Tue 18:40</span></div>' +
+      '<div class="row"><span class="chip">' + ic('play', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Resumed</div><div class="row-sub">taskResumed</div></div>' +
+        '<span class="row-meta">Wed 6:55</span></div>' +
+      '<div class="row"><span class="chip">' + ic('plus', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Created</div><div class="row-sub">taskCreated</div></div>' +
+        '<span class="row-meta">Aug 10</span></div>' +
+    '</div>' +
+    '<div class="sec-note">Every lifecycle transition appends an immutable record here, newest first.</div>' +
+  '</div>',
+
   ideas: () => statusbar() +
-  inlineNav('Ideas', 'plus') +
+  inlineNav('Ideas') +
   '<div class="scroll">' +
     '<div style="height:12px"></div>' +
     '<div class="panel"><div class="capture"><span class="plus-c">' + ic('plus', 15) + '</span><span>Capture an idea…</span><button class="chip-btn">Add</button></div></div>' +
 
-    sec('Inbox') +
+    '<div class="segmented"><button class="seg active" data-seg="open">Open · 4</button><button class="seg" data-seg="handled">Handled · 12</button></div>' +
+    '<div data-panel="open">' + sec('To process') +
     '<div class="blist">' +
-      '<div class="row press"><span class="chip">' + ic('bulb', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Habit streak widget</div><div class="row-sub">Turn records into a streak view · 2 w ago</div></div>' +
-        '<span class="pill captured">' + ic('circle', 11) + 'Captured</span></div>' +
-      '<div class="row press"><span class="chip">' + ic('bulb', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Auto-generate weekly review</div><div class="row-sub">Summarize records every Sunday · 5 d ago</div></div>' +
-        '<span class="pill exploring">' + ic('circle', 11) + 'Exploring</span></div>' +
-      '<div class="row press"><span class="chip">' + ic('bulb', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Share goal progress with friends</div><div class="row-sub">Accountability through sharing · 3 d ago</div></div>' +
-        '<span class="pill captured">' + ic('circle', 11) + 'Captured</span></div>' +
-      '<div class="row press"><span class="chip">' + ic('bulb', 17) + '</span>' +
-        '<div class="row-main"><div class="row-title">Pomodoro focus mode</div><div class="row-sub">Parked until MVP ships · 1 mo ago</div></div>' +
-        '<span class="pill paused">' + ic('pause', 11) + 'Paused</span></div>' +
+      '<div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('bulb', 17) + '</span><div class="row-main"><div class="row-title">Habit streak widget</div><div class="row-sub"><span class="idea-state captured">Captured</span> · 2 w ago</div></div><button class="idea-derive">' + ic('plus', 15) + '</button></div>' +
+      '<div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('sparkle', 17) + '</span><div class="row-main"><div class="row-title">Auto-generate weekly review</div><div class="row-sub"><span class="idea-state exploring">Exploring</span> · 5 d ago</div></div><button class="idea-derive">' + ic('plus', 15) + '</button></div>' +
+      '<div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('bulb', 17) + '</span><div class="row-main"><div class="row-title">Share goal progress with friends</div><div class="row-sub"><span class="idea-state captured">Captured</span> · 3 d ago</div></div><button class="idea-derive">' + ic('plus', 15) + '</button></div>' +
+      '<div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('pauseCircle', 17) + '</span><div class="row-main"><div class="row-title">Pomodoro focus mode</div><div class="row-sub"><span class="idea-state paused">Paused</span> · 1 mo ago</div></div><button class="idea-derive">' + ic('plus', 15) + '</button></div>' +
     '</div>' +
-    '<div class="sec-note">Ideas are casual captures. When one matures, transform it into a Goal, Task or Note.</div>' +
+    '<div class="sec-note">Tap an idea to explore it, or use + to create a Goal, Task, or Note immediately.</div></div>' +
+    '<div data-panel="handled" class="hidden">' + sec('Recently handled') + '<div class="blist"><div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('bulb', 17) + '</span><div class="row-main"><div class="row-title">Morning pages</div><div class="row-sub"><span class="idea-state handled">Handled</span> · Goal created</div></div><button class="idea-derive">' + ic('plus', 15) + '</button></div></div></div>' +
 
     sec('Recent activity') +
     activityPanel([
@@ -632,6 +828,18 @@ const SCREENS = {
     ]) +
   '</div>' +
   tabbar('library'),
+
+  'idea-detail': () => statusbar() +
+  inlineNav('Idea', 'pencil') +
+  '<div class="scroll">' +
+    '<div class="idea-card"><div class="idea-card-top"><span class="chip lg">' + ic('bulb', 24) + '</span><button class="idea-status-button"><span class="pill exploring">' + ic('sparkle', 11) + 'Exploring</span><span class="status-edit">' + ic('pencil', 10) + '</span></button></div><div class="idea-card-content">Auto-generate a weekly review from completed tasks, goals, and records every Sunday.</div><div class="idea-card-note">Updated 5 days ago</div>' + lblRow(['Growth', 'Work']) + '</div>' +
+    sec('Create from this idea') +
+    '<div class="derive-grid"><button class="derive-tile"><span class="chip">' + ic('target', 19) + '</span><span>Goal</span></button><button class="derive-tile"><span class="chip">' + ic('checkCircle', 19) + '</span><span>Task</span></button><button class="derive-tile"><span class="chip">' + ic('doc', 19) + '</span><span>Note</span></button></div>' +
+    '<div class="sec-note">The original idea stays intact. New items link back here, and the idea moves to Handled.</div>' +
+    sec('Created from this idea') +
+    '<div class="panel"><div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span><div class="row-main"><div class="row-title">Build a weekly review system</div><div class="row-sub">Goal · Todo</div></div>' + CHEV + '</div><div class="row press" data-go="task-detail"><span class="chip">' + ic('checkCircle', 17) + '</span><div class="row-main"><div class="row-title">Prototype weekly summary</div><div class="row-sub">Task · Becoming MVP</div></div>' + CHEV + '</div><div class="row"><span class="chip">' + ic('doc', 17) + '</span><div class="row-main"><div class="row-title">Weekly review methodology</div><div class="row-sub">Note · created 2 d ago</div></div>' + CHEV + '</div></div>' +
+    sec('Recent activity') + activityPanel([{i:'checkCircle',t:'Created task “Prototype weekly summary”',s:'Derived from this idea',w:'2 d'},{i:'target',t:'Created goal “Build a weekly review system”',s:'Derived from this idea',w:'3 d'},{i:'sparkle',t:'Started exploring',s:'Idea · status changed',w:'5 d'}]) +
+  '</div>',
 
   setting: () => statusbar() +
   '<div class="scroll">' +
@@ -680,8 +888,11 @@ const PHONES = [
   ['goals',          '04 · Goals'],
   ['goal-detail',    '05 · Goal detail'],
   ['project-detail', '06 · Project detail'],
-  ['ideas',          '07 · Ideas'],
-  ['setting',        '08 · Setting'],
+  ['tasks',          '07 · Tasks'],
+  ['task-detail',    '08 · Task detail'],
+  ['ideas',          '09 · Ideas'],
+  ['idea-detail',    '10 · Idea detail'],
+  ['setting',        '11 · Setting'],
 ];
 
 const board = document.getElementById('board');
@@ -735,6 +946,24 @@ document.addEventListener('click', e => {
     const screen = segBtn.closest('.screen');
     screen.querySelectorAll('[data-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== segBtn.dataset.seg));
     return;
+  }
+  const lbWrap = e.target.closest('[data-labels]');
+  if (lbWrap) {
+    const lbDel = e.target.closest('[data-label-del]');
+    if (lbDel) { lbDel.closest('.lbl').remove(); return; }
+    const lbAdd = e.target.closest('[data-label-add]');
+    if (lbAdd) {
+      const used = Array.from(lbWrap.querySelectorAll('.lbl')).map(x => x.dataset.label);
+      const next = Object.keys(LABEL_COLORS).find(n => !used.includes(n));
+      if (next) lbAdd.insertAdjacentHTML('beforebegin', lbl(next, true));
+      return;
+    }
+    const lbEdit = e.target.closest('[data-label-edit]');
+    if (lbEdit) {
+      const on = lbWrap.classList.toggle('editing');
+      lbEdit.querySelector('span').textContent = on ? 'Done' : 'Edit';
+      return;
+    }
   }
   const go = e.target.closest('[data-go]');
   if (go) {

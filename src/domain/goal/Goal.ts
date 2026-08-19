@@ -1,5 +1,6 @@
 import { DomainError } from '../shared/errors';
-import type { GoalId, LabelId, ProjectId } from '../shared/ids';
+import type { GoalId, LabelId, MilestoneId, ProjectId } from '../shared/ids';
+import type { Project } from '../project/Project';
 
 export type GoalStatus = 'todo' | 'doing' | 'done' | 'paused' | 'failed';
 
@@ -29,6 +30,8 @@ export class Goal {
     readonly projectId: ProjectId | undefined,
     /** The parent goal in the goal tree, if this is a sub-goal. */
     readonly parentGoalId: GoalId | undefined,
+    /** The milestone this goal is linked to, if any. */
+    private _milestoneId: MilestoneId | undefined,
     /** When the goal was created. */
     readonly createdAt: Date,
     /** When the goal was last modified. */
@@ -42,6 +45,7 @@ export class Goal {
     due?: Date;
     projectId?: ProjectId;
     parentGoalId?: GoalId;
+    milestoneId?: MilestoneId;
     now: Date;
   }): Goal {
     return new Goal(
@@ -54,6 +58,7 @@ export class Goal {
       [],
       params.projectId,
       params.parentGoalId,
+      params.milestoneId,
       params.now,
       params.now,
     );
@@ -70,6 +75,7 @@ export class Goal {
     labelIds: LabelId[];
     projectId?: ProjectId;
     parentGoalId?: GoalId;
+    milestoneId?: MilestoneId;
     createdAt: Date;
     updatedAt: Date;
   }): Goal {
@@ -83,6 +89,7 @@ export class Goal {
       [...params.labelIds],
       params.projectId,
       params.parentGoalId,
+      params.milestoneId,
       params.createdAt,
       params.updatedAt,
     );
@@ -106,6 +113,10 @@ export class Goal {
 
   get archived(): boolean {
     return this._archived;
+  }
+
+  get milestoneId(): MilestoneId | undefined {
+    return this._milestoneId;
   }
 
   get updatedAt(): Date {
@@ -142,6 +153,25 @@ export class Goal {
     this.transition(['done', 'failed'], 'todo', now);
   }
 
+  /**
+   * Activates `project` as this goal's current plan. The active project is
+   * derived (the project with status `active`), so at most one may be active:
+   * the previously active project, if any and different, is paused first.
+   * Both projects must belong to this goal.
+   */
+  activateProject(project: Project, currentActive: Project | undefined, now: Date): void {
+    if (project.goalId !== this.id) {
+      throw new DomainError('Project does not belong to this goal');
+    }
+    if (currentActive !== undefined && currentActive.goalId !== this.id) {
+      throw new DomainError('Current active project does not belong to this goal');
+    }
+    if (currentActive !== undefined && currentActive.id !== project.id) {
+      currentActive.pause(now);
+    }
+    project.activate(now);
+  }
+
   rename(title: string, now: Date): void {
     if (title.trim().length === 0) {
       throw new DomainError('Goal title must not be empty');
@@ -157,6 +187,12 @@ export class Goal {
 
   clearDue(now: Date): void {
     this._due = undefined;
+    this._updatedAt = now;
+  }
+
+  /** Links the goal to a milestone; passing undefined clears the link. */
+  assignMilestone(milestoneId: MilestoneId | undefined, now: Date): void {
+    this._milestoneId = milestoneId;
     this._updatedAt = now;
   }
 

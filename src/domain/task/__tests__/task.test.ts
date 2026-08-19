@@ -11,8 +11,43 @@ describe('Task', () => {
     const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     expect(task.status).toBe('todo');
     expect(task.projectId).toBe('p1');
+    expect(task.goalId).toBeUndefined();
+    expect(task.milestoneId).toBeUndefined();
     expect(task.createdAt).toBe(t0);
     expect(task.updatedAt).toBe(t0);
+  });
+
+  it('accepts an optional goal and milestone link at creation', () => {
+    const task = Task.create({
+      id: 't1',
+      title: 'Train',
+      projectId: 'p1',
+      goalId: 'g1',
+      milestoneId: 'm1',
+      now: t0,
+    });
+    expect(task.goalId).toBe('g1');
+    expect(task.milestoneId).toBe('m1');
+  });
+
+  it('assigns a goal and bumps updatedAt', () => {
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
+    task.assignGoal('g1', t1);
+    expect(task.goalId).toBe('g1');
+    expect(task.updatedAt).toBe(t1);
+    task.assignGoal('g2', t2);
+    expect(task.goalId).toBe('g2');
+    expect(task.updatedAt).toBe(t2);
+  });
+
+  it('assigns and clears a milestone link', () => {
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
+    task.assignMilestone('m1', t1);
+    expect(task.milestoneId).toBe('m1');
+    expect(task.updatedAt).toBe(t1);
+    task.assignMilestone(undefined, t2);
+    expect(task.milestoneId).toBeUndefined();
+    expect(task.updatedAt).toBe(t2);
   });
 
   it('follows the valid transition path and bumps updatedAt', () => {
@@ -152,6 +187,8 @@ describe('Task', () => {
     const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     task.start(t1);
     task.setDue(t2, t1);
+    task.assignGoal('g1', t1);
+    task.assignMilestone('m1', t1);
     task.addLabel('l1');
     const restored = Task.restore({
       id: task.id,
@@ -162,6 +199,8 @@ describe('Task', () => {
       archived: task.archived,
       labelIds: task.labelIds,
       projectId: task.projectId,
+      goalId: task.goalId,
+      milestoneId: task.milestoneId,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
     });
@@ -174,6 +213,8 @@ describe('Task', () => {
     expect(restored.labelIds).toEqual(task.labelIds);
     expect(restored.labelIds).not.toBe(task.labelIds);
     expect(restored.projectId).toBe(task.projectId);
+    expect(restored.goalId).toBe(task.goalId);
+    expect(restored.milestoneId).toBe(task.milestoneId);
     expect(restored.createdAt).toBe(task.createdAt);
     expect(restored.updatedAt).toBe(task.updatedAt);
   });

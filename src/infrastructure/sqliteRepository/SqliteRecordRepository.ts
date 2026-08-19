@@ -12,8 +12,8 @@ interface RecordRow {
 /**
  * RecordRepository persisted in SQLite. Records are append-only and immutable:
  * `append` is a plain INSERT, so a duplicate id fails on the PK constraint.
- * Record-to-model links live in the relations table, with the record as the
- * relation's source end.
+ * Record-to-model links live in the relations table, with the record as either
+ * end of the relation.
  */
 export class SqliteRecordRepository implements RecordRepository {
   constructor(private readonly db: SqliteDatabase) {}
@@ -25,15 +25,17 @@ export class SqliteRecordRepository implements RecordRepository {
     );
   }
 
-  /** Records about a target, reached through relations; newest first. */
+  /** Records about a target, reached through relations in either direction; newest first. */
   async listByTarget(targetType: RecordTargetType, targetId: string): Promise<Record[]> {
     const rows = await this.db.all<RecordRow>(
-      `SELECT records.* FROM records
+      `SELECT DISTINCT records.* FROM records
        JOIN relations
-         ON relations.source_type = 'record' AND relations.source_id = records.id
-       WHERE relations.target_type = ? AND relations.target_id = ?
+         ON (relations.source_type = 'record' AND relations.source_id = records.id
+             AND relations.target_type = ? AND relations.target_id = ?)
+         OR (relations.target_type = 'record' AND relations.target_id = records.id
+             AND relations.source_type = ? AND relations.source_id = ?)
        ORDER BY records.occurred_at DESC, records.id DESC`,
-      [targetType, targetId],
+      [targetType, targetId, targetType, targetId],
     );
     return rows.map((row) => this.hydrate(row));
   }

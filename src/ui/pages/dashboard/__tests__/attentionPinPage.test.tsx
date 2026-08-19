@@ -5,6 +5,8 @@ import {
   FakeAttentionEntryRepository,
   FakeGoalRepository,
   FakeIdeaRepository,
+  FakeLabelRepository,
+  FakeMilestoneRepository,
   FakeProjectRepository,
   FakeRecordRepository,
   FakeRelationRepository,
@@ -14,6 +16,16 @@ import {
 import { AttentionService } from '../../../../application/attention/AttentionService';
 import { PinCandidatesService } from '../../../../application/attention/PinCandidatesService';
 import { DashboardService } from '../../../../application/dashboard/DashboardService';
+import { GoalDetailService } from '../../../../application/goal/GoalDetailService';
+import { GoalsOverviewService } from '../../../../application/goal/GoalsOverviewService';
+import { LibraryOverviewService } from '../../../../application/library/LibraryOverviewService';
+import { AddMilestoneService } from '../../../../application/project/AddMilestoneService';
+import { AddSubGoalService } from '../../../../application/project/AddSubGoalService';
+import { AddTaskService } from '../../../../application/project/AddTaskService';
+import { ProjectDetailService } from '../../../../application/project/ProjectDetailService';
+import { ProjectsOverviewService } from '../../../../application/project/ProjectsOverviewService';
+import { AllocateResourceService } from '../../../../application/resource/AllocateResourceService';
+import { ResourcePoolsService } from '../../../../application/resource/ResourcePoolsService';
 import { AttentionEntry } from '../../../../domain/attention/AttentionEntry';
 import { Goal } from '../../../../domain/goal/Goal';
 import { Idea } from '../../../../domain/idea/Idea';
@@ -32,6 +44,8 @@ function makeServices() {
   const relations = new FakeRelationRepository();
   const records = new FakeRecordRepository();
   const attentionEntries = new FakeAttentionEntryRepository();
+  const labels = new FakeLabelRepository();
+  const milestones = new FakeMilestoneRepository();
   const services: AppServices = {
     dashboard: new DashboardService(
       goals,
@@ -45,6 +59,16 @@ function makeServices() {
     ),
     attention: new AttentionService(attentionEntries),
     pinCandidates: new PinCandidatesService(goals, tasks, ideas, attentionEntries),
+    goalsOverview: new GoalsOverviewService(goals, labels),
+    goalDetail: new GoalDetailService(goals, projects, records),
+    projectsOverview: new ProjectsOverviewService(projects, goals, labels),
+    projectDetail: new ProjectDetailService(projects, goals, tasks, resources, records),
+    libraryOverview: new LibraryOverviewService(goals, tasks, projects, ideas, resources),
+    addSubGoal: new AddSubGoalService(projects, goals),
+    addTask: new AddTaskService(projects, goals, tasks),
+    addMilestone: new AddMilestoneService(projects, milestones),
+    allocateResource: new AllocateResourceService(resources),
+    resourcePools: new ResourcePoolsService(resources),
   };
   return { services, goals, tasks, ideas, attentionEntries };
 }

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Allocate resource</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Allocate resource';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Allocate resource') +
+  '<div class="scroll">' +
+    // destination
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('box', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Spring training plan</div>' +
+        '<div class="row-sub">Allocating to this project</div></div></div>' +
+    '</div>' +
+
+    sec('Choose a resource — global pools') +
+    '<div class="panel">' +
+      '<div class="row press"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Time budget</div>' +
+        '<div class="row-sub">Time · 12 h unallocated in pool · allocates as spans</div></div>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('banknote', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Gear budget</div>' +
+        '<div class="row-sub">Quantity · ¥2,000 of ¥5,000 available in pool</div></div>' +
+        '<span class="check done">' + ic('check', 15) + '</span></div>' +
+      '<div class="row press"><span class="chip">' + ic('sparkle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">AI coach tokens</div>' +
+        '<div class="row-sub">Quantity · 50 k available in pool</div></div></div>' +
+      '<div class="row press"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>New resource…</span></div>' +
+    '</div>' +
+
+    // editor for the selected quantity resource; picking the time resource swaps
+    // this section for span rows that route to the span picker
+    sec('Amount — Gear budget') +
+    '<div class="panel">' +
+      '<div class="row"><span class="flabel">Amount</span><input class="finput" value="¥1,000">' +
+        '<span class="row-meta">≤ ¥2,000</span></div>' +
+      '<div class="row"><div class="row-main"><div class="row-sub">This project already holds ¥3,000 of this pool; the new allocation adds to it. The pool’s total allocated never exceeds its amount.</div></div></div>' +
+    '</div>' +
+    '<div class="sec-note">Quantity resources take an amount. Time resources take concrete spans — selecting “Time budget” above switches this section to the span picker.</div>' +
+
+    '<button class="btn-primary press">Allocate to project</button>' +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

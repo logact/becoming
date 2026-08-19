@@ -21,6 +21,7 @@ function makeGoal(): Goal {
     title: 'Ship the app',
     description: 'Get v1 into the store',
     due,
+    milestoneId: 'm1',
     now: t0,
   });
   goal.addLabel('l1');
@@ -64,6 +65,7 @@ describe('SqliteGoalRepository', () => {
     expect(loaded!.status).toBe('doing');
     expect(loaded!.archived).toBe(true);
     expect(loaded!.labelIds).toEqual(['l1', 'l2']);
+    expect(loaded!.milestoneId).toBe('m1');
     expect(loaded!.createdAt).toEqual(t0);
     expect(loaded!.updatedAt).toEqual(t2);
   });
@@ -155,6 +157,7 @@ describe('SqliteGoalRepository', () => {
 
     expect(loaded!.description).toBeUndefined();
     expect(loaded!.due).toBeUndefined();
+    expect(loaded!.milestoneId).toBeUndefined();
     expect(loaded!.labelIds).toEqual([]);
   });
 });
