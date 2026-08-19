@@ -32,4 +32,19 @@ export class Record {
       params.occurredAt,
     );
   }
+
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: RecordId;
+    kind: string;
+    detail?: string;
+    occurredAt: Date;
+  }): Record {
+    return new Record(
+      params.id,
+      params.kind,
+      params.detail,
+      params.occurredAt,
+    );
+  }
 }

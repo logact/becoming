@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Project detail</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Project detail';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Project', 'pencil') +
+  '<div class="scroll">' +
+    '<div class="gd">' +
+      '<span class="chip lg">' + ic('box', 24) + '</span>' +
+      '<h1>Spring training plan</h1>' +
+      '<div class="gd-meta"><span class="pill active">' + ic('circle', 11) + 'Active</span><span class="dot">·</span><span class="gd-target">Week 6 of 16 · ends Oct 18</span></div>' +
+      '<div class="row press" data-go="goal-detail" style="padding:12px 0 0;min-height:0"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-sub">Goal</div><div class="row-title" style="font-size:15px">Run a half marathon</div></div>' + CHEV + '</div>' +
+      '<div class="progress" style="height:7px;margin-top:15px"><i style="width:62%"></i></div>' +
+      '<div class="gd-progress-label"><span><b>62%</b> complete</span><span>2 of 3 sub-goals · 13 of 21 tasks</span></div>' +
+    '</div>' +
+
+    sec('Sub-goals — how this plan decomposes the goal') +
+    '<div class="blist">' +
+      '<div class="row"><div class="row-main"><div class="row-title">5 km under 24:00</div><div class="row-sub">4 / 4 tasks</div></div><span class="pill done">' + ic('check', 11) + 'Done</span></div>' +
+      '<div class="row"><div class="row-main"><div class="row-title">10 km under 50:00</div><div class="row-sub">6 / 9 tasks</div></div><span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="row"><div class="row-main"><div class="row-title">Race day: finish under 1:55</div><div class="row-sub">3 / 8 tasks</div></div><span class="pill todo">' + ic('circle', 11) + 'Todo</span></div>' +
+      '<div class="row press"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>Add sub-goal</span></div>' +
+    '</div>' +
+
+    sec('Tasks') +
+    '<div class="blist">' +
+      '<div class="row t-done"><span class="check done">' + ic('check', 15) + '</span><div class="row-main"><div class="row-title">Base run 8 km</div><div class="row-sub">5 km under 24:00 · Mon · Easy pace</div></div><span class="row-meta">Done</span></div>' +
+      '<div class="row"><span class="check doing"></span><div class="row-main"><div class="row-title">Intervals 6 × 800 m</div><div class="row-sub">10 km under 50:00 · Today · Track session</div></div><span class="row-meta">Doing</span></div>' +
+      '<div class="row"><span class="check"></span><div class="row-main"><div class="row-title">Tempo run 6 km</div><div class="row-sub">10 km under 50:00 · Thu · Threshold pace</div></div><span class="row-meta">Todo</span></div>' +
+      '<div class="row"><span class="check"></span><div class="row-main"><div class="row-title">Long run 16 km</div><div class="row-sub">Race day: finish under 1:55 · Sun · Zone 2</div></div><span class="row-meta">Todo</span></div>' +
+      '<div class="row press"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>Add task</span></div>' +
+    '</div>' +
+
+    sec('Resources — allocated to this project') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Time budget</div></div><span class="value">6 h / week</span></div>' +
+      '<div class="row"><span class="chip">' + ic('banknote', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Gear budget</div></div><span class="value">¥3,000 / mo</span></div>' +
+      '<div class="row"><span class="chip">' + ic('sparkle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">AI coach tokens</div></div><span class="value">50 k left</span></div>' +
+      '<div class="row press"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>Allocate resource</span></div>' +
+    '</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'check', t:'Completed “Long run 14 km”', s:'2 h ago · 1:18:24', w:'2 h' },
+      { i:'clock', t:'Logged “Intervals 6 × 800 m”', s:'Yesterday · 40:12', w:'1 d' },
+      { i:'doc', t:'Note “Race pacing strategy”', s:'3 d ago · extracted method', w:'3 d' },
+    ]) +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

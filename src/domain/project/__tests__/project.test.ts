@@ -139,4 +139,32 @@ describe('Project', () => {
     archived.archive(t0);
     expect(archived.isDueImminent(HOUR_MS, t0)).toBe(false);
   });
+
+  it('restores from persisted fields without enforcing invariants', () => {
+    const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
+    project.activate(t1);
+    project.setDue(t1, t2, t1);
+    project.addLabel('l1');
+    const restored = Project.restore({
+      id: project.id,
+      name: project.name,
+      goalId: project.goalId,
+      due: project.due,
+      status: project.status,
+      archived: project.archived,
+      labelIds: project.labelIds,
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+    });
+    expect(restored.id).toBe(project.id);
+    expect(restored.name).toBe(project.name);
+    expect(restored.goalId).toBe(project.goalId);
+    expect(restored.due).toBe(project.due);
+    expect(restored.status).toBe(project.status);
+    expect(restored.archived).toBe(project.archived);
+    expect(restored.labelIds).toEqual(project.labelIds);
+    expect(restored.labelIds).not.toBe(project.labelIds);
+    expect(restored.createdAt).toBe(project.createdAt);
+    expect(restored.updatedAt).toBe(project.updatedAt);
+  });
 });

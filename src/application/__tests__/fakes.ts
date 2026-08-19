@@ -64,7 +64,9 @@ export class FakeGoalRepository implements GoalRepository {
       (goal) =>
         (filter?.status === undefined || goal.status === filter.status) &&
         (filter?.archived === undefined || goal.archived === filter.archived) &&
-        (filter?.labelId === undefined || goal.labelIds.includes(filter.labelId)),
+        (filter?.labelId === undefined || goal.labelIds.includes(filter.labelId)) &&
+        (filter?.projectId === undefined || goal.projectId === filter.projectId) &&
+        (filter?.parentGoalId === undefined || goal.parentGoalId === filter.parentGoalId),
     );
   }
 
@@ -90,7 +92,6 @@ export class FakeTaskRepository implements TaskRepository {
         (filter?.status === undefined || task.status === filter.status) &&
         (filter?.archived === undefined || task.archived === filter.archived) &&
         (filter?.labelId === undefined || task.labelIds.includes(filter.labelId)) &&
-        (filter?.goalId === undefined || task.goalId === filter.goalId) &&
         (filter?.projectId === undefined || task.projectId === filter.projectId),
     );
   }

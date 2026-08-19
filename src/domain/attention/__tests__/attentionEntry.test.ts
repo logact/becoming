@@ -36,4 +36,19 @@ describe('AttentionEntry', () => {
       AttentionEntry.create({ id: 'a1', targetType: 'goal', targetId: '  ', kind: 'pin', now: t0 }),
     ).toThrow(DomainError);
   });
+
+  it('restores from persisted fields', () => {
+    const restored = AttentionEntry.restore({
+      id: 'a1',
+      targetType: 'goal',
+      targetId: 'g1',
+      kind: 'pin',
+      createdAt: t0,
+    });
+    expect(restored.id).toBe('a1');
+    expect(restored.targetType).toBe('goal');
+    expect(restored.targetId).toBe('g1');
+    expect(restored.kind).toBe('pin');
+    expect(restored.createdAt).toBe(t0);
+  });
 });

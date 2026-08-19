@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Goal detail</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Goal detail';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Goal', 'pencil') +
+  '<div class="scroll">' +
+    '<div class="gd">' +
+      '<span class="chip lg">' + ic('target', 24) + '</span>' +
+      '<h1>Run a half marathon</h1>' +
+      '<div class="gd-meta"><span class="pill doing">' + ic('circle', 11) + 'Doing</span><span class="tag">Health</span><span class="dot">·</span><span class="gd-target">Target Oct 18</span></div>' +
+      '<div class="progress" style="height:7px;margin-top:15px"><i style="width:62%"></i></div>' +
+      '<div class="gd-progress-label"><span><b>62%</b> complete</span><span>across 2 projects</span></div>' +
+    '</div>' +
+
+    sec('Projects — plans for this goal') +
+    '<div class="goal-card press" data-go="project-detail">' +
+      '<div class="goal-top"><span class="chip">' + ic('box', 17) + '</span><div class="goal-name">Spring training plan</div><span class="pill active">' + ic('circle', 11) + 'Active</span></div>' +
+      '<div class="goal-sub">Week 6 of 16 · 3 sub-goals · 2 sessions this week</div>' +
+      '<div class="progress"><i style="width:62%"></i></div>' +
+      '<div class="goal-foot"><span class="row-meta">13 / 21 tasks · 62%</span><span class="tag">Current plan</span></div>' +
+    '</div>' +
+    '<div class="goal-card press" data-go="project-detail">' +
+      '<div class="goal-top"><span class="chip">' + ic('box', 17) + '</span><div class="goal-name">Off-season base building</div><span class="pill planning">' + ic('circle', 11) + 'Planning</span></div>' +
+      '<div class="goal-sub">Alternative plan · starts Nov · 2 sub-goals drafted</div>' +
+      '<div class="goal-foot"><span class="row-meta">0 / 9 tasks · 0%</span></div>' +
+    '</div>' +
+    '<div class="blist"><div class="row press"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>New project — another way to reach this goal</span></div></div>' +
+    '<div class="sec-note">A goal only sets the target. Each project is one plan that decomposes it into sub-goals and the tasks that implement them.</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'check', t:'Completed “Long run 14 km”', s:'Task · Spring training plan · 2 h ago', w:'2 h' },
+      { i:'clock', t:'Logged “Intervals 6 × 800 m”', s:'Task · Spring training plan · yesterday', w:'1 d' },
+      { i:'box', t:'Created project “Off-season base building”', s:'Alternative plan · 1 w ago', w:'1 w' },
+    ]) +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

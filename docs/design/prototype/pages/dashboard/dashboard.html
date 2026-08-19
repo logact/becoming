@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Dashboard</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Dashboard';
+const SCREEN = () =>
+statusBar() +
+  '<div class="scroll">' +
+    '<div class="nav-large"><div class="eyebrow">Tuesday, August 18</div></div>' +
+
+    '<div class="stats">' +
+      '<div class="stat"><div class="stat-num">2</div><div class="stat-label">Doing now</div></div>' +
+      '<div class="stat"><div class="stat-num">3</div><div class="stat-label">Done today</div></div>' +
+      '<div class="stat"><div class="stat-num">5</div><div class="stat-label">Due today</div></div>' +
+    '</div>' +
+
+    sec('Doing now') +
+    '<div class="blist">' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Goal · Spring training plan</div>' +
+        '<div class="progress green"><i style="width:65%"></i></div></div><span class="row-meta">65%</span></div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('checkCircle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Intervals 6 × 800 m</div><div class="row-sub">Run a half marathon · Spring training plan</div>' +
+        '<div class="progress"><i style="width:40%"></i></div></div><span class="row-meta">40:12</span></div>' +
+      '<div class="row press"><span class="chip">' + ic('checkCircle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Wire goal detail screen</div><div class="row-sub">Ship Becoming MVP · v0.1 build</div>' +
+        '<div class="progress"><i style="width:30%"></i></div></div><span class="row-meta">1:20</span></div>' +
+      '<div class="row press" data-go="ideas"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Share goal progress with friends</div><div class="row-sub">Idea · not explored yet</div></div>' +
+        '<span class="pill captured">' + ic('circle', 11) + 'Captured</span></div>' +
+    '</div>' +
+
+    sec('Needs attention') +
+    '<div class="blist">' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('alert', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Ship Becoming MVP</div><div class="row-sub">Goal · Failed yesterday</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Book race-day hotel</div><div class="row-sub">Task · Overdue 3 h</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Goal · Due in 22 h</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('banknote', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Spring training plan</div><div class="row-sub">Project · Budget 92% used</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
+      '<div class="row press" data-go="ideas"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Idea “Habit streak widget”</div><div class="row-sub">Pinned</div></div>' +
+        '<button class="chip-btn">Remove</button></div>' +
+      '<div class="row press" data-go="attention-pin"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>Pin an item…</span></div>' +
+    '</div>' +
+    '<div class="sec-note">Failed, due-soon (goal/project 1 d, task 2 h) and resource-exhausted (≥90%) items surface automatically. Pin anything yourself — it stays until you remove it.</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'check', t:'Completed “Long run 14 km”', s:'Task · Run a half marathon', w:'2 h' },
+      { i:'plus', t:'Created task “Book race-day hotel”', s:'Run a half marathon', w:'5 h' },
+      { i:'banknote', t:'Consumed ¥120 from “Gear budget”', s:'Spring training plan', w:'1 d' },
+      { i:'alert', t:'Goal “Ship Becoming MVP” failed', s:'Goal · Work', w:'1 d' },
+      { i:'play', t:'Started “Intervals 6 × 800 m”', s:'Task · Run a half marathon', w:'2 d' },
+      { i:'bulb', t:'Captured “Share goal progress…”', s:'Idea', w:'3 d' },
+      { i:'pauseCircle', t:'Paused goal “Learn Japanese N3”', s:'Goal', w:'3 d' },
+      { i:'check', t:'Completed “Read chapter 6”', s:'Task · Read 12 books in 2026', w:'4 d' },
+      { i:'target', t:'Created goal “Emergency fund ¥100,000”', s:'Goal', w:'5 d' },
+      { i:'box', t:'Created project “Spring training plan”', s:'Project · Run a half marathon', w:'1 w' },
+    ]) +
+  '</div>' +
+  tabbar('dashboard')
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

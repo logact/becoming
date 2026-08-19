@@ -1,9 +1,14 @@
 import { DomainError } from '../shared/errors';
-import type { GoalId, LabelId } from '../shared/ids';
+import type { GoalId, LabelId, ProjectId } from '../shared/ids';
 
 export type GoalStatus = 'todo' | 'doing' | 'done' | 'paused' | 'failed';
 
-/** A target state the user aims to achieve. */
+/**
+ * A target state the user aims to achieve. A goal with a `projectId` is a
+ * sub-goal decomposed inside that project; `parentGoalId` carries the
+ * goal-tree structure. A top-level goal has neither and owns its projects
+ * directly.
+ */
 export class Goal {
   private constructor(
     /** Unique identifier of the goal. */
@@ -20,6 +25,10 @@ export class Goal {
     private _archived: boolean,
     /** Labels attached to the goal for classification. */
     readonly labelIds: LabelId[],
+    /** The project this goal belongs to as a sub-goal, if any. */
+    readonly projectId: ProjectId | undefined,
+    /** The parent goal in the goal tree, if this is a sub-goal. */
+    readonly parentGoalId: GoalId | undefined,
     /** When the goal was created. */
     readonly createdAt: Date,
     /** When the goal was last modified. */
@@ -31,6 +40,8 @@ export class Goal {
     title: string;
     description?: string;
     due?: Date;
+    projectId?: ProjectId;
+    parentGoalId?: GoalId;
     now: Date;
   }): Goal {
     return new Goal(
@@ -41,8 +52,39 @@ export class Goal {
       'todo',
       false,
       [],
+      params.projectId,
+      params.parentGoalId,
       params.now,
       params.now,
+    );
+  }
+
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: GoalId;
+    title: string;
+    description?: string;
+    due?: Date;
+    status: GoalStatus;
+    archived: boolean;
+    labelIds: LabelId[];
+    projectId?: ProjectId;
+    parentGoalId?: GoalId;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Goal {
+    return new Goal(
+      params.id,
+      params.title,
+      params.description,
+      params.due,
+      params.status,
+      params.archived,
+      [...params.labelIds],
+      params.projectId,
+      params.parentGoalId,
+      params.createdAt,
+      params.updatedAt,
     );
   }
 

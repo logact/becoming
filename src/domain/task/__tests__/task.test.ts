@@ -7,17 +7,16 @@ const t2 = new Date('2026-01-01T02:00:00Z');
 const HOUR_MS = 60 * 60 * 1000;
 
 describe('Task', () => {
-  it('is created in todo status with optional goal and project links', () => {
-    const task = Task.create({ id: 't1', title: 'Train', goalId: 'g1', projectId: 'p1', now: t0 });
+  it('is created in todo status with a project link', () => {
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     expect(task.status).toBe('todo');
-    expect(task.goalId).toBe('g1');
     expect(task.projectId).toBe('p1');
     expect(task.createdAt).toBe(t0);
     expect(task.updatedAt).toBe(t0);
   });
 
   it('follows the valid transition path and bumps updatedAt', () => {
-    const task = Task.create({ id: 't1', title: 'Train', now: t0 });
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     task.start(t1);
     expect(task.status).toBe('doing');
     expect(task.updatedAt).toBe(t1);
@@ -32,7 +31,7 @@ describe('Task', () => {
   });
 
   it('rejects invalid transitions', () => {
-    const task = Task.create({ id: 't1', title: 'Train', now: t0 });
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     expect(() => task.pause(t1)).toThrow(DomainError);
     expect(() => task.resume(t1)).toThrow(DomainError);
     expect(() => task.complete(t1)).toThrow(DomainError);
@@ -44,7 +43,7 @@ describe('Task', () => {
   });
 
   it('archives without touching status', () => {
-    const task = Task.create({ id: 't1', title: 'Train', now: t0 });
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     task.start(t1);
     task.archive(t2);
     expect(task.archived).toBe(true);
@@ -55,7 +54,7 @@ describe('Task', () => {
   });
 
   it('adds and removes labels idempotently', () => {
-    const task = Task.create({ id: 't1', title: 'Train', now: t0 });
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     task.addLabel('l1');
     task.addLabel('l1');
     expect(task.labelIds).toEqual(['l1']);
@@ -65,7 +64,7 @@ describe('Task', () => {
   });
 
   it('sets and clears a due date', () => {
-    const task = Task.create({ id: 't1', title: 'Train', now: t0 });
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     expect(task.due).toBeUndefined();
     task.setDue(t1, t1);
     expect(task.due).toBe(t1);
@@ -76,12 +75,12 @@ describe('Task', () => {
   });
 
   it('accepts a due at creation', () => {
-    const task = Task.create({ id: 't1', title: 'Train', due: t1, now: t0 });
+    const task = Task.create({ id: 't1', title: 'Train', due: t1, projectId: 'p1', now: t0 });
     expect(task.due).toBe(t1);
   });
 
   it('fails from doing or paused and rejects other statuses', () => {
-    const task = Task.create({ id: 't1', title: 'Train', now: t0 });
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     expect(() => task.fail(t1)).toThrow(DomainError);
 
     task.start(t1);
@@ -90,20 +89,20 @@ describe('Task', () => {
     expect(task.updatedAt).toBe(t2);
     expect(() => task.fail(t2)).toThrow(DomainError);
 
-    const paused = Task.create({ id: 't2', title: 'Stretch', now: t0 });
+    const paused = Task.create({ id: 't2', title: 'Stretch', projectId: 'p1', now: t0 });
     paused.start(t1);
     paused.pause(t2);
     paused.fail(t2);
     expect(paused.status).toBe('failed');
 
-    const done = Task.create({ id: 't3', title: 'Rest', now: t0 });
+    const done = Task.create({ id: 't3', title: 'Rest', projectId: 'p1', now: t0 });
     done.start(t1);
     done.complete(t2);
     expect(() => done.fail(t2)).toThrow(DomainError);
   });
 
   it('reopens from done or failed', () => {
-    const task = Task.create({ id: 't1', title: 'Train', now: t0 });
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     task.start(t1);
     task.complete(t2);
     task.reopen(t2);
@@ -117,35 +116,65 @@ describe('Task', () => {
   });
 
   it('flags a due within the window or already past as imminent', () => {
-    const dueSoon = Task.create({ id: 't1', title: 'Train', due: t1, now: t0 });
+    const dueSoon = Task.create({ id: 't1', title: 'Train', due: t1, projectId: 'p1', now: t0 });
     expect(dueSoon.isDueImminent(HOUR_MS, t0)).toBe(true);
     expect(dueSoon.isDueImminent(HOUR_MS - 1, t0)).toBe(false);
 
-    const pastDue = Task.create({ id: 't2', title: 'Stretch', due: t0, now: t0 });
+    const pastDue = Task.create({ id: 't2', title: 'Stretch', due: t0, projectId: 'p1', now: t0 });
     expect(pastDue.isDueImminent(HOUR_MS, t1)).toBe(true);
   });
 
   it('does not flag a due outside the window or a missing due', () => {
-    const dueLater = Task.create({ id: 't1', title: 'Train', due: t2, now: t0 });
+    const dueLater = Task.create({ id: 't1', title: 'Train', due: t2, projectId: 'p1', now: t0 });
     expect(dueLater.isDueImminent(HOUR_MS, t0)).toBe(false);
 
-    const noDue = Task.create({ id: 't2', title: 'Stretch', now: t0 });
+    const noDue = Task.create({ id: 't2', title: 'Stretch', projectId: 'p1', now: t0 });
     expect(noDue.isDueImminent(HOUR_MS, t0)).toBe(false);
   });
 
   it('does not flag done, failed, or archived tasks', () => {
-    const done = Task.create({ id: 't1', title: 'Train', due: t1, now: t0 });
+    const done = Task.create({ id: 't1', title: 'Train', due: t1, projectId: 'p1', now: t0 });
     done.start(t0);
     done.complete(t0);
     expect(done.isDueImminent(HOUR_MS, t0)).toBe(false);
 
-    const failed = Task.create({ id: 't2', title: 'Stretch', due: t1, now: t0 });
+    const failed = Task.create({ id: 't2', title: 'Stretch', due: t1, projectId: 'p1', now: t0 });
     failed.start(t0);
     failed.fail(t0);
     expect(failed.isDueImminent(HOUR_MS, t0)).toBe(false);
 
-    const archived = Task.create({ id: 't3', title: 'Rest', due: t1, now: t0 });
+    const archived = Task.create({ id: 't3', title: 'Rest', due: t1, projectId: 'p1', now: t0 });
     archived.archive(t0);
     expect(archived.isDueImminent(HOUR_MS, t0)).toBe(false);
+  });
+
+  it('restores from persisted fields without enforcing invariants', () => {
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
+    task.start(t1);
+    task.setDue(t2, t1);
+    task.addLabel('l1');
+    const restored = Task.restore({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      due: task.due,
+      status: task.status,
+      archived: task.archived,
+      labelIds: task.labelIds,
+      projectId: task.projectId,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    });
+    expect(restored.id).toBe(task.id);
+    expect(restored.title).toBe(task.title);
+    expect(restored.description).toBe(task.description);
+    expect(restored.due).toBe(task.due);
+    expect(restored.status).toBe(task.status);
+    expect(restored.archived).toBe(task.archived);
+    expect(restored.labelIds).toEqual(task.labelIds);
+    expect(restored.labelIds).not.toBe(task.labelIds);
+    expect(restored.projectId).toBe(task.projectId);
+    expect(restored.createdAt).toBe(task.createdAt);
+    expect(restored.updatedAt).toBe(task.updatedAt);
   });
 });

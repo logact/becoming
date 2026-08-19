@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Pin to attention</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Pin to attention';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Pin to attention') +
+  '<div class="scroll">' +
+    '<div style="height:12px"></div>' +
+    '<div class="search">' + ic('search', 15) + '<span>Search goals, tasks, ideas</span></div>' +
+
+    sec('Goals') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Read 12 books in 2026</div><div class="row-sub">Doing · 7 of 12 books</div></div>' +
+        '<button class="chip-btn">Pin</button></div>' +
+      '<div class="row"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Learn Japanese N3</div><div class="row-sub">Paused · Language</div></div>' +
+        '<button class="chip-btn">Pin</button></div>' +
+      '<div class="row"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Emergency fund ¥100,000</div><div class="row-sub">Todo · Finance</div></div>' +
+        '<button class="chip-btn">Pin</button></div>' +
+    '</div>' +
+
+    sec('Tasks') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('checkCircle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Tempo run 6 km</div><div class="row-sub">Run a half marathon · Thu</div></div>' +
+        '<button class="chip-btn">Pin</button></div>' +
+      '<div class="row"><span class="chip">' + ic('checkCircle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Read chapter 7 — Atomic Habits</div><div class="row-sub">Read 12 books in 2026</div></div>' +
+        '<button class="chip-btn">Pin</button></div>' +
+    '</div>' +
+
+    sec('Ideas') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Auto-generate weekly review</div><div class="row-sub">Exploring · 5 d ago</div></div>' +
+        '<button class="chip-btn">Pin</button></div>' +
+      '<div class="row"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Pomodoro focus mode</div><div class="row-sub">Paused · 1 mo ago</div></div>' +
+        '<button class="chip-btn">Pin</button></div>' +
+    '</div>' +
+    '<div class="sec-note">Pinned items stay in Needs attention until you remove them.</div>' +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

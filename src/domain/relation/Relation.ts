@@ -53,4 +53,27 @@ export class Relation {
 
     );
   }
+
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: RelationId;
+    sourceType: RelationEndType;
+    sourceId: string;
+    targetType: RelationEndType;
+    targetId: string;
+    kind: string;
+    createdAt: Date;
+    detail?: string;
+  }): Relation {
+    return new Relation(
+      params.id,
+      params.sourceType,
+      params.sourceId,
+      params.targetType,
+      params.targetId,
+      params.kind,
+      params.createdAt,
+      params.detail,
+    );
+  }
 }

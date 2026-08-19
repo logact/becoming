@@ -52,6 +52,31 @@ export class Project {
     return project;
   }
 
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: ProjectId;
+    name: string;
+    goalId: GoalId;
+    due?: Date;
+    status: ProjectStatus;
+    archived: boolean;
+    labelIds: LabelId[];
+    createdAt: Date;
+    updatedAt: Date;
+  }): Project {
+    return new Project(
+      params.id,
+      params.name,
+      params.goalId,
+      params.due,
+      params.status,
+      params.archived,
+      [...params.labelIds],
+      params.createdAt,
+      params.updatedAt,
+    );
+  }
+
   get name(): string {
     return this._name;
   }

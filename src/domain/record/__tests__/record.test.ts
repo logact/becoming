@@ -24,4 +24,17 @@ describe('Record', () => {
     });
     expect(record.detail).toBeUndefined();
   });
+
+  it('restores from persisted fields', () => {
+    const restored = Record.restore({
+      id: 'rec1',
+      kind: 'statusChanged',
+      detail: 'todo → doing',
+      occurredAt,
+    });
+    expect(restored.id).toBe('rec1');
+    expect(restored.kind).toBe('statusChanged');
+    expect(restored.detail).toBe('todo → doing');
+    expect(restored.occurredAt).toBe(occurredAt);
+  });
 });

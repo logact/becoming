@@ -63,6 +63,33 @@ export class Resource {
     );
   }
 
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: ResourceId;
+    typeId: ResourceTypeId;
+    kind: ResourceTypeKind;
+    name: string;
+    amount: number;
+    allocations: ResourceAllocation[];
+    archived: boolean;
+    labelIds: LabelId[];
+    createdAt: Date;
+    updatedAt: Date;
+  }): Resource {
+    return new Resource(
+      params.id,
+      params.typeId,
+      params.kind,
+      params.name,
+      params.amount,
+      [...params.allocations],
+      params.archived,
+      [...params.labelIds],
+      params.createdAt,
+      params.updatedAt,
+    );
+  }
+
   get name(): string {
     return this._name;
   }

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Setting</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Setting';
+const SCREEN = () =>
+statusBar() +
+  '<div class="scroll">' +
+    '<div class="nav-large"><h1>Setting</h1></div>' +
+
+    '<div class="panel">' +
+      '<div class="row"><span class="chip lg">' + ic('person', 24) + '</span>' +
+        '<div class="row-main"><div class="row-title" style="font-size:18px">Personal workspace</div><div class="row-sub">On-device data · SQLite</div></div></div>' +
+    '</div>' +
+
+    sec('Appearance') +
+    '<div class="panel">' +
+      '<div class="row press"><span class="chip">' + ic('moon', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Theme</div></div><span class="value">System</span>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('sparkle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Accent color</div></div><span class="swatch"></span>' + CHEV + '</div>' +
+    '</div>' +
+
+    sec('Data') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('cloud', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">iCloud sync</div></div><span class="switch"></span></div>' +
+      '<div class="row"><span class="chip">' + ic('bell', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Weekly review reminder</div></div><span class="switch on"></span></div>' +
+      '<div class="row press"><span class="chip">' + ic('share', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Export data</div></div>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('archive', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Archive</div></div>' + CHEV + '</div>' +
+    '</div>' +
+
+    sec('About') +
+    '<div class="panel">' +
+      '<div class="row"><div class="row-main"><div class="row-title">Version</div></div><span class="value">0.1.0</span></div>' +
+      '<div class="row"><div class="row-main"><div class="row-title">Build</div></div><span class="value">prototype</span></div>' +
+    '</div>' +
+    '<div class="slogan">Record what you do. Shape what you become.</div>' +
+  '</div>' +
+  tabbar('setting')
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

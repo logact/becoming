@@ -15,6 +15,36 @@ describe('Goal', () => {
     expect(goal.updatedAt).toBe(t0);
   });
 
+  it('carries optional sub-goal membership and parent links', () => {
+    const topLevel = Goal.create({ id: 'g1', title: 'Run a marathon', now: t0 });
+    expect(topLevel.projectId).toBeUndefined();
+    expect(topLevel.parentGoalId).toBeUndefined();
+
+    const subGoal = Goal.create({
+      id: 'g2',
+      title: '10 km under 50 min',
+      projectId: 'p1',
+      parentGoalId: 'g1',
+      now: t0,
+    });
+    expect(subGoal.projectId).toBe('p1');
+    expect(subGoal.parentGoalId).toBe('g1');
+
+    const restored = Goal.restore({
+      id: subGoal.id,
+      title: subGoal.title,
+      status: subGoal.status,
+      archived: subGoal.archived,
+      labelIds: subGoal.labelIds,
+      projectId: subGoal.projectId,
+      parentGoalId: subGoal.parentGoalId,
+      createdAt: subGoal.createdAt,
+      updatedAt: subGoal.updatedAt,
+    });
+    expect(restored.projectId).toBe('p1');
+    expect(restored.parentGoalId).toBe('g1');
+  });
+
   it('follows the valid transition path and bumps updatedAt', () => {
     const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
     goal.start(t1);
@@ -154,5 +184,33 @@ describe('Goal', () => {
     const archived = Goal.create({ id: 'g3', title: 'Bike', due: t1, now: t0 });
     archived.archive(t0);
     expect(archived.isDueImminent(HOUR_MS, t0)).toBe(false);
+  });
+
+  it('restores from persisted fields without enforcing invariants', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run', description: 'A marathon', now: t0 });
+    goal.start(t1);
+    goal.setDue(t2, t1);
+    goal.addLabel('l1');
+    const restored = Goal.restore({
+      id: goal.id,
+      title: goal.title,
+      description: goal.description,
+      due: goal.due,
+      status: goal.status,
+      archived: goal.archived,
+      labelIds: goal.labelIds,
+      createdAt: goal.createdAt,
+      updatedAt: goal.updatedAt,
+    });
+    expect(restored.id).toBe(goal.id);
+    expect(restored.title).toBe(goal.title);
+    expect(restored.description).toBe(goal.description);
+    expect(restored.due).toBe(goal.due);
+    expect(restored.status).toBe(goal.status);
+    expect(restored.archived).toBe(goal.archived);
+    expect(restored.labelIds).toEqual(goal.labelIds);
+    expect(restored.labelIds).not.toBe(goal.labelIds);
+    expect(restored.createdAt).toBe(goal.createdAt);
+    expect(restored.updatedAt).toBe(goal.updatedAt);
   });
 });

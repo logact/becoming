@@ -49,10 +49,28 @@ export interface ActivityItem {
   occurredAt: Date;
 }
 
+export interface DashboardStats {
+  /** Number of items in the doing list (doing goals/tasks + captured ideas). */
+  doingNow: number;
+  /**
+   * Non-archived goals/tasks completed on the local calendar day of `now`.
+   * This is a proxy: it infers the completion day from `updatedAt` because no
+   * completion-record producer exists yet; revisit when completion services
+   * land.
+   */
+  doneToday: number;
+  /**
+   * Non-archived goals/tasks/projects, not done/failed, whose due falls on
+   * the local calendar day of `now`.
+   */
+  dueToday: number;
+}
+
 export interface DashboardView {
   doing: DoingItem[];
   attention: AttentionItem[];
   recentActivity: ActivityItem[];
+  stats: DashboardStats;
 }
 
 /** Sort rank of each attention reason; lower comes first. */
@@ -74,7 +92,7 @@ function withDue(due: Date | undefined): { due?: Date } {
 /**
  * Read model for the dashboard screen: doing items (doing goals/tasks,
  * captured ideas), attention items (rule-derived plus user-pinned, minus
- * user-dismissed), and the latest records.
+ * user-dismissed), the latest records, and headline stats.
  */
 export class DashboardService {
   constructor(
@@ -94,7 +112,41 @@ export class DashboardService {
       this.listAttention(now),
       this.listRecentActivity(),
     ]);
-    return { doing, attention, recentActivity };
+    const stats = await this.listStats(now, doing.length);
+    return { doing, attention, recentActivity, stats };
+  }
+
+  /**
+   * Headline counts. `doneToday` is a proxy: it infers the completion day
+   * from `updatedAt` of done goals/tasks because no completion-record
+   * producer exists yet; revisit when completion services land.
+   */
+  private async listStats(now: Date, doingNow: number): Promise<DashboardStats> {
+    const [goals, tasks, projects] = await Promise.all([
+      this.goals.list({ archived: false }),
+      this.tasks.list({ archived: false }),
+      this.projects.list({ archived: false }),
+    ]);
+    // Local calendar-day boundaries of `now`.
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfNextDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const isWithinToday = (date: Date): boolean =>
+      date.getTime() >= startOfDay.getTime() && date.getTime() < startOfNextDay.getTime();
+
+    const doneToday =
+      [...goals, ...tasks].filter(
+        (item) => item.status === 'done' && isWithinToday(item.updatedAt),
+      ).length;
+
+    const dueToday = [...goals, ...tasks, ...projects].filter(
+      (item) =>
+        item.status !== 'done' &&
+        item.status !== 'failed' &&
+        item.due !== undefined &&
+        isWithinToday(item.due),
+    ).length;
+
+    return { doingNow, doneToday, dueToday };
   }
 
   private async listDoing(): Promise<DoingItem[]> {

@@ -60,4 +60,28 @@ describe('Idea', () => {
     idea.removeLabel('l1');
     expect(idea.labelIds).toEqual([]);
   });
+
+  it('restores from persisted fields without enforcing invariants', () => {
+    const idea = Idea.create({ id: 'i1', content: 'App for habits', now: t0 });
+    idea.explore(t1);
+    idea.edit('App for goals', t1);
+    idea.addLabel('l1');
+    const restored = Idea.restore({
+      id: idea.id,
+      content: idea.content,
+      status: idea.status,
+      archived: idea.archived,
+      labelIds: idea.labelIds,
+      createdAt: idea.createdAt,
+      updatedAt: idea.updatedAt,
+    });
+    expect(restored.id).toBe(idea.id);
+    expect(restored.content).toBe(idea.content);
+    expect(restored.status).toBe(idea.status);
+    expect(restored.archived).toBe(idea.archived);
+    expect(restored.labelIds).toEqual(idea.labelIds);
+    expect(restored.labelIds).not.toBe(idea.labelIds);
+    expect(restored.createdAt).toBe(idea.createdAt);
+    expect(restored.updatedAt).toBe(idea.updatedAt);
+  });
 });

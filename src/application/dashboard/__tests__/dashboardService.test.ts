@@ -65,7 +65,7 @@ function goalWithDue(id: string, due?: Date): Goal {
 }
 
 function taskWithDue(id: string, due?: Date): Task {
-  return Task.create({ id, title: `Task ${id}`, due, now: t0 });
+  return Task.create({ id, title: `Task ${id}`, due, projectId: 'p1', now: t0 });
 }
 
 function doingGoal(id: string, at: Date): Goal {
@@ -431,5 +431,121 @@ describe('DashboardService recentActivity', () => {
     const view = await ctx.service.getDashboard(t0);
 
     expect(view.recentActivity).toHaveLength(1);
+  });
+});
+
+describe('DashboardService stats', () => {
+  // All dates are local: 2026-02-10 is "today", noon is `now`.
+  const now = new Date(2026, 1, 10, 12, 0, 0);
+  const todayMorning = new Date(2026, 1, 10, 8, 0, 0);
+  const todayEvening = new Date(2026, 1, 10, 18, 0, 0);
+  const yesterday = new Date(2026, 1, 9, 15, 0, 0);
+
+  function completedGoal(id: string, at: Date): Goal {
+    const goal = Goal.create({ id, title: `Goal ${id}`, now: yesterday });
+    goal.start(at);
+    goal.complete(at);
+    return goal;
+  }
+
+  function completedTask(id: string, at: Date): Task {
+    const task = Task.create({ id, title: `Task ${id}`, projectId: 'p1', now: yesterday });
+    task.start(at);
+    task.complete(at);
+    return task;
+  }
+
+  it('doingNow counts doing goals, doing tasks, and captured ideas', async () => {
+    const ctx = makeService();
+    const goal = Goal.create({ id: 'g1', title: 'Goal g1', now: todayMorning });
+    goal.start(todayMorning);
+    await ctx.goals.save(goal);
+    const task = Task.create({ id: 't1', title: 'Task t1', projectId: 'p1', now: todayMorning });
+    task.start(todayMorning);
+    await ctx.tasks.save(task);
+    await ctx.ideas.save(Idea.create({ id: 'i1', content: 'Idea i1', now: todayMorning }));
+    // A todo goal and an archived idea are not in the doing list.
+    await ctx.goals.save(Goal.create({ id: 'g-todo', title: 'Goal g-todo', now: todayMorning }));
+    const archivedIdea = Idea.create({ id: 'i-archived', content: 'archived', now: todayMorning });
+    archivedIdea.archive(todayMorning);
+    await ctx.ideas.save(archivedIdea);
+
+    const view = await ctx.service.getDashboard(now);
+
+    expect(view.stats.doingNow).toBe(3);
+    expect(view.stats.doingNow).toBe(view.doing.length);
+  });
+
+  it('doneToday counts goals and tasks completed today, ignoring yesterday', async () => {
+    const ctx = makeService();
+    await ctx.goals.save(completedGoal('g-today', todayMorning));
+    await ctx.tasks.save(completedTask('t-today', todayEvening));
+    await ctx.goals.save(completedGoal('g-yesterday', yesterday));
+    // An archived goal completed today is excluded.
+    const archived = completedGoal('g-archived', todayMorning);
+    archived.archive(todayEvening);
+    await ctx.goals.save(archived);
+    // A goal still doing is not done.
+    const doing = Goal.create({ id: 'g-doing', title: 'Goal g-doing', now: todayMorning });
+    doing.start(todayMorning);
+    await ctx.goals.save(doing);
+
+    const view = await ctx.service.getDashboard(now);
+
+    expect(view.stats.doneToday).toBe(2);
+  });
+
+  it('dueToday counts open goals, tasks, and projects due inside today', async () => {
+    const ctx = makeService();
+    // Counted: a goal, a task (due at the start-of-day boundary), a project.
+    await ctx.goals.save(
+      Goal.create({ id: 'g-in', title: 'Goal g-in', due: todayEvening, now: todayMorning }),
+    );
+    await ctx.tasks.save(
+      Task.create({
+        id: 't-in',
+        title: 'Task t-in',
+        due: new Date(2026, 1, 10, 0, 0, 0),
+        projectId: 'p1',
+        now: todayMorning,
+      }),
+    );
+    await ctx.projects.save(
+      Project.create({ id: 'p-in', name: 'Project p-in', goalId: 'g0', due: todayEvening, now: todayMorning }),
+    );
+    // Excluded: done goal, failed task, failed project, archived goal.
+    const done = Goal.create({ id: 'g-done', title: 'Goal g-done', due: todayEvening, now: todayMorning });
+    done.start(todayMorning);
+    done.complete(todayEvening);
+    await ctx.goals.save(done);
+    const failed = Task.create({ id: 't-failed', title: 'Task t-failed', due: todayEvening, projectId: 'p1', now: todayMorning });
+    failed.start(todayMorning);
+    failed.fail(todayEvening);
+    await ctx.tasks.save(failed);
+    const failedProject = Project.create({
+      id: 'p-failed',
+      name: 'Project p-failed',
+      goalId: 'g0',
+      due: todayEvening,
+      now: todayMorning,
+    });
+    failedProject.activate(todayMorning);
+    failedProject.fail(todayEvening);
+    await ctx.projects.save(failedProject);
+    const archived = Goal.create({ id: 'g-archived', title: 'Goal g-archived', due: todayEvening, now: todayMorning });
+    archived.archive(todayMorning);
+    await ctx.goals.save(archived);
+    // Excluded: due tomorrow (next-day boundary), due yesterday, no due.
+    await ctx.goals.save(
+      Goal.create({ id: 'g-tomorrow', title: 'Goal g-tomorrow', due: new Date(2026, 1, 11, 0, 0, 0), now: todayMorning }),
+    );
+    await ctx.tasks.save(
+      Task.create({ id: 't-yesterday', title: 'Task t-yesterday', due: yesterday, projectId: 'p1', now: todayMorning }),
+    );
+    await ctx.goals.save(Goal.create({ id: 'g-nodue', title: 'Goal g-nodue', now: todayMorning }));
+
+    const view = await ctx.service.getDashboard(now);
+
+    expect(view.stats.dueToday).toBe(3);
   });
 });

@@ -49,4 +49,25 @@ describe('Relation', () => {
       }),
     ).toThrow(DomainError);
   });
+
+  it('restores from persisted fields', () => {
+    const restored = Relation.restore({
+      id: 'rel1',
+      sourceType: 'task',
+      sourceId: 't1',
+      targetType: 'idea',
+      targetId: 'i1',
+      kind: 'derivedFrom',
+      createdAt: now,
+      detail: 'from brainstorm',
+    });
+    expect(restored.id).toBe('rel1');
+    expect(restored.sourceType).toBe('task');
+    expect(restored.sourceId).toBe('t1');
+    expect(restored.targetType).toBe('idea');
+    expect(restored.targetId).toBe('i1');
+    expect(restored.kind).toBe('derivedFrom');
+    expect(restored.createdAt).toBe(now);
+    expect(restored.detail).toBe('from brainstorm');
+  });
 });

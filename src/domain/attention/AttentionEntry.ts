@@ -40,4 +40,21 @@ export class AttentionEntry {
       params.now,
     );
   }
+
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: AttentionEntryId;
+    targetType: AttentionTargetType;
+    targetId: string;
+    kind: AttentionEntryKind;
+    createdAt: Date;
+  }): AttentionEntry {
+    return new AttentionEntry(
+      params.id,
+      params.targetType,
+      params.targetId,
+      params.kind,
+      params.createdAt,
+    );
+  }
 }

@@ -1,9 +1,9 @@
 import { DomainError } from '../shared/errors';
-import type { GoalId, LabelId, ProjectId, TaskId } from '../shared/ids';
+import type { LabelId, ProjectId, TaskId } from '../shared/ids';
 
 export type TaskStatus = 'todo' | 'doing' | 'done' | 'paused' | 'failed';
 
-/** An action that implements a goal. */
+/** An action that implements a goal through the project it belongs to. */
 export class Task {
   private constructor(
     /** Unique identifier of the task. */
@@ -20,10 +20,8 @@ export class Task {
     private _archived: boolean,
     /** Labels attached to the task for classification. */
     readonly labelIds: LabelId[],
-    /** The goal this task implements, if any. */
-    readonly goalId: GoalId | undefined,
-    /** The project this task belongs to, if any. */
-    readonly projectId: ProjectId | undefined,
+    /** The project this task belongs to; the goal is derived via the project. */
+    readonly projectId: ProjectId,
     /** When the task was created. */
     readonly createdAt: Date,
     /** When the task was last modified. */
@@ -35,8 +33,7 @@ export class Task {
     title: string;
     description?: string;
     due?: Date;
-    goalId?: GoalId;
-    projectId?: ProjectId;
+    projectId: ProjectId;
     now: Date;
   }): Task {
     return new Task(
@@ -47,10 +44,36 @@ export class Task {
       'todo',
       false,
       [],
-      params.goalId,
       params.projectId,
       params.now,
       params.now,
+    );
+  }
+
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: TaskId;
+    title: string;
+    description?: string;
+    due?: Date;
+    status: TaskStatus;
+    archived: boolean;
+    labelIds: LabelId[];
+    projectId: ProjectId;
+    createdAt: Date;
+    updatedAt: Date;
+  }): Task {
+    return new Task(
+      params.id,
+      params.title,
+      params.description,
+      params.due,
+      params.status,
+      params.archived,
+      [...params.labelIds],
+      params.projectId,
+      params.createdAt,
+      params.updatedAt,
     );
   }
 

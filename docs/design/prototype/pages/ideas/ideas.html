@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Ideas</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Ideas';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Ideas', 'plus') +
+  '<div class="scroll">' +
+    '<div style="height:12px"></div>' +
+    '<div class="panel"><div class="capture"><span class="plus-c">' + ic('plus', 15) + '</span><span>Capture an idea…</span><button class="chip-btn">Add</button></div></div>' +
+
+    sec('Inbox') +
+    '<div class="blist">' +
+      '<div class="row press"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Habit streak widget</div><div class="row-sub">Turn records into a streak view · 2 w ago</div></div>' +
+        '<span class="pill captured">' + ic('circle', 11) + 'Captured</span></div>' +
+      '<div class="row press"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Auto-generate weekly review</div><div class="row-sub">Summarize records every Sunday · 5 d ago</div></div>' +
+        '<span class="pill exploring">' + ic('circle', 11) + 'Exploring</span></div>' +
+      '<div class="row press"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Share goal progress with friends</div><div class="row-sub">Accountability through sharing · 3 d ago</div></div>' +
+        '<span class="pill captured">' + ic('circle', 11) + 'Captured</span></div>' +
+      '<div class="row press"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Pomodoro focus mode</div><div class="row-sub">Parked until MVP ships · 1 mo ago</div></div>' +
+        '<span class="pill paused">' + ic('pause', 11) + 'Paused</span></div>' +
+    '</div>' +
+    '<div class="sec-note">Ideas are casual captures. When one matures, transform it into a Goal, Task or Note.</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'plus', t:'Captured “Share goal progress…”', s:'Idea · 3 d ago', w:'3 d' },
+      { i:'sparkle', t:'Exploring “Auto weekly review”', s:'Idea · 5 d ago', w:'5 d' },
+      { i:'arrowUpRight', t:'“Morning pages” became a Goal', s:'Transformed · 2 w ago', w:'2 w' },
+    ]) +
+  '</div>' +
+  tabbar('library')
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

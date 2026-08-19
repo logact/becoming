@@ -26,6 +26,27 @@ export class Idea {
     return new Idea(params.id, params.content, 'captured', false, [], params.now, params.now);
   }
 
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: IdeaId;
+    content: string;
+    status: IdeaStatus;
+    archived: boolean;
+    labelIds: LabelId[];
+    createdAt: Date;
+    updatedAt: Date;
+  }): Idea {
+    return new Idea(
+      params.id,
+      params.content,
+      params.status,
+      params.archived,
+      [...params.labelIds],
+      params.createdAt,
+      params.updatedAt,
+    );
+  }
+
   get content(): string {
     return this._content;
   }

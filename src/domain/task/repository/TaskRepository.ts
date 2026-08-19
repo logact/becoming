@@ -1,11 +1,10 @@
 import type { Task, TaskStatus } from '../Task';
-import type { GoalId, LabelId, ProjectId, TaskId } from '../../shared/ids';
+import type { LabelId, ProjectId, TaskId } from '../../shared/ids';
 
 export interface TaskFilter {
   status?: TaskStatus;
   archived?: boolean;
   labelId?: LabelId;
-  goalId?: GoalId;
   projectId?: ProjectId;
 }
 

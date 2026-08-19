@@ -1,10 +1,14 @@
 import type { Goal, GoalStatus } from '../Goal';
-import type { GoalId, LabelId } from '../../shared/ids';
+import type { GoalId, LabelId, ProjectId } from '../../shared/ids';
 
 export interface GoalFilter {
   status?: GoalStatus;
   archived?: boolean;
   labelId?: LabelId;
+  /** Goals belonging to this project (sub-goals). */
+  projectId?: ProjectId;
+  /** Direct children of this goal in the goal tree. */
+  parentGoalId?: GoalId;
 }
 
 export interface GoalRepository {

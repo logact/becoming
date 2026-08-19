@@ -87,6 +87,25 @@ export class ResourceAllocation {
     );
   }
 
+  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  static restore(params: {
+    id: AllocationId;
+    projectId: ProjectId;
+    amount: number;
+    span?: TimeSpan;
+    createdAt: Date;
+    updatedAt: Date;
+  }): ResourceAllocation {
+    return new ResourceAllocation(
+      params.id,
+      params.projectId,
+      params.amount,
+      params.span,
+      params.createdAt,
+      params.updatedAt,
+    );
+  }
+
   get amount(): number {
     return this._amount;
   }

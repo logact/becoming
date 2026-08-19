@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Library</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Library';
+const SCREEN = () =>
+statusBar() +
+  '<div class="scroll">' +
+    '<div class="nav-large"><h1>Library</h1></div>' +
+    '<div class="search">' + ic('search', 15) + '<span>Search</span></div>' +
+
+    sec('Plan & do') +
+    '<div class="panel">' +
+      '<div class="row press" data-go="goals"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Goals</div><div class="row-sub">Targets you aim to achieve</div></div>' +
+        '<span class="count">5</span>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('checkCircle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Tasks</div><div class="row-sub">Actions that implement goals</div></div>' +
+        '<span class="count">18</span>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('box', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Projects</div><div class="row-sub">Plans that decompose goals</div></div>' +
+        '<span class="count">4</span>' + CHEV + '</div>' +
+    '</div>' +
+
+    sec('Capture & think') +
+    '<div class="panel">' +
+      '<div class="row press" data-go="ideas"><span class="chip">' + ic('bulb', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Ideas</div><div class="row-sub">Casual captures, transform later</div></div>' +
+        '<span class="count">9</span>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('doc', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Notes</div><div class="row-sub">Extracted thoughts & methods</div></div>' +
+        '<span class="count">14</span>' + CHEV + '</div>' +
+    '</div>' +
+
+    sec('Manage') +
+    '<div class="panel">' +
+      '<div class="row press"><span class="chip">' + ic('banknote', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Resources</div><div class="row-sub">Time, money, AI tokens</div></div>' +
+        '<span class="count">3</span>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('list', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Records</div><div class="row-sub">Everything that happened</div></div>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('tag', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Labels</div><div class="row-sub">Classification across models</div></div>' + CHEV + '</div>' +
+      '<div class="row press"><span class="chip">' + ic('archive', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Archive</div><div class="row-sub">Archived items keep their state</div></div>' + CHEV + '</div>' +
+    '</div>' +
+
+    '<div class="slogan">Record what you do. Shape what you become.</div>' +
+  '</div>' +
+  tabbar('library')
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

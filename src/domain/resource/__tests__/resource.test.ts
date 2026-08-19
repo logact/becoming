@@ -368,4 +368,64 @@ describe('Resource', () => {
       ).not.toThrow();
     });
   });
+
+  it('restores from persisted fields including allocations', () => {
+    const resource = createQuantityResource();
+    resource.allocate({ id: 'a1', projectId: 'p1', amount: 40 }, t1);
+    resource.addLabel('l1');
+    const restored = Resource.restore({
+      id: resource.id,
+      typeId: resource.typeId,
+      kind: resource.kind,
+      name: resource.name,
+      amount: resource.amount,
+      allocations: resource.allocations,
+      archived: resource.archived,
+      labelIds: resource.labelIds,
+      createdAt: resource.createdAt,
+      updatedAt: resource.updatedAt,
+    });
+    expect(restored.id).toBe(resource.id);
+    expect(restored.typeId).toBe(resource.typeId);
+    expect(restored.kind).toBe(resource.kind);
+    expect(restored.name).toBe(resource.name);
+    expect(restored.amount).toBe(resource.amount);
+    expect(restored.available).toBe(resource.available);
+    expect(restored.allocations).toEqual(resource.allocations);
+    expect(restored.allocations).not.toBe(resource.allocations);
+    expect(restored.archived).toBe(resource.archived);
+    expect(restored.labelIds).toEqual(resource.labelIds);
+    expect(restored.labelIds).not.toBe(resource.labelIds);
+    expect(restored.createdAt).toBe(resource.createdAt);
+    expect(restored.updatedAt).toBe(resource.updatedAt);
+  });
+
+  describe('ResourceAllocation.restore', () => {
+    it('restores from persisted fields', () => {
+      const allocation = ResourceAllocation.create({
+        id: 'a1',
+        projectId: 'p1',
+        span: { startAt: t0, endAt: t1 },
+        now: t0,
+      });
+      allocation.adjust(
+        { span: { startAt: t1, endAt: new Date('2026-01-01T03:00:00Z') } },
+        t1,
+      );
+      const restored = ResourceAllocation.restore({
+        id: allocation.id,
+        projectId: allocation.projectId,
+        amount: allocation.amount,
+        span: allocation.span,
+        createdAt: allocation.createdAt,
+        updatedAt: allocation.updatedAt,
+      });
+      expect(restored.id).toBe(allocation.id);
+      expect(restored.projectId).toBe(allocation.projectId);
+      expect(restored.amount).toBe(allocation.amount);
+      expect(restored.span).toEqual(allocation.span);
+      expect(restored.createdAt).toBe(allocation.createdAt);
+      expect(restored.updatedAt).toBe(allocation.updatedAt);
+    });
+  });
 });

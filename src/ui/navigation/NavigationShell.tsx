@@ -1,21 +1,37 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { createContext, useContext, useMemo, useState } from 'react';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { Icon, type IconName } from '../components/Icon';
+import { colors } from '../shared/theme';
 
 /** A top-level tab destination of the app shell. */
 export interface ShellDestination {
   id: string;
   title: string;
-  icon: string;
+  icon: IconName;
   renderList: () => React.ReactElement;
-  renderDetail?: (entityId: string) => React.ReactElement;
+  /** Null renders nothing (unknown entity / screen id). */
+  renderDetail?: (entityId: string) => React.ReactElement | null;
+  renderScreen?: (screenId: string) => React.ReactElement | null;
 }
+
+/** One pushed entry on a destination's navigation stack. */
+export type ShellStackEntry =
+  | { kind: 'detail'; entityId: string }
+  | { kind: 'screen'; screenId: string };
 
 /** Navigation actions available to screens inside the shell. */
 export interface ShellNavigation {
+  /** Push a detail view for an entity onto the active destination's stack. */
   openDetail: (entityId: string) => void;
+  /** Push a named screen onto the active destination's stack. */
+  pushScreen: (screenId: string) => void;
+  /** Pop the top entry off the active destination's stack. */
   goBack: () => void;
+  /** Present a bottom sheet above the shell. */
   presentSheet: (content: React.ReactElement) => void;
+  /** Dismiss the currently presented sheet. */
   dismissSheet: () => void;
 }
 
@@ -34,26 +50,46 @@ interface NavigationShellProps {
 }
 
 /**
- * Minimal app shell: a bottom tab bar over per-destination content.
- * Detail navigation and sheets are stubbed with a single detail slot
- * per destination; routing grows from here.
+ * App shell: a bottom tab bar over per-destination navigation stacks.
+ * Only the top of the active destination's stack renders; inactive
+ * destinations unmount entirely, so remounting refetches their data.
+ * Pushed screens hide the tab bar (per docs/design/design-style.md).
  */
 export function NavigationShell({ destinations }: NavigationShellProps) {
   const insets = useSafeAreaInsets();
   const [activeId, setActiveId] = useState(destinations[0]?.id);
-  const [detailIds, setDetailIds] = useState<Record<string, string | null>>({});
+  const [stacks, setStacks] = useState<Record<string, ShellStackEntry[]>>({});
   const [sheet, setSheet] = useState<React.ReactElement | null>(null);
 
   const active = destinations.find((d) => d.id === activeId) ?? destinations[0];
-  const activeDetailId = active ? detailIds[active.id] : null;
+  const activeStack = active ? stacks[active.id] ?? [] : [];
+  const top = activeStack[activeStack.length - 1];
 
   const navigation = useMemo<ShellNavigation>(
     () => ({
       openDetail: (entityId) => {
-        if (active) setDetailIds((prev) => ({ ...prev, [active.id]: entityId }));
+        if (active) {
+          setStacks((prev) => ({
+            ...prev,
+            [active.id]: [...(prev[active.id] ?? []), { kind: 'detail', entityId }],
+          }));
+        }
+      },
+      pushScreen: (screenId) => {
+        if (active) {
+          setStacks((prev) => ({
+            ...prev,
+            [active.id]: [...(prev[active.id] ?? []), { kind: 'screen', screenId }],
+          }));
+        }
       },
       goBack: () => {
-        if (active) setDetailIds((prev) => ({ ...prev, [active.id]: null }));
+        if (active) {
+          setStacks((prev) => ({
+            ...prev,
+            [active.id]: (prev[active.id] ?? []).slice(0, -1),
+          }));
+        }
       },
       presentSheet: setSheet,
       dismissSheet: () => setSheet(null),
@@ -61,54 +97,65 @@ export function NavigationShell({ destinations }: NavigationShellProps) {
     [active],
   );
 
-  const renderContent = useCallback(() => {
+  const renderContent = () => {
     if (!active) return null;
-    if (activeDetailId != null && active.renderDetail) {
-      return active.renderDetail(activeDetailId);
+    if (top?.kind === 'detail' && active.renderDetail) {
+      return active.renderDetail(top.entityId);
+    }
+    if (top?.kind === 'screen' && active.renderScreen) {
+      return active.renderScreen(top.screenId);
     }
     return active.renderList();
-  }, [active, activeDetailId]);
+  };
 
   return (
     <ShellNavigationContext.Provider value={navigation}>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <StatusBar barStyle="dark-content" />
         <View style={styles.content}>{renderContent()}</View>
         {sheet ? <View style={styles.sheet}>{sheet}</View> : null}
-        <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
-          {destinations.map((destination) => (
-            <Pressable
-              key={destination.id}
-              accessibilityLabel={`${destination.title} tab`}
-              accessibilityRole="button"
-              onPress={() => setActiveId(destination.id)}
-              style={styles.tab}
-            >
-              <Text style={styles.tabIcon}>{destination.icon}</Text>
-              <Text
-                style={[
-                  styles.tabTitle,
-                  destination.id === active?.id && styles.tabTitleActive,
-                ]}
-              >
-                {destination.title}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {activeStack.length === 0 ? (
+          <View testID="tab-bar" style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
+            {destinations.map((destination) => {
+              const isActive = destination.id === active?.id;
+              return (
+                <Pressable
+                  key={destination.id}
+                  accessibilityLabel={`${destination.title} tab`}
+                  accessibilityRole="button"
+                  onPress={() => setActiveId(destination.id)}
+                  style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+                >
+                  <View style={[styles.tabIconChip, isActive && styles.tabIconChipActive]}>
+                    <Icon
+                      name={destination.icon}
+                      size={20}
+                      color={isActive ? colors.green : colors.faint}
+                    />
+                  </View>
+                  <Text style={[styles.tabTitle, isActive && styles.tabTitleActive]}>
+                    {destination.title}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
       </View>
     </ShellNavigationContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.bg },
   content: { flex: 1 },
+  pressed: { opacity: 0.5 },
   sheet: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#fff',
+    backgroundColor: colors.panel,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
@@ -120,12 +167,20 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#ccc',
-    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    backgroundColor: colors.tabBarBg,
+    paddingTop: 8,
   },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: 8 },
-  tabIcon: { fontSize: 18 },
-  tabTitle: { fontSize: 12, color: '#666' },
-  tabTitleActive: { color: '#000', fontWeight: '600' },
+  tab: { flex: 1, alignItems: 'center' },
+  tabIconChip: {
+    width: 46,
+    height: 30,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIconChipActive: { backgroundColor: colors.mint },
+  tabTitle: { fontSize: 10.5, fontWeight: '600', color: colors.faint, marginTop: 2 },
+  tabTitleActive: { color: colors.green },
 });
