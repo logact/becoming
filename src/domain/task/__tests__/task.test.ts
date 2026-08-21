@@ -183,6 +183,34 @@ describe('Task', () => {
     expect(archived.isDueImminent(HOUR_MS, t0)).toBe(false);
   });
 
+  it('reports overdue only for unfinished, unarchived tasks strictly past due', () => {
+    const overdue = Task.create({ id: 'overdue', title: 'Overdue', due: t0, projectId: 'p1', now: t0 });
+    expect(overdue.isOverdue(t1)).toBe(true);
+
+    const future = Task.create({ id: 'future', title: 'Future', due: t2, projectId: 'p1', now: t0 });
+    expect(future.isOverdue(t1)).toBe(false);
+
+    const equal = Task.create({ id: 'equal', title: 'Equal', due: t1, projectId: 'p1', now: t0 });
+    expect(equal.isOverdue(t1)).toBe(false);
+
+    const noDue = Task.create({ id: 'no-due', title: 'No due', projectId: 'p1', now: t0 });
+    expect(noDue.isOverdue(t1)).toBe(false);
+
+    const done = Task.create({ id: 'done', title: 'Done', due: t0, projectId: 'p1', now: t0 });
+    done.start(t0);
+    done.complete(t0);
+    expect(done.isOverdue(t1)).toBe(false);
+
+    const failed = Task.create({ id: 'failed', title: 'Failed', due: t0, projectId: 'p1', now: t0 });
+    failed.start(t0);
+    failed.fail(t0);
+    expect(failed.isOverdue(t1)).toBe(false);
+
+    const archived = Task.create({ id: 'archived', title: 'Archived', due: t0, projectId: 'p1', now: t0 });
+    archived.archive(t0);
+    expect(archived.isOverdue(t1)).toBe(false);
+  });
+
   it('restores from persisted fields without enforcing invariants', () => {
     const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     task.start(t1);

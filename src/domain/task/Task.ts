@@ -198,8 +198,8 @@ export class Task {
   }
 
   /**
-   * True when the task is archived or done/failed, or has a due that is past `now`.
-   * //TODO: supplement the test cases
+   * True when an active, unfinished task has a due strictly before `now`.
+   * Unlike `isDueImminent`, a due exactly equal to `now` is not overdue.
    */
   isOverdue(now: Date): boolean {
     if (this._archived || this._status === 'done' || this._status === 'failed') {
