@@ -19,6 +19,7 @@ import { useAppServices } from '../../composition/AppServicesProvider';
 import { useShellNavigation } from '../../navigation/NavigationShell';
 import { createId } from '../../shared/id';
 import { colors, spacing } from '../../shared/theme';
+import { activityIcon } from '../activityIcon';
 import { eyebrowDate, relativeTime } from './format';
 
 const DOING_ICON: Record<DoingItem['type'], IconName> = {
@@ -63,31 +64,6 @@ function attentionReasonText(item: AttentionItem, now: Date): string {
     case 'pinned':
       return 'Pinned';
   }
-}
-
-function activityIcon(kind: string): IconName {
-  if (kind.endsWith('Completed')) {
-    return 'check';
-  }
-  if (kind.endsWith('Created')) {
-    return 'plus';
-  }
-  if (kind === 'resourceConsumed') {
-    return 'banknote';
-  }
-  if (kind.endsWith('Failed')) {
-    return 'alert';
-  }
-  if (kind.endsWith('Started')) {
-    return 'play';
-  }
-  if (kind.endsWith('Captured')) {
-    return 'bulb';
-  }
-  if (kind.endsWith('Paused')) {
-    return 'pauseCircle';
-  }
-  return 'doc';
 }
 
 /**

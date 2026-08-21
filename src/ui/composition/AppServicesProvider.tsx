@@ -13,6 +13,9 @@ import type { ProjectDetailService } from '../../application/project/ProjectDeta
 import type { ProjectsOverviewService } from '../../application/project/ProjectsOverviewService';
 import type { AllocateResourceService } from '../../application/resource/AllocateResourceService';
 import type { ResourcePoolsService } from '../../application/resource/ResourcePoolsService';
+import type { TaskDetailService } from '../../application/task/TaskDetailService';
+import type { TaskLifecycleService } from '../../application/task/TaskLifecycleService';
+import type { TasksOverviewService } from '../../application/task/TasksOverviewService';
 
 /**
  * Composed application services exposed to the UI layer. The composition
@@ -34,6 +37,9 @@ export interface AppServices {
   addMilestone: AddMilestoneService;
   allocateResource: AllocateResourceService;
   resourcePools: ResourcePoolsService;
+  tasksOverview: TasksOverviewService;
+  taskDetail: TaskDetailService;
+  taskLifecycle: TaskLifecycleService;
 }
 
 const AppServicesContext = createContext<AppServices | null>(null);

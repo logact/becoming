@@ -12,6 +12,8 @@ import { AddPlanItemPage } from './pages/projects/AddPlanItemPage';
 import { AllocateResourcePage } from './pages/projects/AllocateResourcePage';
 import { ProjectDetailPage } from './pages/projects/ProjectDetailPage';
 import { ProjectsPage } from './pages/projects/ProjectsPage';
+import { TaskDetailPage } from './pages/tasks/TaskDetailPage';
+import { TasksPage } from './pages/tasks/TasksPage';
 
 /** Library list: the hub, fed by the composed read service. */
 function LibraryListPage() {
@@ -29,6 +31,16 @@ function LibraryGoalsScreen() {
 function LibraryProjectsScreen() {
   const services = useAppServices();
   return <ProjectsPage overview={services.projectsOverview} />;
+}
+
+function LibraryTasksScreen() {
+  const services = useAppServices();
+  return <TasksPage overview={services.tasksOverview} />;
+}
+
+function LibraryTaskDetailScreen({ taskId }: { taskId: string }) {
+  const services = useAppServices();
+  return <TaskDetailPage taskId={taskId} detail={services.taskDetail} lifecycle={services.taskLifecycle} />;
 }
 
 /** Library detail: a single goal, pushed via the shell's renderDetail. */
@@ -108,10 +120,14 @@ export function appDestinations(): ShellDestination[] {
       renderScreen: (screenId) =>
         screenId === 'goals' ? (
           <LibraryGoalsScreen />
+        ) : screenId === 'tasks' ? (
+          <LibraryTasksScreen />
         ) : screenId === 'projects' ? (
           <LibraryProjectsScreen />
         ) : screenId.startsWith('project:') ? (
           <LibraryProjectScreen screenId={screenId} />
+        ) : screenId.startsWith('task:') ? (
+          <LibraryTaskDetailScreen taskId={screenId.slice('task:'.length)} />
         ) : null,
       renderDetail: (entityId) => <LibraryGoalDetailPage goalId={entityId} />,
     },

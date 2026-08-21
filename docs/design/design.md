@@ -34,6 +34,15 @@ the bottom navigation has the buttons (Dashboard,Library,Setting)
    5. All goals: compact panel list grouped by status
    6. Recent activity
 
+3. tasks page is the dashboard for all tasks:
+   1. Overview stats for doing, todo, done, and overdue
+   2. Needs attention ordered by failed, overdue, then due soon
+   3. Doing now, breakdowns by status and label, and all tasks grouped by status
+   4. Recent task activity
+
+   Task detail shows project/goal context, description, immutable execution records,
+   and only the lifecycle actions valid for its current status.
+
 
 
 ## Show Recent Activity under each model pages
@@ -42,4 +51,3 @@ show the recent record realted the current page's topic on the bottom of the pag
 
 ## Decisions
 1. Every core models' page's bottom should show the activity(record) refer to it, including the list page,and the detail page.
-   

@@ -105,6 +105,17 @@ describe('PrimaryChipButton', () => {
     fireEvent.press(screen.getByText('Plan'));
     expect(onPress).not.toHaveBeenCalled();
   });
+
+  it('renders ghost and danger action variants', () => {
+    render(
+      <>
+        <PrimaryChipButton label="Pause" variant="ghost" />
+        <PrimaryChipButton label="Fail" variant="danger" />
+      </>,
+    );
+    expect(screen.getByText('Pause')).toBeTruthy();
+    expect(screen.getByText('Fail')).toBeTruthy();
+  });
 });
 
 describe('remaining components smoke', () => {

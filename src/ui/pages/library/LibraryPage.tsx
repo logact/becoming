@@ -83,6 +83,7 @@ export function LibraryPage({ overview }: LibraryPageProps) {
       title: 'Tasks',
       subtitle: 'Actions that implement goals',
       count: counts.tasks,
+      onPress: () => navigation.pushScreen('tasks'),
     },
     {
       key: 'projects',

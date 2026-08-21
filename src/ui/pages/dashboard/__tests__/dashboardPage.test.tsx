@@ -15,6 +15,9 @@ import { ProjectDetailService } from '../../../../application/project/ProjectDet
 import { ProjectsOverviewService } from '../../../../application/project/ProjectsOverviewService';
 import { AllocateResourceService } from '../../../../application/resource/AllocateResourceService';
 import { ResourcePoolsService } from '../../../../application/resource/ResourcePoolsService';
+import { TaskDetailService } from '../../../../application/task/TaskDetailService';
+import { TaskLifecycleService } from '../../../../application/task/TaskLifecycleService';
+import { TasksOverviewService } from '../../../../application/task/TasksOverviewService';
 import { Goal } from '../../../../domain/goal/Goal';
 import { Idea } from '../../../../domain/idea/Idea';
 import { Record as DomainRecord } from '../../../../domain/record/Record';
@@ -66,6 +69,9 @@ async function makeServices() {
     addMilestone: new AddMilestoneService(projects, milestones),
     allocateResource: new AllocateResourceService(resources),
     resourcePools: new ResourcePoolsService(resources),
+    tasksOverview: new TasksOverviewService(tasks, projects, labels, records),
+    taskDetail: new TaskDetailService(tasks, projects, goals, records),
+    taskLifecycle: new TaskLifecycleService(tasks, records, relations),
   };
   return { services, goals, tasks, ideas, records, attentionEntries };
 }

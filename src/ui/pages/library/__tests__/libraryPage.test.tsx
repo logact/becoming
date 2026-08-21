@@ -23,6 +23,8 @@ function libraryDestinations(stub: ReturnType<typeof makeStub>): ShellDestinatio
       renderScreen: (id) =>
         id === 'goals' ? (
           <Text testID="goals-screen" />
+        ) : id === 'tasks' ? (
+          <Text testID="tasks-screen" />
         ) : id === 'projects' ? (
           <Text testID="projects-screen" />
         ) : null,
@@ -81,11 +83,11 @@ describe('LibraryPage', () => {
     expect(screen.queryByTestId('tab-bar')).toBeNull();
   });
 
-  it('keeps the other rows inert', async () => {
+  it('pushes the tasks screen when the Tasks row is pressed', async () => {
     render(<NavigationShell destinations={libraryDestinations(makeStub())} />);
 
-    const tasksRow = await screen.findByTestId('library-row-tasks');
-    // Inert rows render as plain views (no accessibility role button).
-    expect(tasksRow.props.accessibilityRole).not.toBe('button');
+    fireEvent.press(await screen.findByTestId('library-row-tasks'));
+    expect(await screen.findByTestId('tasks-screen')).toBeTruthy();
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
   });
 });

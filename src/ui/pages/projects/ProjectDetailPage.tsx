@@ -8,7 +8,7 @@ import type {
 } from '../../../application/project/ProjectDetailService';
 import type { ProjectStatus } from '../../../domain/project/Project';
 import type { ProjectId } from '../../../domain/shared/ids';
-import { Icon, type IconName } from '../../components/Icon';
+import { Icon } from '../../components/Icon';
 import { IconChip } from '../../components/IconChip';
 import { InlineNavBar } from '../../components/InlineNavBar';
 import { ListRow } from '../../components/ListRow';
@@ -20,6 +20,7 @@ import { SegmentedControl, type SegmentedControlOption } from '../../components/
 import { StatusPill, type StatusState } from '../../components/StatusPill';
 import { useShellNavigation } from '../../navigation/NavigationShell';
 import { colors, serif, spacing } from '../../shared/theme';
+import { activityIcon } from '../activityIcon';
 import { relativeTime } from '../dashboard/format';
 import { PlanListView } from './PlanListView';
 import { PlanRoadmapView } from './PlanRoadmapView';
@@ -56,31 +57,6 @@ function resourceAmount(resource: ProjectResourceItem): string {
       ? resource.amount
       : (resource.span.endAt.getTime() - resource.span.startAt.getTime()) / 60_000;
   return `${Number((minutes / 60).toFixed(1))} h`;
-}
-
-function activityIcon(kind: string): IconName {
-  if (kind.endsWith('Completed')) {
-    return 'check';
-  }
-  if (kind.endsWith('Created')) {
-    return 'plus';
-  }
-  if (kind === 'resourceConsumed') {
-    return 'banknote';
-  }
-  if (kind.endsWith('Failed')) {
-    return 'alert';
-  }
-  if (kind.endsWith('Started')) {
-    return 'play';
-  }
-  if (kind.endsWith('Captured')) {
-    return 'bulb';
-  }
-  if (kind.endsWith('Paused')) {
-    return 'pauseCircle';
-  }
-  return 'doc';
 }
 
 export interface ProjectDetailPageProps {

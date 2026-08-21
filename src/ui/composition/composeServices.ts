@@ -12,6 +12,9 @@ import { ProjectsOverviewService } from '../../application/project/ProjectsOverv
 import { AllocateResourceService } from '../../application/resource/AllocateResourceService';
 import { ConsumeResourceService } from '../../application/resource/ConsumeResourceService';
 import { ResourcePoolsService } from '../../application/resource/ResourcePoolsService';
+import { TaskDetailService } from '../../application/task/TaskDetailService';
+import { TaskLifecycleService } from '../../application/task/TaskLifecycleService';
+import { TasksOverviewService } from '../../application/task/TasksOverviewService';
 import { openExpoDatabase } from '../../infrastructure/sqliteRepository/ExpoSqliteDatabase';
 import { migrate } from '../../infrastructure/sqliteRepository/schema';
 import { SqliteAttentionEntryRepository } from '../../infrastructure/sqliteRepository/SqliteAttentionEntryRepository';
@@ -65,6 +68,7 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
       projects,
       resources,
       records,
+      relations,
       milestones,
       consumeResource: new ConsumeResourceService(resources, relations, records),
     });
@@ -93,5 +97,8 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
     addMilestone: new AddMilestoneService(projects, milestones),
     allocateResource: new AllocateResourceService(resources),
     resourcePools: new ResourcePoolsService(resources),
+    tasksOverview: new TasksOverviewService(tasks, projects, labels, records),
+    taskDetail: new TaskDetailService(tasks, projects, goals, records),
+    taskLifecycle: new TaskLifecycleService(tasks, records, relations),
   };
 }

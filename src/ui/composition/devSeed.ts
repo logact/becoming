@@ -11,6 +11,8 @@ import { Project } from '../../domain/project/Project';
 import type { ProjectRepository } from '../../domain/project/repository/ProjectRepository';
 import { Record } from '../../domain/record/Record';
 import type { RecordRepository } from '../../domain/record/repository/RecordRepository';
+import { Relation } from '../../domain/relation/Relation';
+import type { RelationRepository } from '../../domain/relation/repository/RelationRepository';
 import { Resource } from '../../domain/resource/Resource';
 import type { ResourceRepository } from '../../domain/resource/repository/ResourceRepository';
 import type { TaskRepository } from '../../domain/task/repository/TaskRepository';
@@ -27,6 +29,7 @@ export interface DevSeedDeps {
   projects: ProjectRepository;
   resources: ResourceRepository;
   records: RecordRepository;
+  relations: RelationRepository;
   milestones: MilestoneRepository;
   consumeResource: ConsumeResourceService;
 }
@@ -300,5 +303,21 @@ export async function seedDevData(deps: DevSeedDeps): Promise<void> {
   ];
   for (const [id, kind, detail, occurredAt] of records) {
     await deps.records.append(Record.create({ id, kind, detail, occurredAt }));
+  }
+  const taskRecordTargets: Array<[string, string]> = [
+    ['seed-record-task-completed', 'seed-task-base-run'],
+    ['seed-record-task-created', 'seed-task-easy-run'],
+    ['seed-record-task-started', 'seed-task-shoes'],
+  ];
+  for (const [recordId, taskId] of taskRecordTargets) {
+    await deps.relations.save(Relation.create({
+      id: `seed-relation-${recordId}`,
+      sourceType: 'record',
+      sourceId: recordId,
+      targetType: 'task',
+      targetId: taskId,
+      kind: 'logs',
+      now,
+    }));
   }
 }

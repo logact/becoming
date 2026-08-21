@@ -5,7 +5,6 @@ import type { GoalDetailService, GoalDetailView } from '../../../application/goa
 import type { GoalStatus } from '../../../domain/goal/Goal';
 import type { ProjectStatus } from '../../../domain/project/Project';
 import type { GoalId } from '../../../domain/shared/ids';
-import type { IconName } from '../../components/Icon';
 import { InlineNavBar } from '../../components/InlineNavBar';
 import { ListRow } from '../../components/ListRow';
 import { ListSection } from '../../components/ListSection';
@@ -15,6 +14,7 @@ import { StatTile } from '../../components/StatTile';
 import { StatusPill, type StatusState } from '../../components/StatusPill';
 import { useShellNavigation } from '../../navigation/NavigationShell';
 import { colors, serif, spacing } from '../../shared/theme';
+import { activityIcon } from '../activityIcon';
 import { relativeTime } from '../dashboard/format';
 
 /** `StatusPill` has no `failed` state; the prototype renders it as conflict. */
@@ -36,31 +36,6 @@ const PROJECT_STATUS_PILL: Record<ProjectStatus, { state: StatusState; label: st
 
 function shortDate(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-function activityIcon(kind: string): IconName {
-  if (kind.endsWith('Completed')) {
-    return 'check';
-  }
-  if (kind.endsWith('Created')) {
-    return 'plus';
-  }
-  if (kind === 'resourceConsumed') {
-    return 'banknote';
-  }
-  if (kind.endsWith('Failed')) {
-    return 'alert';
-  }
-  if (kind.endsWith('Started')) {
-    return 'play';
-  }
-  if (kind.endsWith('Captured')) {
-    return 'bulb';
-  }
-  if (kind.endsWith('Paused')) {
-    return 'pauseCircle';
-  }
-  return 'doc';
 }
 
 export interface GoalDetailPageProps {
