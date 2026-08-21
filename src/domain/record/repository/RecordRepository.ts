@@ -4,6 +4,7 @@ import type { Record, RecordTargetType } from '../Record';
 export interface RecordRepository {
   append(record: Record): Promise<void>;
   /** Records linked to the target through a relation in either direction. */
-  listByTarget(targetType: RecordTargetType, targetId: string): Promise<Record[]>;
+  listByTarget(targetType: RecordTargetType, limit:number,targetId?: string,): Promise<Record[]>;
   listRecent(limit: number): Promise<Record[]>;
+  
 }

@@ -11,7 +11,7 @@
 - record kind 词汇集中在应用层常量：`taskCreated / taskStarted / taskPaused / taskResumed / taskCompleted / taskFailed / taskReopened`（动词语态与现有 UI `activityIcon` 的 `endsWith` 匹配兼容）。
 - 暂停/失败的可选原因不进 Task 模型，写入 `Record.detail`。
 
-## 1. 领域层
+## 1. 领域层 
 
 ### 1.1 `src/domain/task/Task.ts` — 新增 isOverdue
 - 新增 `isOverdue(now: Date): boolean`：archived 或 status 为 done/failed 或没有 due → false；否则 `due.getTime() < now.getTime()`（严格小于；恰等于 now 不算过期）。

@@ -197,6 +197,21 @@ export class Task {
     return this._due.getTime() - now.getTime() <= windowMs;
   }
 
+  /**
+   * True when the task is archived or done/failed, or has a due that is past `now`.
+   * //TODO: supplement the test cases
+   */
+  isOverdue(now: Date): boolean {
+    if (this._archived || this._status === 'done' || this._status === 'failed') {
+      return false;
+    }
+    return this._due !== undefined && this._due.getTime() < now.getTime();
+  }
+
+  needsAttention(): boolean {
+    return this._status === 'failed' || this.isOverdue(new Date());
+  }
+
   /** Archive is an independent flag and never overwrites status. */
   archive(now: Date): void {
     this._archived = true;

@@ -44,7 +44,7 @@ export class GoalDetailService {
     const [goal, projects, records] = await Promise.all([
       this.goals.findById(goalId),
       this.projects.list({ goalId, archived: false }),
-      this.records.listByTarget('goal', goalId),
+      this.records.listByTarget('goal', RECENT_ACTIVITY_LIMIT, goalId),
     ]);
 
     const detailProjects: GoalDetailProject[] = [];

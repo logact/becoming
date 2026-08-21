@@ -142,7 +142,7 @@ export class ProjectDetailService {
       this.goals.list({ projectId, archived: false }),
       this.tasks.list({ projectId, archived: false }),
       this.resources.list({ projectId, archived: false }),
-      this.records.listByTarget('project', projectId),
+      this.records.listByTarget('project', RECENT_ACTIVITY_LIMIT, projectId),
       this.milestones?.list({ projectId }) ?? Promise.resolve([]),
     ]);
 

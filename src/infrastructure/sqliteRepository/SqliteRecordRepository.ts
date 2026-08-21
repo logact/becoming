@@ -1,6 +1,6 @@
 import { Record, type RecordTargetType } from '../../domain/record/Record';
 import type { RecordRepository } from '../../domain/record/repository/RecordRepository';
-import type { SqliteDatabase } from './SqliteDatabase';
+import type { SqliteDatabase, SqlValue } from './SqliteDatabase';
 
 interface RecordRow {
   id: string;
@@ -26,16 +26,33 @@ export class SqliteRecordRepository implements RecordRepository {
   }
 
   /** Records about a target, reached through relations in either direction; newest first. */
-  async listByTarget(targetType: RecordTargetType, targetId: string): Promise<Record[]> {
+  async listByTarget(targetType: RecordTargetType, limit: number, targetId?: string): Promise<Record[]> {
+    const sourceBranch = [
+      "relations.source_type = 'record'",
+      "relations.source_id = records.id",
+      "relations.target_type = ?",
+    ];
+    const targetBranch = [
+      "relations.target_type = 'record'",
+      "relations.target_id = records.id",
+      "relations.source_type = ?",
+    ];
+    if (targetId) {
+      sourceBranch.push("relations.target_id = ?");
+      targetBranch.push("relations.source_id = ?");
+    }
+    const params: SqlValue[] = targetId
+      ? [targetType, targetId, targetType, targetId]
+      : [targetType, targetType];
+
     const rows = await this.db.all<RecordRow>(
       `SELECT DISTINCT records.* FROM records
        JOIN relations
-         ON (relations.source_type = 'record' AND relations.source_id = records.id
-             AND relations.target_type = ? AND relations.target_id = ?)
-         OR (relations.target_type = 'record' AND relations.target_id = records.id
-             AND relations.source_type = ? AND relations.source_id = ?)
-       ORDER BY records.occurred_at DESC, records.id DESC`,
-      [targetType, targetId, targetType, targetId],
+         ON ((${sourceBranch.join(" AND ")})
+             OR (${targetBranch.join(" AND ")}))
+       ORDER BY records.occurred_at DESC, records.id DESC
+       LIMIT ${limit}`,
+      params,
     );
     return rows.map((row) => this.hydrate(row));
   }

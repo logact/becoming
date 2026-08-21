@@ -107,9 +107,9 @@ describe('SqliteRecordRepository', () => {
       }),
     );
 
-    expect(ids(await records.listByTarget('goal', 'g1'))).toEqual(['rec2', 'rec1']);
-    expect(ids(await records.listByTarget('task', 't1'))).toEqual(['rec3']);
-    expect(await records.listByTarget('goal', 'g2')).toEqual([]);
+    expect(ids(await records.listByTarget('goal', 10, 'g1'))).toEqual(['rec2', 'rec1']);
+    expect(ids(await records.listByTarget('task', 10, 't1'))).toEqual(['rec3']);
+    expect(await records.listByTarget('goal', 10, 'g2')).toEqual([]);
   });
 
   it('listByTarget returns a record linked as the relation target end', async () => {
@@ -127,7 +127,7 @@ describe('SqliteRecordRepository', () => {
       }),
     );
 
-    expect(ids(await records.listByTarget('goal', 'g1'))).toEqual(['rec1']);
+    expect(ids(await records.listByTarget('goal', 10, 'g1'))).toEqual(['rec1']);
   });
 
   it('listByTarget returns a record linked in both directions only once', async () => {
@@ -156,7 +156,7 @@ describe('SqliteRecordRepository', () => {
       }),
     );
 
-    expect(ids(await records.listByTarget('goal', 'g1'))).toEqual(['rec1']);
+    expect(ids(await records.listByTarget('goal', 10, 'g1'))).toEqual(['rec1']);
   });
 
   it('listByTarget does not return records linked to other entities', async () => {
@@ -186,6 +186,6 @@ describe('SqliteRecordRepository', () => {
       }),
     );
 
-    expect(ids(await records.listByTarget('goal', 'g1'))).toEqual(['rec1']);
+    expect(ids(await records.listByTarget('goal', 10, 'g1'))).toEqual(['rec1']);
   });
 });

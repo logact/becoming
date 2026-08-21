@@ -1,0 +1,1 @@
+the goals page ,projects page  lack the recent activity

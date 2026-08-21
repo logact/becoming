@@ -38,6 +38,13 @@ import type {
 } from '../../domain/resource/repository/ResourceRepository';
 import type { Task } from '../../domain/task/Task';
 import type { TaskFilter, TaskRepository } from '../../domain/task/repository/TaskRepository';
+import { NodeSqliteDatabase } from '../../infrastructure/sqliteRepository/NodeSqliteDatabase';
+import { migrate } from '../../infrastructure/sqliteRepository/schema';
+import { SqliteTaskRepository } from '../../infrastructure/sqliteRepository/SqliteTaskRepository';
+import { SqliteProjectRepository } from '../../infrastructure/sqliteRepository/SqliteProjectRepository';
+import { SqliteLabelRepository } from '../../infrastructure/sqliteRepository/SqliteLabelRepository';
+import { SqliteRecordRepository } from '../../infrastructure/sqliteRepository/SqliteRecordRepository';
+import { SqliteRelationRepository } from '../../infrastructure/sqliteRepository/SqliteRelationRepository';
 
 function upsert<T extends { readonly id: string }>(items: T[], item: T): void {
   const index = items.findIndex((existing) => existing.id === item.id);
@@ -82,6 +89,23 @@ export class FakeGoalRepository implements GoalRepository {
   }
 }
 
+export async function makeFakeRepos(): Promise<{
+  taskRepo: TaskRepository,
+  projectRepo: ProjectRepository,
+  labelRepo: LabelRepository,
+  recordRepo: RecordRepository,
+  relationRepo: RelationRepository,
+}> {
+  const db = new NodeSqliteDatabase(':memory:');
+  await migrate(db);
+  return {
+    taskRepo: new SqliteTaskRepository(db),
+    projectRepo: new SqliteProjectRepository(db),
+    labelRepo: new SqliteLabelRepository(db),
+    recordRepo: new SqliteRecordRepository(db),
+    relationRepo: new SqliteRelationRepository(db),
+  };
+}
 export class FakeTaskRepository implements TaskRepository {
   readonly items: Task[] = [];
 
@@ -232,13 +256,13 @@ export class FakeRecordRepository implements RecordRepository {
    * Records linked to the target through a relation in either direction;
    * newest first, a record linked in both directions appears once.
    */
-  async listByTarget(targetType: RecordTargetType, targetId: string): Promise<DomainRecord[]> {
+  async listByTarget(targetType: RecordTargetType,limit:number, targetId?: string): Promise<DomainRecord[]> {
     const linkedRecordIds = new Set<string>();
     for (const relation of this.relations.items) {
-      if (relation.sourceType === 'record' && relation.targetType === targetType && relation.targetId === targetId) {
+      if (relation.sourceType === 'record' && relation.targetType === targetType && (!targetId || relation.targetId === targetId)) {
         linkedRecordIds.add(relation.sourceId);
       }
-      if (relation.targetType === 'record' && relation.sourceType === targetType && relation.sourceId === targetId) {
+      if (relation.targetType === 'record' && relation.sourceType === targetType && (!targetId || relation.sourceId === targetId)) {
         linkedRecordIds.add(relation.targetId);
       }
     }
@@ -247,7 +271,7 @@ export class FakeRecordRepository implements RecordRepository {
       .sort(
         (a, b) =>
           b.occurredAt.getTime() - a.occurredAt.getTime() || b.id.localeCompare(a.id),
-      );
+      ).slice(0, limit);
   }
 
   /** Newest first, capped at `limit`. */
