@@ -161,6 +161,85 @@ function showPrototypeToast(phone, message) {
   window.setTimeout(() => toast.remove(), 2200);
 }
 
+/* ================= universal capture ================= */
+const CAPTURE_KINDS = {
+  inbox: {
+    label: 'Decide later',
+    icon: 'sparkle',
+    placeholder: 'What’s on your mind?',
+    action: 'Save to inbox',
+    hint: 'Capture now. Organize later.',
+    toast: 'Saved to inbox',
+  },
+  idea: {
+    label: 'Idea',
+    icon: 'bulb',
+    placeholder: 'Describe the idea before it slips away…',
+    action: 'Capture idea',
+    hint: 'You can explore or derive it later.',
+    toast: 'Idea captured',
+  },
+  task: {
+    label: 'Task',
+    icon: 'checkCircle',
+    placeholder: 'What needs to be done?',
+    action: 'Create task',
+    hint: 'Project and timing can be added later.',
+    toast: 'Task created',
+  },
+  goal: {
+    label: 'Goal',
+    icon: 'target',
+    placeholder: 'What would you like to become or achieve?',
+    action: 'Create goal',
+    hint: 'Start with the outcome. Plan it later.',
+    toast: 'Goal created',
+  },
+  note: {
+    label: 'Note',
+    icon: 'doc',
+    placeholder: 'Write something worth remembering…',
+    action: 'Save note',
+    hint: 'Links and labels can be added later.',
+    toast: 'Note saved',
+  },
+};
+
+function captureButton() {
+  return '<button class="capture-fab" data-capture-open aria-label="Capture anything"><span class="capture-fab-icon">' + ic('plus', 18) + '</span><span>Capture</span></button>';
+}
+
+function captureSheet() {
+  return '<div class="capture-layer">' +
+    '<button class="capture-dismiss" data-capture-close aria-label="Close capture"></button>' +
+    '<section class="capture-sheet" aria-label="Capture anything">' +
+      '<div class="capture-handle"></div>' +
+      '<div class="capture-head"><div class="capture-head-copy"><h2>Capture anything</h2><p>Get it out now. Shape it whenever you’re ready.</p></div><button class="capture-close" data-capture-close aria-label="Close">' + ic('minus', 15) + '</button></div>' +
+      '<textarea class="capture-input" data-capture-input placeholder="' + CAPTURE_KINDS.inbox.placeholder + '"></textarea>' +
+      '<div class="capture-label">Make it a</div>' +
+      '<div class="capture-kinds">' + Object.entries(CAPTURE_KINDS).map(([key, kind]) =>
+        '<button class="capture-kind' + (key === 'inbox' ? ' selected' : '') + '" data-capture-kind="' + key + '">' + ic(kind.icon, 14) + '<span>' + kind.label + '</span></button>'
+      ).join('') + '</div>' +
+      '<div class="capture-foot"><span class="capture-hint" data-capture-hint>' + CAPTURE_KINDS.inbox.hint + '</span><button class="capture-save" data-capture-save disabled><span>' + CAPTURE_KINDS.inbox.action + '</span>' + ic('arrowUpRight', 14) + '</button></div>' +
+    '</section>' +
+  '</div>';
+}
+
+function openCapture(phone) {
+  phone.querySelector('.capture-layer')?.remove();
+  phone.insertAdjacentHTML('beforeend', captureSheet());
+  phone.querySelector('[data-capture-input]').focus();
+}
+
+function selectCaptureKind(button) {
+  const layer = button.closest('.capture-layer');
+  const kind = CAPTURE_KINDS[button.dataset.captureKind];
+  layer.querySelectorAll('[data-capture-kind]').forEach(option => option.classList.toggle('selected', option === button));
+  layer.querySelector('[data-capture-input]').placeholder = kind.placeholder;
+  layer.querySelector('[data-capture-hint]').textContent = kind.hint;
+  layer.querySelector('[data-capture-save] span').textContent = kind.action;
+}
+
 const IDEA_STATUS = {
   captured: { label: 'Captured', icon: 'circle', description: 'Saved and waiting to be processed' },
   exploring: { label: 'Exploring', icon: 'sparkle', description: 'Actively developing this idea' },
@@ -194,7 +273,9 @@ const phone = document.createElement('div');
 phone.className = 'phone';
 phone.innerHTML =
   '<section class="screen active">' + SCREEN() + '</section>' +
+  captureButton() +
   '<div class="island"></div><div class="home"></div>';
+phone.classList.toggle('has-tabbar', Boolean(phone.querySelector('.tabbar')));
 const cap = document.createElement('figcaption');
 cap.textContent = PAGE_TITLE;
 wrap.appendChild(phone);
@@ -203,6 +284,21 @@ document.getElementById('board').appendChild(wrap);
 
 /* ================= interactions ================= */
 document.addEventListener('click', e => {
+  const captureOpen = e.target.closest('[data-capture-open]');
+  if (captureOpen) { openCapture(captureOpen.closest('.phone')); return; }
+  const captureClose = e.target.closest('[data-capture-close]');
+  if (captureClose) { captureClose.closest('.capture-layer').remove(); return; }
+  const captureKind = e.target.closest('[data-capture-kind]');
+  if (captureKind) { selectCaptureKind(captureKind); return; }
+  const captureSave = e.target.closest('[data-capture-save]');
+  if (captureSave) {
+    const phone = captureSave.closest('.phone');
+    const selected = captureSave.closest('.capture-layer').querySelector('[data-capture-kind].selected');
+    const toast = CAPTURE_KINDS[selected.dataset.captureKind].toast;
+    captureSave.closest('.capture-layer').remove();
+    showPrototypeToast(phone, toast);
+    return;
+  }
   const statusOpen = e.target.closest('[data-status-open]');
   if (statusOpen) { openStatusSheet(statusOpen); return; }
   const statusSelect = e.target.closest('[data-status-select]');
@@ -306,4 +402,9 @@ document.addEventListener('click', e => {
   }
   const go = e.target.closest('[data-go]');
   if (go && PAGE_MAP[go.dataset.go]) location.href = PAGE_MAP[go.dataset.go];
+});
+
+document.addEventListener('input', e => {
+  if (!e.target.matches('[data-capture-input]')) return;
+  e.target.closest('.capture-layer').querySelector('[data-capture-save]').disabled = e.target.value.trim() === '';
 });

@@ -245,6 +245,40 @@
   .derive-hint{text-align:center;font-size:11.5px;line-height:1.45;color:var(--faint);margin:10px 10px 0}
   .prototype-toast{position:absolute;left:50%;bottom:27px;z-index:70;transform:translateX(-50%);white-space:nowrap;background:var(--ink);color:#fff;border-radius:999px;padding:10px 15px;font-size:12.5px;font-weight:700;box-shadow:0 7px 22px rgba(0,0,0,.2)}
 
+  /* ---------- universal capture ---------- */
+  .capture-fab{position:absolute;right:18px;bottom:24px;z-index:42;height:50px;border:0;border-radius:999px;background:var(--green);color:#F2F0E6;padding:7px 17px 7px 7px;display:flex;align-items:center;gap:8px;font:700 13px var(--sans);letter-spacing:.01em;cursor:pointer;box-shadow:0 8px 22px rgba(23,40,30,.28);transition:transform .15s,opacity .15s}
+  .phone.has-tabbar .capture-fab{bottom:88px}
+  .capture-fab:active{opacity:.72;transform:scale(.96)}
+  .capture-fab-icon{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--mint);color:var(--green)}
+  .capture-fab-icon svg{width:18px;height:18px}
+
+  .capture-layer{position:absolute;inset:0;z-index:55;display:flex;align-items:flex-end;background:rgba(18,29,22,.42)}
+  .capture-dismiss{position:absolute;inset:0;border:0;background:transparent;cursor:pointer}
+  .capture-sheet{position:relative;width:100%;background:var(--panel);border-radius:28px 28px 0 0;padding:9px 20px 34px;box-shadow:0 -18px 44px rgba(27,40,33,.22);animation:capture-rise .2s ease-out}
+  @keyframes capture-rise{from{transform:translateY(18px);opacity:.5}to{transform:translateY(0);opacity:1}}
+  .capture-handle{width:40px;height:4px;border-radius:3px;background:#D2D4CA;margin:0 auto 16px}
+  .capture-head{display:flex;align-items:flex-start;gap:12px}
+  .capture-head-copy{flex:1;min-width:0}
+  .capture-head h2{font-family:var(--serif);font-size:25px;line-height:1.1;letter-spacing:-.3px}
+  .capture-head p{font-size:12.5px;line-height:1.4;color:var(--muted);margin-top:5px}
+  .capture-close{width:34px;height:34px;border:0;border-radius:50%;background:var(--track);color:var(--muted);display:grid;place-items:center;cursor:pointer}
+  .capture-close svg{width:15px;height:15px}
+  .capture-input{display:block;width:100%;height:112px;resize:none;margin-top:17px;padding:14px 15px;border:1px solid var(--line);border-radius:18px;outline:0;background:var(--bg);color:var(--ink);font:500 16px/1.45 var(--sans)}
+  .capture-input::placeholder{color:var(--faint)}
+  .capture-input:focus{border-color:#AAB9AC;box-shadow:0 0 0 3px rgba(31,61,45,.06)}
+  .capture-label{font-size:10.5px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--faint);margin:17px 2px 9px}
+  .capture-kinds{display:flex;flex-wrap:wrap;gap:7px}
+  .capture-kind{height:34px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--muted);padding:0 10px;display:flex;align-items:center;gap:6px;font:600 12px var(--sans);cursor:pointer}
+  .capture-kind svg{width:14px;height:14px;color:var(--green)}
+  .capture-kind.selected{border-color:var(--green);background:var(--green);color:#F2F0E6}
+  .capture-kind.selected svg{color:#F2F0E6}
+  .capture-foot{display:flex;align-items:center;gap:12px;margin-top:20px}
+  .capture-hint{flex:1;font-size:11.5px;line-height:1.35;color:var(--faint)}
+  .capture-save{height:42px;border:0;border-radius:999px;background:var(--green);color:#F2F0E6;padding:0 16px;display:flex;align-items:center;gap:6px;font:700 12.5px var(--sans);cursor:pointer}
+  .capture-save svg{width:14px;height:14px}
+  .capture-save:disabled{opacity:.34;cursor:default}
+  .capture-save:not(:disabled):active{opacity:.55}
+
   /* ---------- plan tree (project detail) ---------- */
   .tree{background:var(--panel);border:1px solid var(--line);border-radius:22px;margin:0 18px;padding:8px 14px 8px 16px}
   .trow{display:flex;align-items:center;gap:11px;padding:9px 2px;min-height:44px;position:relative}
