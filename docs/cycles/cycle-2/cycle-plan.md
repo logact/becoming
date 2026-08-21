@@ -34,7 +34,7 @@
 ### 1. Tasks 工作流先行
 
 - [x] `tasks-page` §1.1。
-- [ ] `tasks-page` §2.1–§2.4。
+- [x] `tasks-page` §2.1–§2.4。
 - [ ] `tasks-page` §3.1–§3.5。
 - [ ] `tasks-page` §4–§5 与原文“实施顺序”8。
 

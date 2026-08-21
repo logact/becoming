@@ -297,7 +297,13 @@ export function AddPlanItemPage({
         if (tab === 'subgoal') {
           await addSubGoal.add({ id: createId(), parentGoalId: effectiveParentGoalId, ...shared });
         } else {
-          await addTask.add({ id: createId(), goalId: effectiveGoalId, ...shared });
+          await addTask.add({
+            id: createId(),
+            recordId: createId(),
+            relationId: createId(),
+            goalId: effectiveGoalId,
+            ...shared,
+          });
         }
       }
       navigation.goBack();

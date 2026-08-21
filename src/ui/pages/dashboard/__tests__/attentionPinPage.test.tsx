@@ -56,7 +56,7 @@ async function makeServices() {
     projectDetail: new ProjectDetailService(projects, goals, tasks, resources, records),
     libraryOverview: new LibraryOverviewService(goals, tasks, projects, ideas, resources),
     addSubGoal: new AddSubGoalService(projects, goals),
-    addTask: new AddTaskService(projects, goals, tasks),
+    addTask: new AddTaskService(projects, goals, tasks, records, relations),
     addMilestone: new AddMilestoneService(projects, milestones),
     allocateResource: new AllocateResourceService(resources),
     resourcePools: new ResourcePoolsService(resources),
