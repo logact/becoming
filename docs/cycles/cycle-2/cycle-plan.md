@@ -27,7 +27,9 @@
 
 - [x] 用户批准本聚合计划。
 - [x] `project-detail-alignment` §1–§4、原文“实施顺序”1–7：继承 Cycle 1 已完成结果，不重复实施。
-- [ ] 记录实现开始时的自动验证基线，并审计 `tasks-page` §1.1、§2.1 的现有部分实现。
+- [x] 记录实现开始时的自动验证基线，并审计 `tasks-page` §1.1、§2.1 的现有部分实现。
+
+基线审计：自动验证见文末“准备时基线”。`Task.isOverdue` 与 `TaskOverviewService` 已有部分实现，但 §1.1 的完整边界测试、§2.1 的显式 `now`、archived 排除、doing + paused、attention 排序和类型契约仍需按冻结计划收敛；§2.2 以后尚未实施，因此 Tasks 各实施项保持待完成。
 
 ### 1. Tasks 工作流先行
 
