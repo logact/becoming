@@ -50,3 +50,27 @@ each time you finish a task in the cycle workflow you should add commit and comm
 when the user ask you to generate/modify the prototype ,the user just need to quickly verify their idea ,so just quckly finish it, without too much verification work .
 
 when you create or remove the prototype's page you should modify the index in the prototype index.html.
+
+
+## About test
+The Fake Repo for unit test such as @/Users/logact/projects/becoming/src/application/__tests__/fakes.ts shouldn't rewrite the implementation logic ,we should use the node in-memory to mock .such as
+
+``` typescript
+export async function makeFakeRepos(): Promise<{
+  taskRepo: TaskRepository,
+  projectRepo: ProjectRepository,
+  labelRepo: LabelRepository,
+  recordRepo: RecordRepository,
+  relationRepo: RelationRepository,
+}> {
+  const db = new NodeSqliteDatabase(':memory:');
+  await migrate(db);
+  return {
+    taskRepo: new SqliteTaskRepository(db),
+    projectRepo: new SqliteProjectRepository(db),
+    labelRepo: new SqliteLabelRepository(db),
+    recordRepo: new SqliteRecordRepository(db),
+    relationRepo: new SqliteRelationRepository(db),
+  };
+}
+```

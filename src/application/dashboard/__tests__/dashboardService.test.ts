@@ -13,30 +13,23 @@ import {
   type AttentionItem,
 } from '../DashboardService';
 import { formatConsumptionDetail } from '../../resource/consumption';
-import {
-  FakeAttentionEntryRepository,
-  FakeGoalRepository,
-  FakeIdeaRepository,
-  FakeProjectRepository,
-  FakeRecordRepository,
-  FakeRelationRepository,
-  FakeResourceRepository,
-  FakeTaskRepository,
-} from '../../__tests__/fakes';
+import { makeFakeRepos } from '../../__tests__/fakes';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 const HOUR = 60 * 60 * 1000;
 const after = (hours: number): Date => new Date(t0.getTime() + hours * HOUR);
 
-function makeService() {
-  const goals = new FakeGoalRepository();
-  const tasks = new FakeTaskRepository();
-  const ideas = new FakeIdeaRepository();
-  const projects = new FakeProjectRepository();
-  const resources = new FakeResourceRepository();
-  const relations = new FakeRelationRepository();
-  const records = new FakeRecordRepository();
-  const attentionEntries = new FakeAttentionEntryRepository();
+async function makeService() {
+  const {
+    goalRepo: goals,
+    taskRepo: tasks,
+    ideaRepo: ideas,
+    projectRepo: projects,
+    resourceRepo: resources,
+    relationRepo: relations,
+    recordRepo: records,
+    attentionEntryRepo: attentionEntries,
+  } = await makeFakeRepos();
   const service = new DashboardService(
     goals,
     tasks,
@@ -108,7 +101,7 @@ function dismiss(id: string, targetType: 'goal' | 'task' | 'project' | 'idea', t
   return AttentionEntry.create({ id, targetType, targetId, kind: 'dismiss', now: t0 });
 }
 
-type Ctx = ReturnType<typeof makeService>;
+type Ctx = Awaited<ReturnType<typeof makeService>>;
 
 /** A quantity resource fully allocated to `projectId`, `consumed` already used. */
 async function allocatedResource(
@@ -148,7 +141,7 @@ const attentionIds = (items: AttentionItem[]): string[] => items.map((item) => i
 
 describe('DashboardService doing', () => {
   it('mixes doing goals, doing tasks, and captured ideas sorted by updatedAt desc', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.goals.save(doingGoal('g1', after(1)));
     await ctx.tasks.save(doingTask('t1', after(3)));
     await ctx.ideas.save(Idea.create({ id: 'i1', content: 'Idea i1', now: after(2) }));
@@ -170,7 +163,7 @@ describe('DashboardService doing', () => {
   });
 
   it('includes the due of doing goals and tasks when set', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     const due = after(10);
     const goal = goalWithDue('g1', due);
     goal.start(t0);
@@ -178,13 +171,13 @@ describe('DashboardService doing', () => {
 
     const view = await ctx.service.getDashboard(t0);
 
-    expect(view.doing[0].due).toBe(due);
+    expect(view.doing[0].due).toEqual(due);
   });
 });
 
 describe('DashboardService attention: failed rule', () => {
   it('flags failed goals and tasks, excluding archived ones', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.goals.save(failedGoal('g1'));
     await ctx.tasks.save(failedTask('t1'));
     const archived = failedGoal('g-archived');
@@ -201,7 +194,7 @@ describe('DashboardService attention: failed rule', () => {
 
 describe('DashboardService attention: overdue rule', () => {
   it('flags due-imminent goals, tasks, and projects ordered by due asc', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.goals.save(goalWithDue('g-past', after(-1))); // already past due
     await ctx.goals.save(goalWithDue('g-in', after(23))); // within 24h window
     await ctx.goals.save(goalWithDue('g-edge', new Date(t0.getTime() + GOAL_DUE_WINDOW_MS)));
@@ -236,7 +229,7 @@ describe('DashboardService attention: overdue rule', () => {
   });
 
   it('does not flag a due just outside the window boundary', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.goals.save(goalWithDue('g1', new Date(t0.getTime() + GOAL_DUE_WINDOW_MS + 1)));
     await ctx.tasks.save(taskWithDue('t1', new Date(t0.getTime() + TASK_DUE_WINDOW_MS + 1)));
 
@@ -248,7 +241,7 @@ describe('DashboardService attention: overdue rule', () => {
 
 describe('DashboardService attention: resource exhaustion rule', () => {
   it('flags an active project whose allocation is consumed at exactly 90%', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.projects.save(activeProject('p1'));
     // Two exhausted allocations still yield a single item for the project.
     await allocatedResource(ctx, 'r1', 'p1', 100, 90);
@@ -266,7 +259,7 @@ describe('DashboardService attention: resource exhaustion rule', () => {
   });
 
   it('does not flag a project consumed at only 89%', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.projects.save(activeProject('p1'));
     await allocatedResource(ctx, 'r1', 'p1', 100, 89);
 
@@ -276,7 +269,7 @@ describe('DashboardService attention: resource exhaustion rule', () => {
   });
 
   it('does not flag a paused project even when exhausted', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     const project = activeProject('p1');
     project.pause(t0);
     await ctx.projects.save(project);
@@ -290,7 +283,7 @@ describe('DashboardService attention: resource exhaustion rule', () => {
 
 describe('DashboardService attention: pinned', () => {
   it('shows pinned targets, skipping archived or missing ones', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     const due = after(5);
     await ctx.tasks.save(taskWithDue('t1', due));
     const archivedGoal = goalWithDue('g-archived');
@@ -317,7 +310,7 @@ describe('DashboardService attention: pinned', () => {
 
 describe('DashboardService attention: dismissed', () => {
   it('hides a dismissed rule-derived item', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.goals.save(failedGoal('g1'));
     await ctx.attentionEntries.save(dismiss('a1', 'goal', 'g1'));
 
@@ -327,7 +320,7 @@ describe('DashboardService attention: dismissed', () => {
   });
 
   it('hides a dismissed pinned item', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.tasks.save(taskWithDue('t1'));
     // Pin and dismiss coexist only when seeded directly; dismissal wins.
     await ctx.attentionEntries.save(pin('a1', 'task', 't1'));
@@ -341,7 +334,7 @@ describe('DashboardService attention: dismissed', () => {
 
 describe('DashboardService attention: priority and ordering', () => {
   it('shows an item matching several rules once, with the highest-priority reason', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     // Failed and pinned: failed wins. (A failed goal can never also be
     // overdue: isDueImminent is false for failed items.)
     await ctx.goals.save(failedGoal('g1'));
@@ -364,7 +357,7 @@ describe('DashboardService attention: priority and ordering', () => {
   });
 
   it('orders failed, overdue by due asc, resourceExhausted, then pinned', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.goals.save(failedGoal('g-failed'));
     await ctx.goals.save(goalWithDue('g-late', after(10)));
     await ctx.goals.save(goalWithDue('g-soon', after(5)));
@@ -387,7 +380,7 @@ describe('DashboardService attention: priority and ordering', () => {
 
 describe('DashboardService recentActivity', () => {
   it('returns at most 10 records in repository order', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     for (let i = 1; i <= 12; i += 1) {
       await ctx.records.append(
         DomainRecord.create({
@@ -423,7 +416,7 @@ describe('DashboardService recentActivity', () => {
   });
 
   it('returns fewer than 10 when the repository has fewer', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.records.append(
       DomainRecord.create({ id: 'rec1', kind: 'goalCreated', occurredAt: t0 }),
     );
@@ -456,7 +449,7 @@ describe('DashboardService stats', () => {
   }
 
   it('doingNow counts doing goals, doing tasks, and captured ideas', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     const goal = Goal.create({ id: 'g1', title: 'Goal g1', now: todayMorning });
     goal.start(todayMorning);
     await ctx.goals.save(goal);
@@ -477,7 +470,7 @@ describe('DashboardService stats', () => {
   });
 
   it('doneToday counts goals and tasks completed today, ignoring yesterday', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     await ctx.goals.save(completedGoal('g-today', todayMorning));
     await ctx.tasks.save(completedTask('t-today', todayEvening));
     await ctx.goals.save(completedGoal('g-yesterday', yesterday));
@@ -496,7 +489,7 @@ describe('DashboardService stats', () => {
   });
 
   it('dueToday counts open goals, tasks, and projects due inside today', async () => {
-    const ctx = makeService();
+    const ctx = await makeService();
     // Counted: a goal, a task (due at the start-of-day boundary), a project.
     await ctx.goals.save(
       Goal.create({ id: 'g-in', title: 'Goal g-in', due: todayEvening, now: todayMorning }),

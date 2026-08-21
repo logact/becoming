@@ -4,29 +4,26 @@ import { Record as DomainRecord } from '../../../domain/record/Record';
 import { Relation } from '../../../domain/relation/Relation';
 import { GoalDetailService } from '../GoalDetailService';
 import { RECENT_ACTIVITY_LIMIT } from '../../dashboard/DashboardService';
-import {
-  FakeGoalRepository,
-  FakeProjectRepository,
-  FakeRecordRepository,
-  FakeRelationRepository,
-} from '../../__tests__/fakes';
+import { makeFakeRepos } from '../../__tests__/fakes';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 const HOUR = 60 * 60 * 1000;
 const after = (hours: number): Date => new Date(t0.getTime() + hours * HOUR);
 
-function makeService() {
-  const goals = new FakeGoalRepository();
-  const projects = new FakeProjectRepository();
-  const relations = new FakeRelationRepository();
-  const records = new FakeRecordRepository(relations);
+async function makeService() {
+  const {
+    goalRepo: goals,
+    projectRepo: projects,
+    relationRepo: relations,
+    recordRepo: records,
+  } = await makeFakeRepos();
   const service = new GoalDetailService(goals, projects, records);
   return { service, goals, projects, relations, records };
 }
 
 describe('GoalDetailService.getDetail', () => {
   it('returns a null goal when the goal is unknown', async () => {
-    const { service } = makeService();
+    const { service } = await makeService();
 
     const view = await service.getDetail('missing');
 
@@ -37,7 +34,7 @@ describe('GoalDetailService.getDetail', () => {
   });
 
   it('lists the goal projects with status and sub-goal count', async () => {
-    const { service, goals, projects } = makeService();
+    const { service, goals, projects } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     await projects.save(Project.create({ id: 'p1', name: 'Project p1', goalId: 'g1', now: t0 }));
     const active = Project.create({ id: 'p2', name: 'Project p2', goalId: 'g1', now: t0 });
@@ -58,7 +55,7 @@ describe('GoalDetailService.getDetail', () => {
   });
 
   it('excludes archived projects and reports no active project when none is active', async () => {
-    const { service, goals, projects } = makeService();
+    const { service, goals, projects } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     const archived = Project.create({ id: 'p1', name: 'Project p1', goalId: 'g1', now: t0 });
     archived.archive(t0);
@@ -71,7 +68,7 @@ describe('GoalDetailService.getDetail', () => {
   });
 
   it('lists records linked to the goal in either relation direction, newest first', async () => {
-    const { service, goals, relations, records } = makeService();
+    const { service, goals, relations, records } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     await records.append(
       DomainRecord.create({ id: 'r1', kind: 'goalCreated', occurredAt: after(1) }),
@@ -128,7 +125,7 @@ describe('GoalDetailService.getDetail', () => {
   });
 
   it('lists a record linked in both directions only once', async () => {
-    const { service, goals, relations, records } = makeService();
+    const { service, goals, relations, records } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     await records.append(
       DomainRecord.create({ id: 'r1', kind: 'goalCreated', occurredAt: after(1) }),
@@ -162,7 +159,7 @@ describe('GoalDetailService.getDetail', () => {
   });
 
   it('caps recent activity at the recent activity limit', async () => {
-    const { service, goals, relations, records } = makeService();
+    const { service, goals, relations, records } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     for (let i = 0; i < RECENT_ACTIVITY_LIMIT + 3; i += 1) {
       const id = `r${String(i).padStart(2, '0')}`;

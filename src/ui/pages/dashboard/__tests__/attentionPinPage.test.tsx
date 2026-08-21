@@ -1,18 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import React from 'react';
 
-import {
-  FakeAttentionEntryRepository,
-  FakeGoalRepository,
-  FakeIdeaRepository,
-  FakeLabelRepository,
-  FakeMilestoneRepository,
-  FakeProjectRepository,
-  FakeRecordRepository,
-  FakeRelationRepository,
-  FakeResourceRepository,
-  FakeTaskRepository,
-} from '../../../../application/__tests__/fakes';
+import { makeFakeRepos } from '../../../../application/__tests__/fakes';
 import { AttentionService } from '../../../../application/attention/AttentionService';
 import { PinCandidatesService } from '../../../../application/attention/PinCandidatesService';
 import { DashboardService } from '../../../../application/dashboard/DashboardService';
@@ -34,18 +23,20 @@ import { AppServicesProvider, type AppServices } from '../../../composition/AppS
 import { NavigationShell, type ShellDestination } from '../../../navigation/NavigationShell';
 import { AttentionPinPage } from '../AttentionPinPage';
 
-/** Real application services over the in-memory fake repositories. */
-function makeServices() {
-  const goals = new FakeGoalRepository();
-  const tasks = new FakeTaskRepository();
-  const ideas = new FakeIdeaRepository();
-  const projects = new FakeProjectRepository();
-  const resources = new FakeResourceRepository();
-  const relations = new FakeRelationRepository();
-  const records = new FakeRecordRepository();
-  const attentionEntries = new FakeAttentionEntryRepository();
-  const labels = new FakeLabelRepository();
-  const milestones = new FakeMilestoneRepository();
+/** Real application services over isolated in-memory SQLite repositories. */
+async function makeServices() {
+  const {
+    goalRepo: goals,
+    taskRepo: tasks,
+    ideaRepo: ideas,
+    projectRepo: projects,
+    resourceRepo: resources,
+    relationRepo: relations,
+    recordRepo: records,
+    attentionEntryRepo: attentionEntries,
+    labelRepo: labels,
+    milestoneRepo: milestones,
+  } = await makeFakeRepos();
   const services: AppServices = {
     dashboard: new DashboardService(
       goals,
@@ -73,7 +64,7 @@ function makeServices() {
   return { services, goals, tasks, ideas, attentionEntries };
 }
 
-type Ctx = ReturnType<typeof makeServices>;
+type Ctx = Awaited<ReturnType<typeof makeServices>>;
 
 /** 'Alpha goal' (todo), 'Beta task' (doing), 'Gamma idea' (captured). */
 async function seedCandidates(ctx: Ctx, now: Date): Promise<void> {
@@ -99,7 +90,7 @@ function renderPinPage(services: AppServices) {
 describe('AttentionPinPage', () => {
   it('groups candidates under Goals/Tasks/Ideas with status subtitles and disables pinned rows', async () => {
     const now = new Date();
-    const ctx = makeServices();
+    const ctx = await makeServices();
     await seedCandidates(ctx, now);
     await ctx.goals.save(Goal.create({ id: 'g2', title: 'Delta goal', now }));
     await ctx.attentionEntries.save(
@@ -125,7 +116,7 @@ describe('AttentionPinPage', () => {
 
   it('filters candidates case-insensitively by title', async () => {
     const now = new Date();
-    const ctx = makeServices();
+    const ctx = await makeServices();
     await seedCandidates(ctx, now);
 
     renderPinPage(ctx.services);
@@ -144,7 +135,7 @@ describe('AttentionPinPage', () => {
 
   it('pin persists the pin and flips the row to a disabled Pinned without refetching', async () => {
     const now = new Date();
-    const ctx = makeServices();
+    const ctx = await makeServices();
     await seedCandidates(ctx, now);
     const listSpy = jest.spyOn(ctx.services.pinCandidates, 'list');
 
@@ -159,7 +150,7 @@ describe('AttentionPinPage', () => {
     expect(within(screen.getByTestId('pin-task-t1')).getByText('Pinned')).toBeTruthy();
     // The pin went through the real AttentionService into the fake repository…
     expect(
-      ctx.attentionEntries.items.some(
+      (await ctx.attentionEntries.list()).some(
         (entry) => entry.kind === 'pin' && entry.targetType === 'task' && entry.targetId === 't1',
       ),
     ).toBe(true);

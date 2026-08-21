@@ -1,12 +1,12 @@
 import { Resource } from '../../../domain/resource/Resource';
-import { FakeResourceRepository } from '../../__tests__/fakes';
+import { makeFakeRepos } from '../../__tests__/fakes';
 import { ResourcePoolsService } from '../ResourcePoolsService';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 
 describe('ResourcePoolsService', () => {
   it('lists non-archived pools with their available amounts', async () => {
-    const resources = new FakeResourceRepository();
+    const { resourceRepo: resources } = await makeFakeRepos();
     const gear = Resource.create({
       id: 'r1',
       typeId: 'rt1',
@@ -30,7 +30,7 @@ describe('ResourcePoolsService', () => {
   });
 
   it('excludes archived pools', async () => {
-    const resources = new FakeResourceRepository();
+    const { resourceRepo: resources } = await makeFakeRepos();
     const archived = Resource.create({
       id: 'r1',
       typeId: 'rt1',

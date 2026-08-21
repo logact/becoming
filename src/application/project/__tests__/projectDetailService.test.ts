@@ -5,15 +5,7 @@ import { Record as DomainRecord } from '../../../domain/record/Record';
 import { Relation } from '../../../domain/relation/Relation';
 import { Resource } from '../../../domain/resource/Resource';
 import { Task } from '../../../domain/task/Task';
-import {
-  FakeGoalRepository,
-  FakeMilestoneRepository,
-  FakeProjectRepository,
-  FakeRecordRepository,
-  FakeRelationRepository,
-  FakeResourceRepository,
-  FakeTaskRepository,
-} from '../../__tests__/fakes';
+import { makeFakeRepos, type TestRepositories } from '../../__tests__/fakes';
 import { RECENT_ACTIVITY_LIMIT } from '../../dashboard/DashboardService';
 import { ProjectDetailService } from '../ProjectDetailService';
 
@@ -22,19 +14,24 @@ const HOUR = 60 * 60 * 1000;
 const WEEK = 7 * 24 * HOUR;
 const after = (hours: number): Date => new Date(t0.getTime() + hours * HOUR);
 
-function makeService() {
-  const projects = new FakeProjectRepository();
-  const goals = new FakeGoalRepository();
-  const tasks = new FakeTaskRepository();
-  const resources = new FakeResourceRepository();
-  const relations = new FakeRelationRepository();
-  const records = new FakeRecordRepository(relations);
-  const milestones = new FakeMilestoneRepository();
+async function makeService() {
+  const {
+    projectRepo: projects,
+    goalRepo: goals,
+    taskRepo: tasks,
+    resourceRepo: resources,
+    relationRepo: relations,
+    recordRepo: records,
+    milestoneRepo: milestones,
+  } = await makeFakeRepos();
   const service = new ProjectDetailService(projects, goals, tasks, resources, records, milestones);
   return { service, projects, goals, tasks, resources, relations, records, milestones };
 }
 
-function seedProject(projects: FakeProjectRepository, goals: FakeGoalRepository) {
+function seedProject(
+  projects: TestRepositories['projectRepo'],
+  goals: TestRepositories['goalRepo'],
+) {
   const goal = Goal.create({ id: 'g1', title: 'Run a half marathon', now: t0 });
   goal.start(t0);
   const project = Project.create({ id: 'p1', name: 'Spring training plan', goalId: 'g1', now: t0 });
@@ -43,7 +40,7 @@ function seedProject(projects: FakeProjectRepository, goals: FakeGoalRepository)
 
 describe('ProjectDetailService.getDetail', () => {
   it('returns an empty view with null project for an unknown project', async () => {
-    const { service } = makeService();
+    const { service } = await makeService();
 
     expect(await service.getDetail('nope')).toEqual({
       project: null,
@@ -58,7 +55,7 @@ describe('ProjectDetailService.getDetail', () => {
   });
 
   it('builds the plan tree rooted at the serving goal with nested sub-goals and tasks attached to their goal', async () => {
-    const { service, projects, goals, tasks } = makeService();
+    const { service, projects, goals, tasks } = await makeService();
     await seedProject(projects, goals);
     // Direct sub-goal (parent is the serving goal).
     await goals.save(
@@ -122,7 +119,7 @@ describe('ProjectDetailService.getDetail', () => {
   });
 
   it('lists non-archived tasks and the resources allocated to the project', async () => {
-    const { service, projects, goals, tasks, resources } = makeService();
+    const { service, projects, goals, tasks, resources } = await makeService();
     await seedProject(projects, goals);
     await tasks.save(Task.create({ id: 't1', title: 'Intervals 6 × 800 m', projectId: 'p1', now: t0 }));
     const done = Task.create({ id: 't2', title: 'Base run 8 km', projectId: 'p1', due: after(24), now: t0 });
@@ -153,7 +150,7 @@ describe('ProjectDetailService.getDetail', () => {
   });
 
   it('computes progress across sub-goals and tasks', async () => {
-    const { service, projects, goals, tasks } = makeService();
+    const { service, projects, goals, tasks } = await makeService();
     await seedProject(projects, goals);
     const doneGoal = Goal.create({ id: 'g2', title: '10 km under 50:00', projectId: 'p1', now: t0 });
     doneGoal.start(t0);
@@ -178,7 +175,7 @@ describe('ProjectDetailService.getDetail', () => {
   });
 
   it('returns null progress when the serving goal is unknown', async () => {
-    const { service, projects } = makeService();
+    const { service, projects } = await makeService();
     await projects.save(Project.create({ id: 'p1', name: 'Spring training plan', goalId: 'gone', now: t0 }));
 
     const view = await service.getDetail('p1', t0);
@@ -188,7 +185,7 @@ describe('ProjectDetailService.getDetail', () => {
   });
 
   it('derives the 1-based current week from project createdAt to due', async () => {
-    const { service, projects, goals } = makeService();
+    const { service, projects, goals } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Run a half marathon', now: t0 }));
     await projects.save(
       Project.create({
@@ -206,7 +203,7 @@ describe('ProjectDetailService.getDetail', () => {
   });
 
   it('returns null weeks when the project has no due', async () => {
-    const { service, projects, goals } = makeService();
+    const { service, projects, goals } = await makeService();
     await seedProject(projects, goals);
 
     const view = await service.getDetail('p1', t0);
@@ -215,7 +212,7 @@ describe('ProjectDetailService.getDetail', () => {
   });
 
   it('lists milestones sorted by date with the reached flag and linked items', async () => {
-    const { service, projects, goals, tasks, milestones } = makeService();
+    const { service, projects, goals, tasks, milestones } = await makeService();
     await seedProject(projects, goals);
     await goals.save(
       Goal.create({
@@ -289,7 +286,7 @@ describe('ProjectDetailService.getDetail', () => {
   });
 
   it('returns project-linked activity in either relation direction, capped', async () => {
-    const { service, projects, goals, relations, records } = makeService();
+    const { service, projects, goals, relations, records } = await makeService();
     await seedProject(projects, goals);
     for (let i = 1; i <= RECENT_ACTIVITY_LIMIT + 2; i += 1) {
       await records.append(

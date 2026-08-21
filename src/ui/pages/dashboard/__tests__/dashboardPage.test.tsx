@@ -1,18 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import React from 'react';
 
-import {
-  FakeAttentionEntryRepository,
-  FakeGoalRepository,
-  FakeIdeaRepository,
-  FakeLabelRepository,
-  FakeMilestoneRepository,
-  FakeProjectRepository,
-  FakeRecordRepository,
-  FakeRelationRepository,
-  FakeResourceRepository,
-  FakeTaskRepository,
-} from '../../../../application/__tests__/fakes';
+import { makeFakeRepos } from '../../../../application/__tests__/fakes';
 import { AttentionService } from '../../../../application/attention/AttentionService';
 import { PinCandidatesService } from '../../../../application/attention/PinCandidatesService';
 import { DashboardService } from '../../../../application/dashboard/DashboardService';
@@ -38,20 +27,22 @@ import { DashboardPage } from '../DashboardPage';
 const MINUTE = 60 * 1000;
 
 /**
- * Real application services over the in-memory fake repositories, so the
+ * Real application services over isolated in-memory SQLite repositories, so the
  * pages under test exercise the same read models the app composes.
  */
-function makeServices() {
-  const goals = new FakeGoalRepository();
-  const tasks = new FakeTaskRepository();
-  const ideas = new FakeIdeaRepository();
-  const projects = new FakeProjectRepository();
-  const resources = new FakeResourceRepository();
-  const relations = new FakeRelationRepository();
-  const records = new FakeRecordRepository();
-  const attentionEntries = new FakeAttentionEntryRepository();
-  const labels = new FakeLabelRepository();
-  const milestones = new FakeMilestoneRepository();
+async function makeServices() {
+  const {
+    goalRepo: goals,
+    taskRepo: tasks,
+    ideaRepo: ideas,
+    projectRepo: projects,
+    resourceRepo: resources,
+    relationRepo: relations,
+    recordRepo: records,
+    attentionEntryRepo: attentionEntries,
+    labelRepo: labels,
+    milestoneRepo: milestones,
+  } = await makeFakeRepos();
   const services: AppServices = {
     dashboard: new DashboardService(
       goals,
@@ -117,7 +108,7 @@ describe('DashboardPage', () => {
     // One minute after local midnight: always inside "today", never crossing
     // a calendar-day boundary regardless of when the test runs.
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 1);
-    const ctx = makeServices();
+    const ctx = await makeServices();
 
     await ctx.goals.save(doingGoal('g-doing', 'Write the report', now));
     await ctx.tasks.save(doingTask('t-doing', 'Buy groceries', now));
@@ -167,7 +158,7 @@ describe('DashboardPage', () => {
 
   it('removes an attention item and persists the dismissal', async () => {
     const now = new Date();
-    const ctx = makeServices();
+    const ctx = await makeServices();
     await ctx.goals.save(failedGoal('g-failed', 'Ship v2', now));
 
     renderShell(ctx.services, dashboardDestinations());
@@ -179,7 +170,7 @@ describe('DashboardPage', () => {
     // The page dismisses via the real AttentionService, then refetches.
     await waitFor(() => expect(screen.queryByText('Ship v2')).toBeNull());
     expect(
-      ctx.attentionEntries.items.some(
+      (await ctx.attentionEntries.list()).some(
         (entry) =>
           entry.kind === 'dismiss' && entry.targetType === 'goal' && entry.targetId === 'g-failed',
       ),
@@ -188,7 +179,7 @@ describe('DashboardPage', () => {
 
   it('pins a goal through the pushed attention-pin screen and shows it after going back', async () => {
     const now = new Date();
-    const ctx = makeServices();
+    const ctx = await makeServices();
     await ctx.goals.save(Goal.create({ id: 'g1', title: 'Learn piano', now }));
 
     renderShell(ctx.services, appDestinations());

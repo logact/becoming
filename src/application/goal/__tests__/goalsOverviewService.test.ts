@@ -2,15 +2,14 @@ import { Goal } from '../../../domain/goal/Goal';
 import { Label } from '../../../domain/label/Label';
 import { GoalsOverviewService } from '../GoalsOverviewService';
 import { GOAL_DUE_WINDOW_MS } from '../../dashboard/DashboardService';
-import { FakeGoalRepository, FakeLabelRepository } from '../../__tests__/fakes';
+import { makeFakeRepos } from '../../__tests__/fakes';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 const HOUR = 60 * 60 * 1000;
 const after = (hours: number): Date => new Date(t0.getTime() + hours * HOUR);
 
-function makeService() {
-  const goals = new FakeGoalRepository();
-  const labels = new FakeLabelRepository();
+async function makeService() {
+  const { goalRepo: goals, labelRepo: labels } = await makeFakeRepos();
   const service = new GoalsOverviewService(goals, labels);
   return { service, goals, labels };
 }
@@ -33,7 +32,7 @@ function failedGoal(id: string, due?: Date): Goal {
 
 describe('GoalsOverviewService.getOverview', () => {
   it('counts active and total non-archived goals in stats', async () => {
-    const { service, goals } = makeService();
+    const { service, goals } = await makeService();
     await goals.save(goal('g1'));
     await goals.save(doingGoal('g2'));
     const archived = doingGoal('g3');
@@ -46,7 +45,7 @@ describe('GoalsOverviewService.getOverview', () => {
   });
 
   it('lists failed goals and due-imminent goals in attention, failed first', async () => {
-    const { service, goals } = makeService();
+    const { service, goals } = await makeService();
     await goals.save(failedGoal('g1'));
     await goals.save(doingGoal('g2', after(12))); // due within the window
     await goals.save(doingGoal('g3', after(GOAL_DUE_WINDOW_MS / HOUR + 1))); // outside
@@ -61,7 +60,7 @@ describe('GoalsOverviewService.getOverview', () => {
   });
 
   it('orders overdue attention items by soonest due', async () => {
-    const { service, goals } = makeService();
+    const { service, goals } = await makeService();
     await goals.save(doingGoal('g1', after(20)));
     await goals.save(doingGoal('g2', after(2)));
 
@@ -71,7 +70,7 @@ describe('GoalsOverviewService.getOverview', () => {
   });
 
   it('excludes archived goals from attention', async () => {
-    const { service, goals } = makeService();
+    const { service, goals } = await makeService();
     const archived = failedGoal('g1');
     archived.archive(t0);
     await goals.save(archived);
@@ -82,7 +81,7 @@ describe('GoalsOverviewService.getOverview', () => {
   });
 
   it('lists doing goals in focus with labels and due', async () => {
-    const { service, goals } = makeService();
+    const { service, goals } = await makeService();
     const doing = doingGoal('g1', after(48));
     doing.addLabel('l1');
     await goals.save(doing);
@@ -96,7 +95,7 @@ describe('GoalsOverviewService.getOverview', () => {
   });
 
   it('counts non-archived goals per status', async () => {
-    const { service, goals } = makeService();
+    const { service, goals } = await makeService();
     await goals.save(goal('g1'));
     await goals.save(doingGoal('g2'));
     const done = doingGoal('g3');
@@ -112,7 +111,7 @@ describe('GoalsOverviewService.getOverview', () => {
   });
 
   it('counts non-archived goals per label with resolved names, most-used first', async () => {
-    const { service, goals, labels } = makeService();
+    const { service, goals, labels } = await makeService();
     await labels.save(Label.create({ id: 'l1', name: 'Health' }));
     await labels.save(Label.create({ id: 'l2', name: 'Work' }));
     const g1 = doingGoal('g1');
@@ -136,7 +135,7 @@ describe('GoalsOverviewService.getOverview', () => {
   });
 
   it('groups all non-archived goals by status', async () => {
-    const { service, goals } = makeService();
+    const { service, goals } = await makeService();
     await goals.save(goal('g1'));
     await goals.save(doingGoal('g2'));
     const paused = doingGoal('g3');

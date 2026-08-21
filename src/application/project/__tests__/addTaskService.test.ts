@@ -2,30 +2,23 @@ import { DomainError } from '../../../domain/shared/errors';
 import { Goal } from '../../../domain/goal/Goal';
 import { Project } from '../../../domain/project/Project';
 import { AddTaskService } from '../AddTaskService';
-import {
-  FakeGoalRepository,
-  FakeProjectRepository,
-  FakeTaskRepository,
-} from '../../__tests__/fakes';
+import { makeFakeRepos, type TestRepositories } from '../../__tests__/fakes';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 
-function makeService(): {
-  service: AddTaskService;
-  projects: FakeProjectRepository;
-  goals: FakeGoalRepository;
-  tasks: FakeTaskRepository;
-} {
-  const projects = new FakeProjectRepository();
-  const goals = new FakeGoalRepository();
-  const tasks = new FakeTaskRepository();
+async function makeService() {
+  const {
+    projectRepo: projects,
+    goalRepo: goals,
+    taskRepo: tasks,
+  } = await makeFakeRepos();
   return { service: new AddTaskService(projects, goals, tasks), projects, goals, tasks };
 }
 
 /** Project p1 serving goal g-root, plus sub-goal g-sub inside the tree. */
 async function seedProject(
-  projects: FakeProjectRepository,
-  goals: FakeGoalRepository,
+  projects: TestRepositories['projectRepo'],
+  goals: TestRepositories['goalRepo'],
 ): Promise<void> {
   await goals.save(Goal.create({ id: 'g-root', title: 'Root goal', now: t0 }));
   await goals.save(
@@ -36,7 +29,7 @@ async function seedProject(
 
 describe('AddTaskService', () => {
   it('saves a task assigned to a goal of the project tree', async () => {
-    const { service, projects, goals, tasks } = makeService();
+    const { service, projects, goals, tasks } = await makeService();
     await seedProject(projects, goals);
 
     await service.add({
@@ -49,8 +42,8 @@ describe('AddTaskService', () => {
       now: t0,
     });
 
-    expect(tasks.items).toHaveLength(1);
-    const task = tasks.items[0];
+    const task = await tasks.findById('t1');
+    expect(task).not.toBeNull();
     expect(task.id).toBe('t1');
     expect(task.title).toBe('Write spec');
     expect(task.projectId).toBe('p1');
@@ -61,46 +54,46 @@ describe('AddTaskService', () => {
   });
 
   it('accepts the serving goal as the task goal', async () => {
-    const { service, projects, goals, tasks } = makeService();
+    const { service, projects, goals, tasks } = await makeService();
     await seedProject(projects, goals);
 
     await service.add({ id: 't1', projectId: 'p1', goalId: 'g-root', title: 'Root task', now: t0 });
 
-    expect(tasks.items[0].goalId).toBe('g-root');
+    expect((await tasks.findById('t1'))?.goalId).toBe('g-root');
   });
 
   it('accepts no goal (the task sits at the root level)', async () => {
-    const { service, projects, goals, tasks } = makeService();
+    const { service, projects, goals, tasks } = await makeService();
     await seedProject(projects, goals);
 
     await service.add({ id: 't1', projectId: 'p1', title: 'Loose task', now: t0 });
 
-    expect(tasks.items[0].goalId).toBeUndefined();
+    expect((await tasks.findById('t1'))?.goalId).toBeUndefined();
   });
 
   it('rejects an empty title', async () => {
-    const { service, projects, goals, tasks } = makeService();
+    const { service, projects, goals, tasks } = await makeService();
     await seedProject(projects, goals);
 
     await expect(
       service.add({ id: 't1', projectId: 'p1', title: ' ', now: t0 }),
     ).rejects.toThrow(DomainError);
-    expect(tasks.items).toHaveLength(0);
+    expect(await tasks.list()).toHaveLength(0);
   });
 
   it('rejects a goal outside the project goal tree', async () => {
-    const { service, projects, goals, tasks } = makeService();
+    const { service, projects, goals, tasks } = await makeService();
     await seedProject(projects, goals);
     await goals.save(Goal.create({ id: 'g-other', title: 'Other tree', now: t0 }));
 
     await expect(
       service.add({ id: 't1', projectId: 'p1', goalId: 'g-other', title: 'Task', now: t0 }),
     ).rejects.toThrow(DomainError);
-    expect(tasks.items).toHaveLength(0);
+    expect(await tasks.list()).toHaveLength(0);
   });
 
   it('rejects an unknown goal', async () => {
-    const { service, projects, goals } = makeService();
+    const { service, projects, goals } = await makeService();
     await seedProject(projects, goals);
 
     await expect(
@@ -109,7 +102,7 @@ describe('AddTaskService', () => {
   });
 
   it('rejects an unknown project', async () => {
-    const { service } = makeService();
+    const { service } = await makeService();
 
     await expect(
       service.add({ id: 't1', projectId: 'missing', title: 'Task', now: t0 }),

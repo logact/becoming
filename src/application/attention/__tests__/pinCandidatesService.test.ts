@@ -3,22 +3,19 @@ import { Goal } from '../../../domain/goal/Goal';
 import { Idea } from '../../../domain/idea/Idea';
 import { Task } from '../../../domain/task/Task';
 import { PinCandidatesService } from '../PinCandidatesService';
-import {
-  FakeAttentionEntryRepository,
-  FakeGoalRepository,
-  FakeIdeaRepository,
-  FakeTaskRepository,
-} from '../../__tests__/fakes';
+import { makeFakeRepos } from '../../__tests__/fakes';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 const HOUR = 60 * 60 * 1000;
 const after = (hours: number): Date => new Date(t0.getTime() + hours * HOUR);
 
-function makeService() {
-  const goals = new FakeGoalRepository();
-  const tasks = new FakeTaskRepository();
-  const ideas = new FakeIdeaRepository();
-  const attentionEntries = new FakeAttentionEntryRepository();
+async function makeService() {
+  const {
+    goalRepo: goals,
+    taskRepo: tasks,
+    ideaRepo: ideas,
+    attentionEntryRepo: attentionEntries,
+  } = await makeFakeRepos();
   const service = new PinCandidatesService(goals, tasks, ideas, attentionEntries);
   return { service, goals, tasks, ideas, attentionEntries };
 }
@@ -29,7 +26,7 @@ function pin(id: string, targetType: 'goal' | 'task' | 'idea', targetId: string)
 
 describe('PinCandidatesService', () => {
   it('lists goals, tasks, and ideas, mapping idea content to title', async () => {
-    const { service, goals, tasks, ideas } = makeService();
+    const { service, goals, tasks, ideas } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     const task = Task.create({ id: 't1', title: 'Task t1', projectId: 'p1', now: t0 });
     task.start(after(1));
@@ -50,7 +47,7 @@ describe('PinCandidatesService', () => {
   });
 
   it('excludes archived goals, tasks, and ideas', async () => {
-    const { service, goals, tasks, ideas } = makeService();
+    const { service, goals, tasks, ideas } = await makeService();
     // Archived items are updated last, so they would sort first if included.
     const archivedGoal = Goal.create({ id: 'g-archived', title: 'archived', now: t0 });
     archivedGoal.archive(after(9));
@@ -69,7 +66,7 @@ describe('PinCandidatesService', () => {
   });
 
   it('marks targets with a pin entry as pinned; dismiss does not pin', async () => {
-    const { service, goals, tasks, ideas, attentionEntries } = makeService();
+    const { service, goals, tasks, ideas, attentionEntries } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     await tasks.save(Task.create({ id: 't1', title: 'Task t1', projectId: 'p1', now: t0 }));
     await ideas.save(Idea.create({ id: 'i1', content: 'Idea i1', now: t0 }));
@@ -87,7 +84,7 @@ describe('PinCandidatesService', () => {
   });
 
   it('sorts by updatedAt desc across types', async () => {
-    const { service, goals, tasks, ideas } = makeService();
+    const { service, goals, tasks, ideas } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: after(1) }));
     await ideas.save(Idea.create({ id: 'i1', content: 'Idea i1', now: after(3) }));
     await tasks.save(Task.create({ id: 't1', title: 'Task t1', projectId: 'p1', now: after(2) }));

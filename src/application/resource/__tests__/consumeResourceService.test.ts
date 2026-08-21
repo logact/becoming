@@ -3,23 +3,16 @@ import { Relation } from '../../../domain/relation/Relation';
 import { Resource } from '../../../domain/resource/Resource';
 import { ConsumeResourceService } from '../ConsumeResourceService';
 import { formatConsumptionDetail } from '../consumption';
-import {
-  FakeRecordRepository,
-  FakeRelationRepository,
-  FakeResourceRepository,
-} from '../../__tests__/fakes';
+import { makeFakeRepos, type TestRepositories } from '../../__tests__/fakes';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 
-function makeService(): {
-  service: ConsumeResourceService;
-  resources: FakeResourceRepository;
-  relations: FakeRelationRepository;
-  records: FakeRecordRepository;
-} {
-  const resources = new FakeResourceRepository();
-  const relations = new FakeRelationRepository();
-  const records = new FakeRecordRepository();
+async function makeService() {
+  const {
+    resourceRepo: resources,
+    relationRepo: relations,
+    recordRepo: records,
+  } = await makeFakeRepos();
   return {
     service: new ConsumeResourceService(resources, relations, records),
     resources,
@@ -30,7 +23,7 @@ function makeService(): {
 
 /** A quantity resource of 100 units with `allocated` units allocated to project p1. */
 async function quantityResource(
-  resources: FakeResourceRepository,
+  resources: TestRepositories['resourceRepo'],
   id: string,
   allocated: number,
 ): Promise<Resource> {
@@ -49,7 +42,7 @@ async function quantityResource(
 
 describe('ConsumeResourceService', () => {
   it('appends a record and saves a consumes relation with JSON detail', async () => {
-    const { service, resources, relations, records } = makeService();
+    const { service, resources, relations, records } = await makeService();
     await quantityResource(resources, 'r1', 40);
 
     await service.consume({
@@ -61,15 +54,13 @@ describe('ConsumeResourceService', () => {
       now: t0,
     });
 
-    expect(records.items).toHaveLength(1);
-    const record = records.items[0];
+    const [record] = await records.listRecent(10);
     expect(record.id).toBe('rec1');
     expect(record.kind).toBe('resourceConsumed');
     expect(record.detail).toBe('Consumed 10 from “Budget r1”');
-    expect(record.occurredAt).toBe(t0);
+    expect(record.occurredAt).toEqual(t0);
 
-    expect(relations.items).toHaveLength(1);
-    const relation = relations.items[0];
+    const [relation] = await relations.list();
     expect(relation.id).toBe('rel1');
     expect(relation.sourceType).toBe('record');
     expect(relation.sourceId).toBe('rec1');
@@ -80,7 +71,7 @@ describe('ConsumeResourceService', () => {
   });
 
   it('allows consumption up to exactly the allocated amount', async () => {
-    const { service, resources, relations } = makeService();
+    const { service, resources, relations } = await makeService();
     await quantityResource(resources, 'r1', 40);
     await relations.save(
       Relation.create({
@@ -104,11 +95,11 @@ describe('ConsumeResourceService', () => {
       now: t0,
     });
 
-    expect(relations.items).toHaveLength(2);
+    expect(await relations.list()).toHaveLength(2);
   });
 
   it('rejects when consumed + amount exceeds the allocation', async () => {
-    const { service, resources, relations, records } = makeService();
+    const { service, resources, relations, records } = await makeService();
     await quantityResource(resources, 'r1', 40);
     await relations.save(
       Relation.create({
@@ -134,12 +125,12 @@ describe('ConsumeResourceService', () => {
       }),
     ).rejects.toThrow(DomainError);
     // A rejected consumption leaves no trace.
-    expect(records.items).toHaveLength(0);
-    expect(relations.items).toHaveLength(1);
+    expect(await records.listRecent(10)).toHaveLength(0);
+    expect(await relations.list()).toHaveLength(1);
   });
 
   it('ignores consumption of other projects when checking the allocation', async () => {
-    const { service, resources, relations } = makeService();
+    const { service, resources, relations } = await makeService();
     await quantityResource(resources, 'r1', 40);
     await relations.save(
       Relation.create({
@@ -163,11 +154,11 @@ describe('ConsumeResourceService', () => {
       now: t0,
     });
 
-    expect(relations.items).toHaveLength(2);
+    expect(await relations.list()).toHaveLength(2);
   });
 
   it('rejects a time resource', async () => {
-    const { service, resources } = makeService();
+    const { service, resources } = await makeService();
     await resources.save(
       Resource.create({
         id: 'r1',
@@ -192,7 +183,7 @@ describe('ConsumeResourceService', () => {
   });
 
   it('rejects when the resource has no allocation to the project', async () => {
-    const { service, resources } = makeService();
+    const { service, resources } = await makeService();
     await quantityResource(resources, 'r1', 40);
 
     await expect(
@@ -208,7 +199,7 @@ describe('ConsumeResourceService', () => {
   });
 
   it('rejects an archived resource', async () => {
-    const { service, resources } = makeService();
+    const { service, resources } = await makeService();
     const resource = await quantityResource(resources, 'r1', 40);
     resource.archive(t0);
     await resources.save(resource);
@@ -226,7 +217,7 @@ describe('ConsumeResourceService', () => {
   });
 
   it('rejects an unknown resource', async () => {
-    const { service } = makeService();
+    const { service } = await makeService();
 
     await expect(
       service.consume({

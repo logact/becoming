@@ -1,21 +1,18 @@
 import { DomainError } from '../../../domain/shared/errors';
 import { Resource } from '../../../domain/resource/Resource';
 import { AllocateResourceService } from '../AllocateResourceService';
-import { FakeResourceRepository } from '../../__tests__/fakes';
+import { makeFakeRepos } from '../../__tests__/fakes';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 
-function makeService(): {
-  service: AllocateResourceService;
-  resources: FakeResourceRepository;
-} {
-  const resources = new FakeResourceRepository();
+async function makeService() {
+  const { resourceRepo: resources } = await makeFakeRepos();
   return { service: new AllocateResourceService(resources), resources };
 }
 
 describe('AllocateResourceService', () => {
   it('allocates an amount of a quantity resource and saves it', async () => {
-    const { service, resources } = makeService();
+    const { service, resources } = await makeService();
     await resources.save(
       Resource.create({ id: 'r1', typeId: 'rt1', kind: 'quantity', name: 'Budget', amount: 100, now: t0 }),
     );
@@ -28,7 +25,8 @@ describe('AllocateResourceService', () => {
       now: t0,
     });
 
-    const resource = resources.items[0];
+    const resource = await resources.findById('r1');
+    expect(resource).not.toBeNull();
     expect(resource.allocations).toHaveLength(1);
     const allocation = resource.allocations[0];
     expect(allocation.id).toBe('al1');
@@ -39,7 +37,7 @@ describe('AllocateResourceService', () => {
   });
 
   it('allocates a span of a time resource, deriving the amount from the span', async () => {
-    const { service, resources } = makeService();
+    const { service, resources } = await makeService();
     await resources.save(
       Resource.create({ id: 'r1', typeId: 'rt1', kind: 'time', name: 'Focus time', amount: 600, now: t0 }),
     );
@@ -50,13 +48,13 @@ describe('AllocateResourceService', () => {
 
     await service.allocate({ allocationId: 'al1', resourceId: 'r1', projectId: 'p1', span, now: t0 });
 
-    const allocation = resources.items[0].allocations[0];
+    const allocation = (await resources.findById('r1'))?.allocations[0];
     expect(allocation.span).toEqual(span);
     expect(allocation.amount).toBe(120);
   });
 
   it('rejects an unknown resource', async () => {
-    const { service } = makeService();
+    const { service } = await makeService();
 
     await expect(
       service.allocate({
@@ -70,7 +68,7 @@ describe('AllocateResourceService', () => {
   });
 
   it('rejects an amount beyond the available pool and saves nothing', async () => {
-    const { service, resources } = makeService();
+    const { service, resources } = await makeService();
     await resources.save(
       Resource.create({ id: 'r1', typeId: 'rt1', kind: 'quantity', name: 'Budget', amount: 100, now: t0 }),
     );
@@ -84,11 +82,11 @@ describe('AllocateResourceService', () => {
         now: t0,
       }),
     ).rejects.toThrow(DomainError);
-    expect(resources.items[0].allocations).toHaveLength(0);
+    expect((await resources.findById('r1'))?.allocations).toHaveLength(0);
   });
 
   it('rejects an amount for a time resource and a span for a quantity resource', async () => {
-    const { service, resources } = makeService();
+    const { service, resources } = await makeService();
     await resources.save(
       Resource.create({ id: 'r-time', typeId: 'rt1', kind: 'time', name: 'Focus', amount: 600, now: t0 }),
     );
@@ -109,7 +107,7 @@ describe('AllocateResourceService', () => {
   });
 
   it('rejects overlapping spans on a time resource', async () => {
-    const { service, resources } = makeService();
+    const { service, resources } = await makeService();
     await resources.save(
       Resource.create({ id: 'r1', typeId: 'rt1', kind: 'time', name: 'Focus time', amount: 600, now: t0 }),
     );
@@ -136,6 +134,6 @@ describe('AllocateResourceService', () => {
         now: t0,
       }),
     ).rejects.toThrow(DomainError);
-    expect(resources.items[0].allocations).toHaveLength(1);
+    expect((await resources.findById('r1'))?.allocations).toHaveLength(1);
   });
 });

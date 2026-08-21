@@ -89,6 +89,7 @@ async function seedData(repos: Awaited<ReturnType<typeof makeFakeRepos>>) {
 }
 
 beforeAll(async () => {
+    jest.useFakeTimers().setSystemTime(now)
     const repos = await makeFakeRepos()
     taskOverviewService = new TaskOverviewService(
         repos.taskRepo,
@@ -98,6 +99,10 @@ beforeAll(async () => {
     )
     await seedData(repos)
     tasksOverview = await taskOverviewService.getOverview()
+})
+
+afterAll(() => {
+    jest.useRealTimers()
 })
 
 describe("TaskOverviewService.getOverview", () => {

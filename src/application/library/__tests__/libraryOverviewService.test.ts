@@ -3,30 +3,26 @@ import { Idea } from '../../../domain/idea/Idea';
 import { Project } from '../../../domain/project/Project';
 import { Resource } from '../../../domain/resource/Resource';
 import { Task } from '../../../domain/task/Task';
-import {
-  FakeGoalRepository,
-  FakeIdeaRepository,
-  FakeProjectRepository,
-  FakeResourceRepository,
-  FakeTaskRepository,
-} from '../../__tests__/fakes';
+import { makeFakeRepos } from '../../__tests__/fakes';
 import { LibraryOverviewService } from '../LibraryOverviewService';
 
 const t0 = new Date('2026-02-01T00:00:00Z');
 
-function makeService() {
-  const goals = new FakeGoalRepository();
-  const tasks = new FakeTaskRepository();
-  const projects = new FakeProjectRepository();
-  const ideas = new FakeIdeaRepository();
-  const resources = new FakeResourceRepository();
+async function makeService() {
+  const {
+    goalRepo: goals,
+    taskRepo: tasks,
+    projectRepo: projects,
+    ideaRepo: ideas,
+    resourceRepo: resources,
+  } = await makeFakeRepos();
   const service = new LibraryOverviewService(goals, tasks, projects, ideas, resources);
   return { service, goals, tasks, projects, ideas, resources };
 }
 
 describe('LibraryOverviewService.getCounts', () => {
   it('returns zero counts when every collection is empty', async () => {
-    const { service } = makeService();
+    const { service } = await makeService();
 
     expect(await service.getCounts()).toEqual({
       goals: 0,
@@ -38,7 +34,7 @@ describe('LibraryOverviewService.getCounts', () => {
   });
 
   it('counts each collection, excluding archived entries', async () => {
-    const { service, goals, tasks, projects, ideas, resources } = makeService();
+    const { service, goals, tasks, projects, ideas, resources } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     const archivedGoal = Goal.create({ id: 'g2', title: 'Goal g2', now: t0 });
     archivedGoal.archive(t0);
