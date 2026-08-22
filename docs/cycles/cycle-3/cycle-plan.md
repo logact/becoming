@@ -44,7 +44,12 @@
 
 ### 2. Shared native date picker
 
-- [ ] `start-time-and-date-input` §2。
+- [x] `start-time-and-date-input` §2。
+
+验证证据（2026-08-22）：
+
+- 共享 `DatePickerRow` 覆盖 date / datetime、optional / required、显式 Clear、min/max、本地时区与 locale 展示；iOS Done/Cancel 草稿面板和 Android 原子 date→time dialog 均只在确认后提交。
+- focused：2 suites / 11 tests 通过；`npm run typecheck` 通过；full suite：90 suites / 560 tests 通过，0 snapshots。
 
 ### 3. Goal / Task schedule 领域与持久化
 

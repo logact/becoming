@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-community/datetimepicker": "8.4.4",
     "expo": "^54.0.0",
     "expo-sqlite": "~16.0.0",
     "react": "19.1.0",
