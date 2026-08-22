@@ -15,6 +15,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { SectionNote } from '../../components/SectionNote';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { useShellNavigation } from '../../navigation/NavigationShell';
+import { useCaptureRevision } from '../../navigation/CaptureRevision';
 import { createId } from '../../shared/id';
 import { colors, radii, spacing } from '../../shared/theme';
 import { relativeTime } from '../dashboard/format';
@@ -34,6 +35,7 @@ function noteTitle(content: string): string {
 /** Notes overview with quick capture and active/archived organization. */
 export function NotesPage({ overview, capture }: NotesPageProps) {
   const navigation = useShellNavigation();
+  const captureRevision = useCaptureRevision();
   const [loaded, setLoaded] = useState<{ view: NotesOverviewView; now: Date } | null>(null);
   const [segment, setSegment] = useState<Segment>('active');
   const [content, setContent] = useState('');
@@ -51,7 +53,7 @@ export function NotesPage({ overview, capture }: NotesPageProps) {
     }
   }, [overview]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh, captureRevision]);
 
   const submitCapture = async (): Promise<void> => {
     if (submitting) return;

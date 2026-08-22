@@ -17,6 +17,7 @@ import { SectionNote } from '../../components/SectionNote';
 import { StatTile } from '../../components/StatTile';
 import { StatusPill, type StatusState } from '../../components/StatusPill';
 import { useShellNavigation } from '../../navigation/NavigationShell';
+import { useCaptureRevision } from '../../navigation/CaptureRevision';
 import { colors, spacing } from '../../shared/theme';
 import { activityIcon } from '../activityIcon';
 import { relativeTime } from '../dashboard/format';
@@ -53,6 +54,7 @@ export interface TasksPageProps {
 /** All-tasks dashboard, pushed from the Library hub. */
 export function TasksPage({ overview }: TasksPageProps) {
   const navigation = useShellNavigation();
+  const captureRevision = useCaptureRevision();
   const [loaded, setLoaded] = useState<{ view: TasksOverviewView; now: Date } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -66,7 +68,7 @@ export function TasksPage({ overview }: TasksPageProps) {
     }
   }, [overview]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh, captureRevision]);
 
   if (loaded === null) {
     return (

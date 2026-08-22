@@ -15,6 +15,10 @@ export function useToast(): ToastApi {
   return toast;
 }
 
+export function useOptionalToast(): ToastApi | null {
+  return useContext(ToastContext);
+}
+
 const TOAST_DURATION_MS = 2500;
 
 /** Minimal toast host: renders a transient message near the bottom of the screen. */

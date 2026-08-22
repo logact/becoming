@@ -17,6 +17,7 @@ import { StatTile } from '../../components/StatTile';
 import { StatusPill } from '../../components/StatusPill';
 import { useAppServices } from '../../composition/AppServicesProvider';
 import { useShellNavigation } from '../../navigation/NavigationShell';
+import { useCaptureRevision } from '../../navigation/CaptureRevision';
 import { createId } from '../../shared/id';
 import { colors, spacing } from '../../shared/theme';
 import { activityIcon } from '../activityIcon';
@@ -82,6 +83,7 @@ export function DashboardPage() {
   }
 
   const navigation = useShellNavigation();
+  const captureRevision = useCaptureRevision();
   const [loaded, setLoaded] = useState<{ view: DashboardView; now: Date } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -100,7 +102,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, captureRevision]);
 
   // Minimal loading state: empty screen background until the first load.
   if (loaded === null) {

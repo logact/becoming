@@ -17,6 +17,7 @@ import { SectionNote } from '../../components/SectionNote';
 import { StatTile } from '../../components/StatTile';
 import { StatusPill, type StatusState } from '../../components/StatusPill';
 import { useShellNavigation } from '../../navigation/NavigationShell';
+import { useCaptureRevision } from '../../navigation/CaptureRevision';
 import { colors, spacing } from '../../shared/theme';
 import { relativeTime } from '../dashboard/format';
 
@@ -69,6 +70,7 @@ export interface GoalsPageProps {
  */
 export function GoalsPage({ overview }: GoalsPageProps) {
   const navigation = useShellNavigation();
+  const captureRevision = useCaptureRevision();
   const [loaded, setLoaded] = useState<{ view: GoalsOverviewView; now: Date } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -87,7 +89,7 @@ export function GoalsPage({ overview }: GoalsPageProps) {
 
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+  }, [refresh, captureRevision]);
 
   // Minimal loading state: empty screen background until the first load.
   if (loaded === null) {

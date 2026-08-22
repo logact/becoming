@@ -2,6 +2,8 @@ import React, { createContext, useContext, useMemo } from 'react';
 
 import type { AttentionService } from '../../application/attention/AttentionService';
 import type { PinCandidatesService } from '../../application/attention/PinCandidatesService';
+import type { CaptureOptionsService } from '../../application/capture/CaptureOptionsService';
+import type { QuickCaptureService } from '../../application/capture/QuickCaptureService';
 import type { DashboardService } from '../../application/dashboard/DashboardService';
 import type { GoalDetailService } from '../../application/goal/GoalDetailService';
 import type { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
@@ -41,6 +43,8 @@ import type { TasksOverviewService } from '../../application/task/TasksOverviewS
  * before the app shell renders; screens consume them via useAppServices().
  */
 export interface AppServices {
+  quickCapture: QuickCaptureService;
+  captureOptions: CaptureOptionsService;
   dashboard: DashboardService;
   attention: AttentionService;
   pinCandidates: PinCandidatesService;
@@ -96,4 +100,9 @@ export function useAppServices(): AppServices {
     throw new Error('useAppServices must be used within an AppServicesProvider');
   }
   return services;
+}
+
+/** Lets shell infrastructure stay inert in isolated tests without a composition provider. */
+export function useOptionalAppServices(): AppServices | null {
+  return useContext(AppServicesContext);
 }

@@ -1,9 +1,14 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CaptureFloatingButton } from '../components/CaptureFloatingButton';
+import { useOptionalAppServices } from '../composition/AppServicesProvider';
 import { Icon, type IconName } from '../components/Icon';
+import { useOptionalToast } from '../shared/Toast';
 import { colors } from '../shared/theme';
+import { CaptureRevisionContext } from './CaptureRevision';
+import { GlobalCapture } from './GlobalCapture';
 
 /** A top-level tab destination of the app shell. */
 export interface ShellDestination {
@@ -57,13 +62,27 @@ interface NavigationShellProps {
  */
 export function NavigationShell({ destinations }: NavigationShellProps) {
   const insets = useSafeAreaInsets();
+  const services = useOptionalAppServices();
+  const toast = useOptionalToast();
   const [activeId, setActiveId] = useState(destinations[0]?.id);
   const [stacks, setStacks] = useState<Record<string, ShellStackEntry[]>>({});
   const [sheet, setSheet] = useState<React.ReactElement | null>(null);
+  const [captureVisible, setCaptureVisible] = useState(false);
+  const [captureRevision, setCaptureRevision] = useState(0);
 
   const active = destinations.find((d) => d.id === activeId) ?? destinations[0];
   const activeStack = active ? stacks[active.id] ?? [] : [];
   const top = activeStack[activeStack.length - 1];
+  const captureAvailable = services?.quickCapture !== undefined
+    && services.captureOptions !== undefined
+    && toast !== null;
+  const incrementCaptureRevision = useCallback(() => {
+    setCaptureRevision((revision) => revision + 1);
+  }, []);
+  const captureRevisionValue = useMemo(
+    () => ({ revision: captureRevision, increment: incrementCaptureRevision }),
+    [captureRevision, incrementCaptureRevision],
+  );
 
   const navigation = useMemo<ShellNavigation>(
     () => ({
@@ -109,40 +128,55 @@ export function NavigationShell({ destinations }: NavigationShellProps) {
   };
 
   return (
-    <ShellNavigationContext.Provider value={navigation}>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" />
-        <View style={styles.content}>{renderContent()}</View>
-        {sheet ? <View style={styles.sheet}>{sheet}</View> : null}
-        {activeStack.length === 0 ? (
-          <View testID="tab-bar" style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
-            {destinations.map((destination) => {
-              const isActive = destination.id === active?.id;
-              return (
-                <Pressable
-                  key={destination.id}
-                  accessibilityLabel={`${destination.title} tab`}
-                  accessibilityRole="button"
-                  onPress={() => setActiveId(destination.id)}
-                  style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
-                >
-                  <View style={[styles.tabIconChip, isActive && styles.tabIconChipActive]}>
-                    <Icon
-                      name={destination.icon}
-                      size={20}
-                      color={isActive ? colors.green : colors.faint}
-                    />
-                  </View>
-                  <Text style={[styles.tabTitle, isActive && styles.tabTitleActive]}>
-                    {destination.title}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-      </View>
-    </ShellNavigationContext.Provider>
+    <CaptureRevisionContext.Provider value={captureRevisionValue}>
+      <ShellNavigationContext.Provider value={navigation}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+          <StatusBar barStyle="dark-content" />
+          <View style={styles.content}>{renderContent()}</View>
+          {activeStack.length === 0 ? (
+            <View testID="tab-bar" style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
+              {destinations.map((destination) => {
+                const isActive = destination.id === active?.id;
+                return (
+                  <Pressable
+                    key={destination.id}
+                    accessibilityLabel={`${destination.title} tab`}
+                    accessibilityRole="button"
+                    onPress={() => setActiveId(destination.id)}
+                    style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
+                  >
+                    <View style={[styles.tabIconChip, isActive && styles.tabIconChipActive]}>
+                      <Icon
+                        name={destination.icon}
+                        size={20}
+                        color={isActive ? colors.green : colors.faint}
+                      />
+                    </View>
+                    <Text style={[styles.tabTitle, isActive && styles.tabTitleActive]}>
+                      {destination.title}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+          {captureAvailable && sheet === null && !captureVisible ? (
+            <CaptureFloatingButton
+              bottomOffset={insets.bottom + (activeStack.length === 0 ? 76 : 16)}
+              onPress={() => setCaptureVisible(true)}
+            />
+          ) : null}
+          {captureAvailable ? (
+            <GlobalCapture visible={captureVisible} onDismiss={() => setCaptureVisible(false)} />
+          ) : null}
+          {sheet ? (
+            <View testID="shell-sheet-overlay" style={styles.sheetOverlay}>
+              <View style={styles.sheet}>{sheet}</View>
+            </View>
+          ) : null}
+        </View>
+      </ShellNavigationContext.Provider>
+    </CaptureRevisionContext.Provider>
   );
 }
 
@@ -150,11 +184,17 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { flex: 1 },
   pressed: { opacity: 0.5 },
-  sheet: {
+  sheetOverlay: {
     position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(20,30,24,0.25)',
+    zIndex: 60,
+  },
+  sheet: {
     backgroundColor: colors.panel,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,

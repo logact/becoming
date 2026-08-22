@@ -1,5 +1,7 @@
 import { AttentionService } from '../../application/attention/AttentionService';
 import { PinCandidatesService } from '../../application/attention/PinCandidatesService';
+import { CaptureOptionsService } from '../../application/capture/CaptureOptionsService';
+import { QuickCaptureService } from '../../application/capture/QuickCaptureService';
 import { DashboardService } from '../../application/dashboard/DashboardService';
 import { GoalDetailService } from '../../application/goal/GoalDetailService';
 import { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
@@ -98,6 +100,10 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
   }
 
   return {
+    quickCapture: new QuickCaptureService(
+      ideas, goals, tasks, notes, projects, records, relations, transactionRunner,
+    ),
+    captureOptions: new CaptureOptionsService(projects),
     dashboard: new DashboardService(
       goals,
       tasks,

@@ -21,6 +21,7 @@ import { SectionNote } from '../../components/SectionNote';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { StatusPill, type StatusState } from '../../components/StatusPill';
 import { useShellNavigation } from '../../navigation/NavigationShell';
+import { useCaptureRevision } from '../../navigation/CaptureRevision';
 import { createId } from '../../shared/id';
 import { colors, radii, spacing } from '../../shared/theme';
 import { activityIcon } from '../activityIcon';
@@ -60,6 +61,7 @@ export function IdeasPage({
   extractNote,
 }: IdeasPageProps) {
   const navigation = useShellNavigation();
+  const captureRevision = useCaptureRevision();
   const [loaded, setLoaded] = useState<{ view: IdeasOverviewView; now: Date } | null>(null);
   const [segment, setSegment] = useState<Segment>('open');
   const [content, setContent] = useState('');
@@ -77,7 +79,7 @@ export function IdeasPage({
     }
   }, [overview]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh, captureRevision]);
 
   const submitCapture = async (): Promise<void> => {
     if (submitting) return;
