@@ -264,7 +264,22 @@ export async function seedDevData(deps: DevSeedDeps): Promise<void> {
   const runningNote = Note.create({
     id: 'seed-note-running', content: 'Preparation works best when the next action is visible.', now: ago(2 * DAY_MS),
   });
+  runningNote.pin(ago(DAY_MS));
   await deps.notes.save(runningNote);
+  const reviewNote = Note.create({
+    id: 'seed-note-review',
+    content: 'A weekly review should summarize records before creating the next plan.',
+    now: ago(8 * HOUR_MS),
+  });
+  await deps.notes.save(reviewNote);
+  const archivedNote = Note.create({
+    id: 'seed-note-archived',
+    content: 'Inbox zero every Friday.',
+    now: ago(20 * DAY_MS),
+  });
+  archivedNote.pin(ago(18 * DAY_MS));
+  archivedNote.archive(ago(14 * DAY_MS));
+  await deps.notes.save(archivedNote);
   await Promise.all([
     deps.relations.save(Relation.derivedFromIdea({
       id: 'seed-derived-goal-idea', sourceType: 'goal', sourceId: runGoal.id,
@@ -277,6 +292,10 @@ export async function seedDevData(deps: DevSeedDeps): Promise<void> {
     deps.relations.save(Relation.derivedFromIdea({
       id: 'seed-derived-note-idea', sourceType: 'note', sourceId: runningNote.id,
       ideaId: handledIdea.id, now: ago(DAY_MS),
+    })),
+    deps.relations.save(Relation.create({
+      id: 'seed-related-note-goal', sourceType: 'note', sourceId: runningNote.id,
+      targetType: 'goal', targetId: runGoal.id, kind: 'relatesTo', now: ago(12 * HOUR_MS),
     })),
   ]);
 

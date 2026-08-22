@@ -9,7 +9,7 @@ import { ProjectsPage } from '../ProjectsPage';
 
 const HOUR = 60 * 60 * 1000;
 
-const LIBRARY_COUNTS: LibraryCounts = { goals: 4, tasks: 3, projects: 2, ideas: 5, resources: 1 };
+const LIBRARY_COUNTS: LibraryCounts = { goals: 4, tasks: 3, projects: 2, ideas: 5, notes: 6, resources: 1 };
 
 /**
  * Plain stub services with the same shapes as LibraryOverviewService /

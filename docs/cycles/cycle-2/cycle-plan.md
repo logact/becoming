@@ -56,7 +56,7 @@
 ### 5. Ideas / Notes UI 与接线
 
 - [x] `ideas-workflow` §5.1–§5.4。
-- [ ] `notes` §5.1–§5.4；执行 §5.3 时与 Ideas 的 Create from Idea 流程合并验收。
+- [x] `notes` §5.1–§5.4；执行 §5.3 时与 Ideas 的 Create from Idea 流程合并验收。
 - [ ] `ideas-workflow` §6、`notes` §6。
 
 ### 6. Universal Capture

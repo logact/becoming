@@ -10,6 +10,8 @@ import { GoalsPage } from './pages/goals/GoalsPage';
 import { IdeaDetailPage } from './pages/ideas/IdeaDetailPage';
 import { IdeasPage } from './pages/ideas/IdeasPage';
 import { LibraryPage } from './pages/library/LibraryPage';
+import { NoteDetailPage } from './pages/notes/NoteDetailPage';
+import { NotesPage } from './pages/notes/NotesPage';
 import { AddPlanItemPage } from './pages/projects/AddPlanItemPage';
 import { AllocateResourcePage } from './pages/projects/AllocateResourcePage';
 import { ProjectDetailPage } from './pages/projects/ProjectDetailPage';
@@ -50,6 +52,27 @@ function LibraryIdeasScreen() {
       createGoal={services.createGoalFromIdea}
       createTask={services.createTaskFromIdea}
       extractNote={services.extractNoteFromIdea}
+    />
+  );
+}
+
+function LibraryNotesScreen() {
+  const services = useAppServices();
+  return <NotesPage overview={services.notesOverview} capture={services.captureNote} />;
+}
+
+function LibraryNoteDetailScreen({ noteId }: { noteId: string }) {
+  const services = useAppServices();
+  return (
+    <NoteDetailPage
+      noteId={noteId}
+      detail={services.noteDetail}
+      edit={services.editNote}
+      setPin={services.setNotePin}
+      archive={services.archiveNote}
+      link={services.linkNote}
+      linkOptions={services.noteLinkOptions}
+      deleteNote={services.deleteNote}
     />
   );
 }
@@ -156,6 +179,8 @@ export function appDestinations(): ShellDestination[] {
           <LibraryTasksScreen />
         ) : screenId === 'ideas' ? (
           <LibraryIdeasScreen />
+        ) : screenId === 'notes' ? (
+          <LibraryNotesScreen />
         ) : screenId === 'projects' ? (
           <LibraryProjectsScreen />
         ) : screenId.startsWith('project:') ? (
@@ -164,6 +189,8 @@ export function appDestinations(): ShellDestination[] {
           <LibraryTaskDetailScreen taskId={screenId.slice('task:'.length)} />
         ) : screenId.startsWith('idea:') ? (
           <LibraryIdeaDetailScreen ideaId={screenId.slice('idea:'.length)} />
+        ) : screenId.startsWith('note:') ? (
+          <LibraryNoteDetailScreen noteId={screenId.slice('note:'.length)} />
         ) : null,
       renderDetail: (entityId) => <LibraryGoalDetailPage goalId={entityId} />,
     },

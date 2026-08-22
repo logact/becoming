@@ -89,6 +89,10 @@ const GLYPHS = {
     { t: 'path', d: 'M4.5 19.5h4L19.8 8.2a2.2 2.2 0 0 0-4-4L4.5 15.5Z' },
     { t: 'path', d: 'M13.5 6.5l4 4' },
   ],
+  pin: [
+    { t: 'path', d: 'M8 4h8l-1.5 5 2.5 2.5v1.5H7v-1.5L9.5 9Z' },
+    { t: 'path', d: 'M12 13v8' },
+  ],
   arrowUpRight: [{ t: 'path', d: 'M7 17 17 7M9.5 7H17v7.5' }],
   alert: [
     { t: 'circle', cx: 12, cy: 12, r: 8.5 },

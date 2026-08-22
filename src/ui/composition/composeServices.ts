@@ -12,7 +12,16 @@ import { IdeaDerivationOptionsService } from '../../application/idea/IdeaDerivat
 import { IdeaDetailService } from '../../application/idea/IdeaDetailService';
 import { IdeasOverviewService } from '../../application/idea/IdeasOverviewService';
 import { LibraryOverviewService } from '../../application/library/LibraryOverviewService';
+import { ArchiveNoteService } from '../../application/note/ArchiveNoteService';
+import { CaptureNoteService } from '../../application/note/CaptureNoteService';
+import { DeleteNoteService } from '../../application/note/DeleteNoteService';
+import { EditNoteService } from '../../application/note/EditNoteService';
 import { ExtractNoteFromIdeaService } from '../../application/note/ExtractNoteFromIdeaService';
+import { LinkNoteService } from '../../application/note/LinkNoteService';
+import { NoteDetailService } from '../../application/note/NoteDetailService';
+import { NoteLinkOptionsService } from '../../application/note/NoteLinkOptionsService';
+import { NotesOverviewService } from '../../application/note/NotesOverviewService';
+import { SetNotePinService } from '../../application/note/SetNotePinService';
 import { AddMilestoneService } from '../../application/project/AddMilestoneService';
 import { AddSubGoalService } from '../../application/project/AddSubGoalService';
 import { AddTaskService } from '../../application/project/AddTaskService';
@@ -105,7 +114,7 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
     goalDetail: new GoalDetailService(goals, projects, records),
     projectsOverview: new ProjectsOverviewService(projects, goals, labels),
     projectDetail: new ProjectDetailService(projects, goals, tasks, resources, records, milestones),
-    libraryOverview: new LibraryOverviewService(goals, tasks, projects, ideas, resources),
+    libraryOverview: new LibraryOverviewService(goals, tasks, projects, ideas, notes, resources),
     addSubGoal: new AddSubGoalService(projects, goals),
     addTask: new AddTaskService(projects, goals, tasks, records, relations),
     addMilestone: new AddMilestoneService(projects, milestones),
@@ -131,5 +140,14 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
     extractNoteFromIdea: new ExtractNoteFromIdeaService(
       ideas, notes, records, relations, transactionRunner,
     ),
+    notesOverview: new NotesOverviewService(notes, labels, records),
+    noteDetail: new NoteDetailService(notes, labels, relations, ideas, goals, projects, records),
+    noteLinkOptions: new NoteLinkOptionsService(goals, projects),
+    captureNote: new CaptureNoteService(notes, records, relations, transactionRunner),
+    editNote: new EditNoteService(notes, records, relations, transactionRunner),
+    setNotePin: new SetNotePinService(notes, records, relations, transactionRunner),
+    archiveNote: new ArchiveNoteService(notes, records, relations, transactionRunner),
+    linkNote: new LinkNoteService(notes, goals, projects, records, relations, transactionRunner),
+    deleteNote: new DeleteNoteService(notes, transactionRunner),
   };
 }

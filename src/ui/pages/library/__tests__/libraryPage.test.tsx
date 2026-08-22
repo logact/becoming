@@ -6,7 +6,7 @@ import type { LibraryCounts } from '../../../../application/library/LibraryOverv
 import { NavigationShell, type ShellDestination } from '../../../navigation/NavigationShell';
 import { LibraryPage } from '../LibraryPage';
 
-const COUNTS: LibraryCounts = { goals: 5, tasks: 18, projects: 4, ideas: 9, resources: 3 };
+const COUNTS: LibraryCounts = { goals: 5, tasks: 18, projects: 4, ideas: 9, notes: 7, resources: 3 };
 
 /** Stub service with the LibraryOverviewService shape; pages take it as a prop. */
 function makeStub(counts: LibraryCounts = COUNTS) {
@@ -29,6 +29,8 @@ function libraryDestinations(stub: ReturnType<typeof makeStub>): ShellDestinatio
           <Text testID="projects-screen" />
         ) : id === 'ideas' ? (
           <Text testID="ideas-screen" />
+        ) : id === 'notes' ? (
+          <Text testID="notes-screen" />
         ) : null,
     },
   ];
@@ -53,6 +55,7 @@ describe('LibraryPage', () => {
     expect(captureThink.getByText('Ideas')).toBeTruthy();
     expect(captureThink.getByText('9')).toBeTruthy();
     expect(captureThink.getByText('Notes')).toBeTruthy();
+    expect(captureThink.getByText('7')).toBeTruthy();
 
     const manage = within(screen.getByTestId('manage-section'));
     expect(manage.getByText('Manage')).toBeTruthy();
@@ -97,6 +100,13 @@ describe('LibraryPage', () => {
     render(<NavigationShell destinations={libraryDestinations(makeStub())} />);
     fireEvent.press(await screen.findByTestId('library-row-ideas'));
     expect(await screen.findByTestId('ideas-screen')).toBeTruthy();
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
+  });
+
+  it('pushes the notes screen when the Notes row is pressed', async () => {
+    render(<NavigationShell destinations={libraryDestinations(makeStub())} />);
+    fireEvent.press(await screen.findByTestId('library-row-notes'));
+    expect(await screen.findByTestId('notes-screen')).toBeTruthy();
     expect(screen.queryByTestId('tab-bar')).toBeNull();
   });
 });

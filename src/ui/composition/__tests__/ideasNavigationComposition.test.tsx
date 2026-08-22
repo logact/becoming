@@ -12,7 +12,7 @@ describe('Ideas navigation composition', () => {
     const now = new Date('2026-08-22T08:00:00Z');
     const idea = Idea.create({ id: 'idea-1', content: 'Composed idea', now });
     const services = {
-      libraryOverview: { getCounts: jest.fn(async () => ({ goals: 0, tasks: 0, projects: 0, ideas: 1, resources: 0 })) },
+      libraryOverview: { getCounts: jest.fn(async () => ({ goals: 0, tasks: 0, projects: 0, ideas: 1, notes: 0, resources: 0 })) },
       ideasOverview: { getOverview: jest.fn(async () => ({
         counts: { open: 1, handled: 0 },
         open: { captured: [{ id: idea.id, content: idea.content, status: idea.status, labelIds: [], updatedAt: now }], exploring: [], paused: [] },

@@ -14,7 +14,16 @@ import type { IdeaDerivationOptionsService } from '../../application/idea/IdeaDe
 import type { IdeaDetailService } from '../../application/idea/IdeaDetailService';
 import type { IdeasOverviewService } from '../../application/idea/IdeasOverviewService';
 import type { LibraryOverviewService } from '../../application/library/LibraryOverviewService';
+import type { ArchiveNoteService } from '../../application/note/ArchiveNoteService';
+import type { CaptureNoteService } from '../../application/note/CaptureNoteService';
+import type { DeleteNoteService } from '../../application/note/DeleteNoteService';
+import type { EditNoteService } from '../../application/note/EditNoteService';
 import type { ExtractNoteFromIdeaService } from '../../application/note/ExtractNoteFromIdeaService';
+import type { LinkNoteService } from '../../application/note/LinkNoteService';
+import type { NoteDetailService } from '../../application/note/NoteDetailService';
+import type { NoteLinkOptionsService } from '../../application/note/NoteLinkOptionsService';
+import type { NotesOverviewService } from '../../application/note/NotesOverviewService';
+import type { SetNotePinService } from '../../application/note/SetNotePinService';
 import type { AddMilestoneService } from '../../application/project/AddMilestoneService';
 import type { AddSubGoalService } from '../../application/project/AddSubGoalService';
 import type { AddTaskService } from '../../application/project/AddTaskService';
@@ -58,6 +67,15 @@ export interface AppServices {
   createGoalFromIdea: CreateGoalFromIdeaService;
   createTaskFromIdea: CreateTaskFromIdeaService;
   extractNoteFromIdea: ExtractNoteFromIdeaService;
+  notesOverview: NotesOverviewService;
+  noteDetail: NoteDetailService;
+  noteLinkOptions: NoteLinkOptionsService;
+  captureNote: CaptureNoteService;
+  editNote: EditNoteService;
+  setNotePin: SetNotePinService;
+  archiveNote: ArchiveNoteService;
+  linkNote: LinkNoteService;
+  deleteNote: DeleteNoteService;
 }
 
 const AppServicesContext = createContext<AppServices | null>(null);

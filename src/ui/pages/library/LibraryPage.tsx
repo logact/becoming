@@ -108,6 +108,8 @@ export function LibraryPage({ overview }: LibraryPageProps) {
       icon: 'doc',
       title: 'Notes',
       subtitle: 'Extracted thoughts & methods',
+      count: counts.notes,
+      onPress: () => navigation.pushScreen('notes'),
     },
   ];
   const manage: HubRow[] = [

@@ -57,7 +57,7 @@ async function makeServices() {
     noteRepo: notes,
     transactionRunner,
   } = await makeFakeRepos();
-  const services: AppServices = {
+  const services = {
     dashboard: new DashboardService(
       goals,
       tasks,
@@ -74,7 +74,7 @@ async function makeServices() {
     goalDetail: new GoalDetailService(goals, projects, records),
     projectsOverview: new ProjectsOverviewService(projects, goals, labels),
     projectDetail: new ProjectDetailService(projects, goals, tasks, resources, records),
-    libraryOverview: new LibraryOverviewService(goals, tasks, projects, ideas, resources),
+    libraryOverview: new LibraryOverviewService(goals, tasks, projects, ideas, notes, resources),
     addSubGoal: new AddSubGoalService(projects, goals),
     addTask: new AddTaskService(projects, goals, tasks, records, relations),
     addMilestone: new AddMilestoneService(projects, milestones),
@@ -92,7 +92,7 @@ async function makeServices() {
     createGoalFromIdea: new CreateGoalFromIdeaService(ideas, goals, records, relations, transactionRunner),
     createTaskFromIdea: new CreateTaskFromIdeaService(ideas, projects, goals, tasks, records, relations, transactionRunner),
     extractNoteFromIdea: new ExtractNoteFromIdeaService(ideas, notes, records, relations, transactionRunner),
-  };
+  } as unknown as AppServices;
   return { services, goals, tasks, ideas, records, attentionEntries };
 }
 
