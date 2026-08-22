@@ -13,6 +13,7 @@ docs/models/: something related to the model define and behaviour
 docs/issues/issue-{}: each issue ,each file,users record for feature ,task ... like github issue.
 docs/issues/index.md: the index of all issues.
 docs/exce-plans/{plan}/plan.md: the plans to implement some issues
+docs/exce-plans/archived: the archived plans. which shouldn't be refered and retrived normally.
 docs/cycles/cycle-{idx}/cycle-plan.md: the aggregate plan for this agent cycle
 docs/cycles/cycle-{idx}/cycle-report.md: the report after finish the plan.
  
@@ -38,13 +39,15 @@ The human should check the work of the cycle.
 
 **workflow**
 When the user ask for start a new cycle to implement the tasks and plans, you should make a aggerate plan (cycle-plan) to implement the tasks and features. The plan should ask human's approval . And when you finish the plan,you should record your report under this cycle (cycle-report).
-Each cycle the agent should copy a snapshot plan for this cycle.
+Each cycle the agent should copy a snapshot prototype for this cycle.
 The cycle plan should refer to the raw tasks of the raw plan ,don't summarize or rewrite the plan
 don't copy the raw plan refer the section of the raw plan
 
 you should generate the plan 
 
 each time you finish a task in the cycle workflow you should add commit and comment with cycle info and the task info
+
+when you execute a task you should use entirly new sub-agent to implement the task.
   
 ## About prototype
 when the user ask you to generate/modify the prototype ,the user just need to quickly verify their idea ,so just quckly finish it, without too much verification work .
