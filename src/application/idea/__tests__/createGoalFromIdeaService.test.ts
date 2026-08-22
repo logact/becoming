@@ -17,6 +17,7 @@ function command(
     ideaId: 'idea-1',
     goalId: 'goal-1',
     title: 'Run a trail race',
+    startAt: new Date('2027-01-01T00:00:00Z'),
     due: new Date('2027-05-01T00:00:00Z'),
     derivedRelationId: 'derived-1',
     recordId: 'record-1',
@@ -59,6 +60,7 @@ describe('CreateGoalFromIdeaService', () => {
       id: 'goal-1',
       title: 'Run a trail race',
       description: 'Train consistently, then finish the full mountain course.',
+      startAt: new Date('2027-01-01T00:00:00Z'),
       due: new Date('2027-05-01T00:00:00Z'),
       status: 'todo',
       archived: false,
@@ -115,10 +117,13 @@ describe('CreateGoalFromIdeaService', () => {
     await service.create(command({
       goalId: 'goal-2', title: 'Run an ultramarathon', derivedRelationId: 'derived-2',
       recordId: 'record-2', ideaRecordRelationId: 'idea-log-2',
-      goalRecordRelationId: 'goal-log-2',
+      goalRecordRelationId: 'goal-log-2', startAt: undefined, due: undefined,
     }));
 
     expect((await repos.goalRepo.list()).map(({ id }) => id).sort()).toEqual(['goal-1', 'goal-2']);
+    expect(await repos.goalRepo.findById('goal-2')).toMatchObject({
+      startAt: undefined, due: undefined,
+    });
     expect((await repos.ideaRepo.findById('idea-1'))?.updatedAt).toEqual(createdAt);
     expect((await repos.recordRepo.listRecent(10)).map(({ kind }) => kind))
       .toEqual(['ideaDerivedGoal', 'ideaDerivedGoal']);

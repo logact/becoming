@@ -20,6 +20,7 @@ export interface CreateGoalFromIdeaCommand {
   goalId: GoalId;
   title: string;
   description?: string;
+  startAt?: Date;
   due?: Date;
   derivedRelationId: RelationId;
   recordId: RecordId;
@@ -51,6 +52,7 @@ export class CreateGoalFromIdeaService {
         id: command.goalId,
         title: command.title,
         description: command.description ?? idea.content,
+        ...(command.startAt === undefined ? {} : { startAt: command.startAt }),
         ...(command.due === undefined ? {} : { due: command.due }),
         now: command.now,
       });

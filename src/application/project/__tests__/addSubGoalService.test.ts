@@ -43,6 +43,7 @@ describe('AddSubGoalService', () => {
       projectId: 'p1',
       parentGoalId: 'g-sub',
       title: 'Nested goal',
+      startAt: new Date('2026-02-15T00:00:00Z'),
       due: new Date('2026-03-01T00:00:00Z'),
       milestoneId: 'm1',
       now: t0,
@@ -54,6 +55,7 @@ describe('AddSubGoalService', () => {
     expect(goal?.title).toBe('Nested goal');
     expect(goal?.projectId).toBe('p1');
     expect(goal?.parentGoalId).toBe('g-sub');
+    expect(goal?.startAt).toEqual(new Date('2026-02-15T00:00:00Z'));
     expect(goal?.due).toEqual(new Date('2026-03-01T00:00:00Z'));
     expect(goal?.milestoneId).toBe('m1');
     expect(goal?.status).toBe('todo');
@@ -73,6 +75,7 @@ describe('AddSubGoalService', () => {
 
     const goal = await goals.findById('g-new');
     expect(goal?.parentGoalId).toBe('g-root');
+    expect(goal?.startAt).toBeUndefined();
     expect(goal?.due).toBeUndefined();
     expect(goal?.milestoneId).toBeUndefined();
   });

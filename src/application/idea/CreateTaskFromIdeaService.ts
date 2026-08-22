@@ -26,6 +26,8 @@ export interface CreateTaskFromIdeaCommand {
   goalId?: GoalId;
   title: string;
   description?: string;
+  startAt?: Date;
+  due?: Date;
   derivedRelationId: RelationId;
   recordId: RecordId;
   ideaRecordRelationId: RelationId;
@@ -76,6 +78,8 @@ export class CreateTaskFromIdeaService {
         title: command.title,
         description: command.description ?? idea.content,
         projectId: command.projectId,
+        ...(command.startAt === undefined ? {} : { startAt: command.startAt }),
+        ...(command.due === undefined ? {} : { due: command.due }),
         ...(command.goalId === undefined ? {} : { goalId: command.goalId }),
         now: command.now,
       });

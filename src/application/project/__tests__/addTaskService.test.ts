@@ -42,6 +42,7 @@ describe('AddTaskService', () => {
       projectId: 'p1',
       goalId: 'g-sub',
       title: 'Write spec',
+      startAt: new Date('2026-02-15T00:00:00Z'),
       due: new Date('2026-03-01T00:00:00Z'),
       milestoneId: 'm1',
       recordId: 'record-1',
@@ -55,6 +56,7 @@ describe('AddTaskService', () => {
     expect(task.title).toBe('Write spec');
     expect(task.projectId).toBe('p1');
     expect(task.goalId).toBe('g-sub');
+    expect(task.startAt).toEqual(new Date('2026-02-15T00:00:00Z'));
     expect(task.due).toEqual(new Date('2026-03-01T00:00:00Z'));
     expect(task.milestoneId).toBe('m1');
     expect(task.status).toBe('todo');
@@ -82,6 +84,8 @@ describe('AddTaskService', () => {
     await service.add({ id: 't1', projectId: 'p1', title: 'Loose task', recordId: 'r1', relationId: 'rel1', now: t0 });
 
     expect((await tasks.findById('t1'))?.goalId).toBeUndefined();
+    expect((await tasks.findById('t1'))?.startAt).toBeUndefined();
+    expect((await tasks.findById('t1'))?.due).toBeUndefined();
   });
 
   it('rejects an empty title', async () => {

@@ -21,6 +21,8 @@ function command(
     projectId: 'project-1',
     goalId: 'goal-sub',
     title: 'Schedule weekly trail training',
+    startAt: new Date('2026-09-01T00:00:00Z'),
+    due: new Date('2026-10-01T00:00:00Z'),
     derivedRelationId: 'derived-1',
     recordId: 'record-1',
     ideaRecordRelationId: 'idea-log-1',
@@ -79,6 +81,8 @@ describe('CreateTaskFromIdeaService', () => {
       id: 'task-1',
       title: 'Schedule weekly trail training',
       description: 'Train consistently, then finish the full mountain course.',
+      startAt: new Date('2026-09-01T00:00:00Z'),
+      due: new Date('2026-10-01T00:00:00Z'),
       status: 'todo',
       archived: false,
       labelIds: ['health', 'weekly'],
@@ -112,12 +116,15 @@ describe('CreateTaskFromIdeaService', () => {
     const noGoalCommand = command({
       taskId: 'task-2', derivedRelationId: 'derived-2', recordId: 'record-2',
       ideaRecordRelationId: 'idea-log-2', taskRecordRelationId: 'task-log-2',
+      startAt: undefined, due: undefined,
     });
     delete noGoalCommand.goalId;
     await service.create(noGoalCommand);
 
     expect((await repos.taskRepo.findById('task-1'))?.goalId).toBe('goal-root');
-    expect((await repos.taskRepo.findById('task-2'))?.goalId).toBeUndefined();
+    expect(await repos.taskRepo.findById('task-2')).toMatchObject({
+      goalId: undefined, startAt: undefined, due: undefined,
+    });
     expect((await repos.ideaRepo.findById('idea-1'))?.updatedAt).toEqual(createdAt);
     expect((await repos.recordRepo.listRecent(10)).map(({ kind }) => kind))
       .toEqual(['ideaDerivedTask', 'ideaDerivedTask']);

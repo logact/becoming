@@ -36,6 +36,7 @@ export class AddTaskService {
     projectId: ProjectId;
     goalId?: GoalId;
     title: string;
+    startAt?: Date;
     due?: Date;
     milestoneId?: MilestoneId;
     recordId: RecordId;
@@ -63,6 +64,7 @@ export class AddTaskService {
     const task = Task.create({
         id: params.id,
         title: params.title,
+        ...(params.startAt === undefined ? {} : { startAt: params.startAt }),
         ...(params.due === undefined ? {} : { due: params.due }),
         projectId: params.projectId,
         ...(params.goalId === undefined ? {} : { goalId: params.goalId }),

@@ -20,6 +20,7 @@ export class AddSubGoalService {
     projectId: ProjectId;
     parentGoalId?: GoalId;
     title: string;
+    startAt?: Date;
     due?: Date;
     milestoneId?: MilestoneId;
     now: Date;
@@ -53,6 +54,7 @@ export class AddSubGoalService {
       Goal.create({
         id: params.id,
         title: params.title,
+        ...(params.startAt === undefined ? {} : { startAt: params.startAt }),
         ...(params.due === undefined ? {} : { due: params.due }),
         projectId: params.projectId,
         ...(params.parentGoalId === undefined ? {} : { parentGoalId: params.parentGoalId }),
