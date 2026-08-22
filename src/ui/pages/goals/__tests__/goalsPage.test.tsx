@@ -23,7 +23,9 @@ function makeStubs(overviewView: GoalsOverviewView, detailView: GoalDetailView) 
   const library = { getCounts: jest.fn(async () => LIBRARY_COUNTS) };
   const overview = { getOverview: jest.fn(async (_now: Date) => overviewView) };
   const detail = { getDetail: jest.fn(async (_goalId: string) => detailView) };
-  return { library, overview, detail };
+  const createProject = { create: jest.fn(async () => undefined) };
+  const selectCurrentPlan = { select: jest.fn(async () => undefined) };
+  return { library, overview, detail, createProject, selectCurrentPlan };
 }
 
 /** The app's Library chain: hub → goals screen → goal detail. */
@@ -35,7 +37,14 @@ function goalsDestinations(stubs: ReturnType<typeof makeStubs>): ShellDestinatio
       icon: 'folder',
       renderList: () => <LibraryPage overview={stubs.library} />,
       renderScreen: (id) => (id === 'goals' ? <GoalsPage overview={stubs.overview} /> : null),
-      renderDetail: (id) => <GoalDetailPage goalId={id} detail={stubs.detail} />,
+      renderDetail: (id) => (
+        <GoalDetailPage
+          goalId={id}
+          detail={stubs.detail}
+          createProject={stubs.createProject}
+          selectCurrentPlan={stubs.selectCurrentPlan}
+        />
+      ),
     },
   ];
 }

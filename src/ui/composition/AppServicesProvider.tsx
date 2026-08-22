@@ -6,6 +6,7 @@ import type { CaptureOptionsService } from '../../application/capture/CaptureOpt
 import type { QuickCaptureService } from '../../application/capture/QuickCaptureService';
 import type { DashboardService } from '../../application/dashboard/DashboardService';
 import type { GoalDetailService } from '../../application/goal/GoalDetailService';
+import type { SelectCurrentPlanService } from '../../application/goal/SelectCurrentPlanService';
 import type { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
 import type { CaptureIdeaService } from '../../application/idea/CaptureIdeaService';
 import type { ChangeIdeaStatusService } from '../../application/idea/ChangeIdeaStatusService';
@@ -29,6 +30,7 @@ import type { SetNotePinService } from '../../application/note/SetNotePinService
 import type { AddMilestoneService } from '../../application/project/AddMilestoneService';
 import type { AddSubGoalService } from '../../application/project/AddSubGoalService';
 import type { AddTaskService } from '../../application/project/AddTaskService';
+import type { CreateGoalProjectService } from '../../application/project/CreateGoalProjectService';
 import type { ProjectDetailService } from '../../application/project/ProjectDetailService';
 import type { ProjectsOverviewService } from '../../application/project/ProjectsOverviewService';
 import type { AllocateResourceService } from '../../application/resource/AllocateResourceService';
@@ -50,6 +52,8 @@ export interface AppServices {
   pinCandidates: PinCandidatesService;
   goalsOverview: GoalsOverviewService;
   goalDetail: GoalDetailService;
+  createGoalProject: CreateGoalProjectService;
+  selectCurrentPlan: SelectCurrentPlanService;
   projectsOverview: ProjectsOverviewService;
   projectDetail: ProjectDetailService;
   libraryOverview: LibraryOverviewService;

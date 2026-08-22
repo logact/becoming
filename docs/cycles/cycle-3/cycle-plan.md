@@ -119,7 +119,15 @@
 
 ### 6. Goal Project Management UI 与接线
 
-- [ ] `goal-project-management` §6–§7；Project Due 按本计划“计划边界与依赖裁决”使用 shared native date picker。
+- [x] `goal-project-management` §6–§7；Project Due 按本计划“计划边界与依赖裁决”使用 shared native date picker。
+
+验证证据（2026-08-22）：
+
+- Goal detail 的 Projects 区始终显示 **New project — another way to reach this goal**（包括空列表），存在可选 Project 时显示 **Choose current plan**；原 Project 行详情导航、loading、unknown 与 read-error 状态保持。
+- 新建 Project sheet 使用 shared native `DatePickerRow`，Goal 有 Due 时将 UI 最大可选日期限制为其前一个本地日历日，同时提交前继续执行严格早于校验并由 domain 作最终校验；必填名称、inline error、service error 后保留输入值、loading / duplicate-submit guard、成功关闭与刷新均已覆盖。
+- current-plan picker 只展示当前 active 与 read model 标记为可选的 planning / paused Project；active 项 selected / disabled，首次选择立即提交，替换时明确提示原方案将暂停并要求确认，成功后关闭、刷新并更新 Current plan marker。
+- `AppServices` / `composeServices` 注册真实 `CreateGoalProjectService` 与 `SelectCurrentPlanService`，Dashboard / Library 共用 Goal wrapper 注入二者；SQLite-backed composition regression 逐一从两条 destination route 验证真实 create / select 写入与刷新。
+- focused：3 suites / 15 tests 通过；`npm run typecheck` 通过；full suite：95 suites / 648 tests 通过，0 snapshots。
 
 ### 7. Goal / Task scheduling UI
 

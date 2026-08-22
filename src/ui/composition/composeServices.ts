@@ -4,6 +4,7 @@ import { CaptureOptionsService } from '../../application/capture/CaptureOptionsS
 import { QuickCaptureService } from '../../application/capture/QuickCaptureService';
 import { DashboardService } from '../../application/dashboard/DashboardService';
 import { GoalDetailService } from '../../application/goal/GoalDetailService';
+import { SelectCurrentPlanService } from '../../application/goal/SelectCurrentPlanService';
 import { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
 import { CaptureIdeaService } from '../../application/idea/CaptureIdeaService';
 import { ChangeIdeaStatusService } from '../../application/idea/ChangeIdeaStatusService';
@@ -27,6 +28,7 @@ import { SetNotePinService } from '../../application/note/SetNotePinService';
 import { AddMilestoneService } from '../../application/project/AddMilestoneService';
 import { AddSubGoalService } from '../../application/project/AddSubGoalService';
 import { AddTaskService } from '../../application/project/AddTaskService';
+import { CreateGoalProjectService } from '../../application/project/CreateGoalProjectService';
 import { ProjectDetailService } from '../../application/project/ProjectDetailService';
 import { ProjectsOverviewService } from '../../application/project/ProjectsOverviewService';
 import { AllocateResourceService } from '../../application/resource/AllocateResourceService';
@@ -118,6 +120,12 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
     pinCandidates: new PinCandidatesService(goals, tasks, ideas, attentionEntries),
     goalsOverview: new GoalsOverviewService(goals, labels),
     goalDetail: new GoalDetailService(goals, projects, records),
+    createGoalProject: new CreateGoalProjectService(
+      goals, projects, records, relations, transactionRunner,
+    ),
+    selectCurrentPlan: new SelectCurrentPlanService(
+      goals, projects, records, relations, transactionRunner,
+    ),
     projectsOverview: new ProjectsOverviewService(projects, goals, labels),
     projectDetail: new ProjectDetailService(projects, goals, tasks, resources, records, milestones),
     libraryOverview: new LibraryOverviewService(goals, tasks, projects, ideas, notes, resources),
