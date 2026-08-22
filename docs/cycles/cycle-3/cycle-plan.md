@@ -1,6 +1,6 @@
 # Cycle 3 聚合计划
 
-状态：**已批准**（2026-08-22）。
+状态：**已完成**（2026-08-22）。
 
 范围：
 
@@ -157,7 +157,12 @@
 - [x] `start-time-and-date-input` §9。
 - [x] 按 `goal-project-management` §9、`start-time-and-date-input` §10 完成独立验收。
 - [x] 对三份冻结计划执行跨计划集成回归，运行 `npm run typecheck` 与 `npm test -- --runInBand`。
-- [ ] 生成 `docs/cycles/cycle-3/cycle-report.md`，按 domain、application、infrastructure、UI 分层记录产出、验证、偏差、遗留项及任务 commit。
+- [x] 生成 `docs/cycles/cycle-3/cycle-report.md`，按 domain、application、infrastructure、UI 分层记录产出、验证、偏差、遗留项及任务 commit。
+
+周期报告完成证据（2026-08-22）：
+
+- `docs/cycles/cycle-3/cycle-report.md` 已按三份冻结计划记录完成范围、分层产出、跨计划裁决与偏差、任务 commit 映射、遗留/范围外事项和工作树归属。
+- 最终集成验证：`npm run typecheck` 通过；`npm test -- --runInBand` 95 suites / 657 tests 通过，0 snapshots；`git diff --check` 通过。
 
 跨计划集成回归证据（2026-08-22）：
 
