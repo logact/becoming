@@ -142,7 +142,14 @@
 
 ### 8. 迁移其余日期输入
 
-- [ ] `start-time-and-date-input` §8。
+- [x] `start-time-and-date-input` §8。
+
+验证证据（2026-08-22）：
+
+- Create from Idea 的 Goal / Task 表单均使用一组可选 Start / Due `DatePickerRow`，Goal 不再重复显示旧 Target date；两个 creation service command 均直接接收本地日历 `Date` 值。Add to plan 的 Sub-goal / Task 同样传递可选 Start / Due，Milestone Date 改为 required picker 且无 Clear。
+- Allocate resource 的 time span Start / End 改为 optional datetime picker，保留显式 Clear、Cancel 不提交中间值、minute precision、跨日能力与提交时 `startAt < endAt` 严格校验；quantity amount 流程未改。
+- `rg` 确认 production 中无 `YYYY-MM-DD` / `YYYY-MM-DD HH:mm` 提示、无 `parseDateText` / `parseDateTimeText` caller；删除两个 parser 及其 parser-only tests，保留 shared locale-aware `dateFormat` helpers。Goal Project Management 的 Project Due 仍为 shared `DatePickerRow`；Quick Capture 未修改。
+- focused Idea / Project / component / shared：12 suites / 80 tests 通过；`npm run typecheck` 通过；full suite：95 suites / 657 tests 通过，0 snapshots。
 
 ### 9. 文档、组合回归与全周期验收
 

@@ -9,10 +9,10 @@ import type {
 } from '../../../application/idea/IdeaDerivationOptionsService';
 import type { ExtractNoteFromIdeaService } from '../../../application/note/ExtractNoteFromIdeaService';
 import type { GoalId, IdeaId, ProjectId } from '../../../domain/shared/ids';
+import { DatePickerRow } from '../../components/DatePickerRow';
 import { Icon, type IconName } from '../../components/Icon';
 import { PrimaryChipButton } from '../../components/PrimaryChipButton';
 import { useShellNavigation } from '../../navigation/NavigationShell';
-import { parseDateText } from '../../shared/dateText';
 import { createId } from '../../shared/id';
 import { useToast } from '../../shared/Toast';
 import { colors, radii } from '../../shared/theme';
@@ -65,7 +65,8 @@ export function CreateFromIdeaSheet({
   const [type, setType] = useState<DerivationType | null>(initialType ?? null);
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(content);
-  const [dueText, setDueText] = useState('');
+  const [startAt, setStartAt] = useState<Date | undefined>();
+  const [due, setDue] = useState<Date | undefined>();
   const [noteContent, setNoteContent] = useState(content);
   const [projects, setProjects] = useState<IdeaDerivationProjectOption[]>([]);
   const [projectId, setProjectId] = useState<ProjectId | null>(null);
@@ -102,15 +103,11 @@ export function CreateFromIdeaSheet({
     try {
       const now = new Date();
       if (type === 'goal') {
-        const due = dueText.trim() === '' ? undefined : parseDateText(dueText);
-        if (dueText.trim() !== '' && due === null) {
-          setError('Target date must match YYYY-MM-DD.');
-          return;
-        }
         const id = createId();
         await createGoal.create({
           ideaId, goalId: id, title, description,
-          ...(due == null ? {} : { due }),
+          ...(startAt === undefined ? {} : { startAt }),
+          ...(due === undefined ? {} : { due }),
           derivedRelationId: createId(), recordId: createId(),
           ideaRecordRelationId: createId(), goalRecordRelationId: createId(), now,
         });
@@ -124,7 +121,10 @@ export function CreateFromIdeaSheet({
         await createTask.create({
           ideaId, taskId: id, projectId,
           ...(goalId === null ? {} : { goalId }),
-          title, description, derivedRelationId: createId(), recordId: createId(),
+          title, description,
+          ...(startAt === undefined ? {} : { startAt }),
+          ...(due === undefined ? {} : { due }),
+          derivedRelationId: createId(), recordId: createId(),
           ideaRecordRelationId: createId(), taskRecordRelationId: createId(), now,
         });
         await finish({ type, id });
@@ -217,16 +217,26 @@ export function CreateFromIdeaSheet({
               <Field label="Description">
                 <TextInput testID="create-derived-description" value={description} onChangeText={setDescription} multiline style={[styles.input, styles.multiline]} />
               </Field>
-              {type === 'goal' ? (
-                <Field label="Target date">
-                  <TextInput testID="create-goal-due" value={dueText} onChangeText={setDueText} placeholder="YYYY-MM-DD · optional" placeholderTextColor={colors.faint} style={styles.input} />
-                </Field>
-              ) : (
+              <DatePickerRow
+                testID={`create-${type}-start`}
+                label="Start"
+                value={startAt}
+                maximumDate={due}
+                onChange={setStartAt}
+              />
+              <DatePickerRow
+                testID={`create-${type}-due`}
+                label="Due"
+                value={due}
+                minimumDate={startAt}
+                onChange={setDue}
+              />
+              {type === 'task' ? (
                 <>
                   <PickerButton testID="create-task-project" label="Project" value={project?.name ?? 'Choose a project'} onPress={() => setPicker('project')} />
                   <PickerButton testID="create-task-goal" label="Goal" value={goal?.title ?? 'None'} disabled={project === undefined} onPress={() => setPicker('goal')} />
                 </>
-              )}
+              ) : null}
             </>
           )}
           {loadError === null ? null : <Text style={styles.error}>Could not load project options: {loadError}</Text>}

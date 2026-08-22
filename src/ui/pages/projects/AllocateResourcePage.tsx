@@ -9,6 +9,7 @@ import type {
 } from '../../../application/resource/ResourcePoolsService';
 import type { Project } from '../../../domain/project/Project';
 import type { ProjectId, ResourceId } from '../../../domain/shared/ids';
+import { DatePickerRow } from '../../components/DatePickerRow';
 import { Icon } from '../../components/Icon';
 import { InlineNavBar } from '../../components/InlineNavBar';
 import { ListRow } from '../../components/ListRow';
@@ -17,7 +18,6 @@ import { PrimaryChipButton } from '../../components/PrimaryChipButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SectionNote } from '../../components/SectionNote';
 import { useShellNavigation } from '../../navigation/NavigationShell';
-import { parseDateTimeText } from '../../shared/dateText';
 import { createId } from '../../shared/id';
 import { colors, spacing } from '../../shared/theme';
 import { FormTextRow } from './formRows';
@@ -51,7 +51,7 @@ export interface AllocateResourcePageProps {
 /**
  * "Allocate resource" pushed screen (`project:<id>:allocate-resource`): the
  * target project row, the global resource pools (tap to select), then an
- * Amount input for quantity pools or Start/End `YYYY-MM-DD HH:mm` inputs for
+ * Amount input for quantity pools or Start/End native date-time pickers for
  * time pools. Submit calls AllocateResourceService and pops back on success;
  * validation failures show inline.
  */
@@ -68,8 +68,8 @@ export function AllocateResourcePage({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<ResourceId | null>(null);
   const [amountText, setAmountText] = useState('');
-  const [startText, setStartText] = useState('');
-  const [endText, setEndText] = useState('');
+  const [startAt, setStartAt] = useState<Date | undefined>();
+  const [endAt, setEndAt] = useState<Date | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -147,10 +147,8 @@ export function AllocateResourcePage({
           now,
         });
       } else {
-        const startAt = parseDateTimeText(startText);
-        const endAt = parseDateTimeText(endText);
-        if (startAt === null || endAt === null) {
-          setError('Start and end must match YYYY-MM-DD HH:mm.');
+        if (startAt === undefined || endAt === undefined) {
+          setError('Choose both a start and end.');
           return;
         }
         if (startAt.getTime() >= endAt.getTime()) {
@@ -229,19 +227,21 @@ export function AllocateResourcePage({
           <View testID="allocate-span-section">
             <SectionHeader title={`Span — ${selected.name}`} />
             <ListSection variant="panel">
-              <FormTextRow
+              <DatePickerRow
                 testID="allocate-start"
                 label="Start"
-                value={startText}
-                onChangeText={setStartText}
-                placeholder="YYYY-MM-DD HH:mm"
+                mode="datetime"
+                value={startAt}
+                maximumDate={endAt}
+                onChange={setStartAt}
               />
-              <FormTextRow
+              <DatePickerRow
                 testID="allocate-end"
                 label="End"
-                value={endText}
-                onChangeText={setEndText}
-                placeholder="YYYY-MM-DD HH:mm"
+                mode="datetime"
+                value={endAt}
+                minimumDate={startAt}
+                onChange={setEndAt}
               />
             </ListSection>
             <SectionNote>

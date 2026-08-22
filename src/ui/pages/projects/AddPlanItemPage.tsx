@@ -10,6 +10,7 @@ import type {
   ProjectGoalNode,
 } from '../../../application/project/ProjectDetailService';
 import type { GoalId, MilestoneId, ProjectId } from '../../../domain/shared/ids';
+import { DatePickerRow } from '../../components/DatePickerRow';
 import { Icon } from '../../components/Icon';
 import { InlineNavBar } from '../../components/InlineNavBar';
 import { ListSection } from '../../components/ListSection';
@@ -17,7 +18,6 @@ import { PrimaryChipButton } from '../../components/PrimaryChipButton';
 import { SectionNote } from '../../components/SectionNote';
 import { SegmentedControl, type SegmentedControlOption } from '../../components/SegmentedControl';
 import { useShellNavigation } from '../../navigation/NavigationShell';
-import { parseDateText } from '../../shared/dateText';
 import { createId } from '../../shared/id';
 import { colors, spacing } from '../../shared/theme';
 import { FormPickerRow, FormTextRow } from './formRows';
@@ -151,9 +151,9 @@ export interface AddPlanItemPageProps {
 /**
  * "Add to plan" pushed screen (`project:<id>:add-plan-item`): a segmented
  * Sub-goal / Task / Milestone form. Parent-goal, goal and milestone pickers
- * present a bottom-sheet option list; dates are `YYYY-MM-DD` text inputs
- * (empty due = none). Submit calls the matching command service and pops
- * back on success; validation failures show inline.
+ * present a bottom-sheet option list; schedule values use native pickers.
+ * Submit calls the matching command service and pops back on success;
+ * validation failures show inline.
  */
 export function AddPlanItemPage({
   projectId,
@@ -171,9 +171,10 @@ export function AddPlanItemPage({
   const [title, setTitle] = useState('');
   const [parentGoalId, setParentGoalId] = useState<GoalId | null>(initialParentGoalId ?? null);
   const [goalId, setGoalId] = useState<GoalId | null>(null);
-  const [dueText, setDueText] = useState('');
+  const [startAt, setStartAt] = useState<Date | undefined>();
+  const [due, setDue] = useState<Date | undefined>();
   const [milestoneId, setMilestoneId] = useState<MilestoneId | null>(null);
-  const [dateText, setDateText] = useState('');
+  const [milestoneDate, setMilestoneDate] = useState<Date | undefined>();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -274,23 +275,17 @@ export function AddPlanItemPage({
     try {
       const now = new Date();
       if (tab === 'milestone') {
-        const date = parseDateText(dateText);
-        if (date === null) {
-          setError('Date must match YYYY-MM-DD.');
+        if (milestoneDate === undefined) {
+          setError('Choose a milestone date.');
           return;
         }
-        await addMilestone.add({ id: createId(), projectId, title, date, now });
+        await addMilestone.add({ id: createId(), projectId, title, date: milestoneDate, now });
       } else {
-        const trimmedDue = dueText.trim();
-        const due = trimmedDue === '' ? null : parseDateText(trimmedDue);
-        if (trimmedDue !== '' && due === null) {
-          setError('Due must match YYYY-MM-DD.');
-          return;
-        }
         const shared = {
           projectId,
           title,
-          ...(due === null ? {} : { due }),
+          ...(startAt === undefined ? {} : { startAt }),
+          ...(due === undefined ? {} : { due }),
           ...(milestoneId === null ? {} : { milestoneId }),
           now,
         };
@@ -328,13 +323,13 @@ export function AddPlanItemPage({
             onChangeText={setTitle}
             placeholder="e.g. Race week"
           />,
-          <FormTextRow
+          <DatePickerRow
             key="date"
             testID="milestone-date"
             label="Date"
-            value={dateText}
-            onChangeText={setDateText}
-            placeholder="YYYY-MM-DD"
+            value={milestoneDate}
+            required
+            onChange={setMilestoneDate}
           />,
         ]
       : [
@@ -364,13 +359,21 @@ export function AddPlanItemPage({
                 : presentGoalPicker('Goal', effectiveGoalId, setGoalId)
             }
           />,
-          <FormTextRow
+          <DatePickerRow
+            key="start"
+            testID="plan-item-start"
+            label="Start"
+            value={startAt}
+            maximumDate={due}
+            onChange={setStartAt}
+          />,
+          <DatePickerRow
             key="due"
             testID="plan-item-due"
             label="Due"
-            value={dueText}
-            onChangeText={setDueText}
-            placeholder="YYYY-MM-DD · optional"
+            value={due}
+            minimumDate={startAt}
+            onChange={setDue}
           />,
           <FormPickerRow
             key="milestone"

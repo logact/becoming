@@ -11,6 +11,25 @@ import { DomainError } from '../../../../domain/shared/errors';
 import { NavigationShell, useShellNavigation, type ShellDestination } from '../../../navigation/NavigationShell';
 import { AddPlanItemPage, type AddPlanItemPageProps } from '../AddPlanItemPage';
 
+jest.mock('@react-native-community/datetimepicker', () => {
+  const ReactForMock = require('react');
+  return {
+    __esModule: true,
+    default: (props: Record<string, unknown>) => ReactForMock.createElement('NativeDateTimePicker', props),
+    DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn() },
+  };
+});
+
+function dateEvent() {
+  return { type: 'set', nativeEvent: { timestamp: 0, utcOffset: 0 } };
+}
+
+function selectPicker(testID: string, value: Date): void {
+  fireEvent.press(screen.getByTestId(testID + '-open'));
+  fireEvent(screen.getByTestId(testID + '-native'), 'change', dateEvent(), value);
+  fireEvent.press(screen.getByTestId(testID + '-done'));
+}
+
 type SubGoalParams = Parameters<AddSubGoalService['add']>[0];
 type TaskParams = Parameters<AddTaskService['add']>[0];
 type MilestoneParams = Parameters<AddMilestoneService['add']>[0];
@@ -129,18 +148,19 @@ describe('AddPlanItemPage', () => {
 
     // The milestone form renders without touching the segmented control.
     fireEvent.changeText(await screen.findByTestId('milestone-name'), 'Race week');
-    fireEvent.changeText(screen.getByTestId('milestone-date'), '2026-10-18');
+    selectPicker('milestone-date', new Date(2026, 9, 18));
     fireEvent.press(screen.getByTestId('add-plan-item-submit'));
 
     expect(await screen.findByTestId('list')).toBeTruthy();
     expect(milestoneCalls).toHaveLength(1);
   });
 
-  it('picks a parent goal and a milestone from the sheet and parses the due date', async () => {
+  it('picks a parent goal and milestone and passes semantic Start and Due values', async () => {
     const { subGoalCalls } = renderPage();
 
     fireEvent.changeText(await screen.findByTestId('plan-item-title'), '15 km under 75:00');
-    fireEvent.changeText(screen.getByTestId('plan-item-due'), '2026-10-12');
+    selectPicker('plan-item-start', new Date(2026, 9, 1, 13));
+    selectPicker('plan-item-due', new Date(2026, 9, 12, 17));
 
     fireEvent.press(screen.getByTestId('plan-item-goal'));
     fireEvent.press(await screen.findByTestId('option-g2'));
@@ -158,20 +178,22 @@ describe('AddPlanItemPage', () => {
     const params = subGoalCalls[0];
     expect(params.parentGoalId).toBe('g2');
     expect(params.milestoneId).toBe('m1');
+    expect(params.startAt?.getTime()).toBe(new Date(2026, 9, 1).getTime());
     expect(params.due?.getTime()).toBe(new Date(2026, 9, 12).getTime());
   });
 
-  it('shows an inline error for an invalid due date and does not submit', async () => {
+  it('lets an optional Due be cleared while preserving Start', async () => {
     const { subGoalCalls } = renderPage();
 
     fireEvent.changeText(await screen.findByTestId('plan-item-title'), '15 km under 75:00');
-    fireEvent.changeText(screen.getByTestId('plan-item-due'), '2026-13-40');
+    selectPicker('plan-item-start', new Date(2026, 9, 1));
+    selectPicker('plan-item-due', new Date(2026, 9, 12));
+    fireEvent.press(screen.getByTestId('plan-item-due-clear'));
     fireEvent.press(screen.getByTestId('add-plan-item-submit'));
 
-    expect(await screen.findByTestId('add-plan-item-error')).toHaveTextContent(
-      'Due must match YYYY-MM-DD.',
-    );
-    expect(subGoalCalls).toHaveLength(0);
+    expect(await screen.findByTestId('list')).toBeTruthy();
+    expect(subGoalCalls[0].startAt).toEqual(new Date(2026, 9, 1));
+    expect(subGoalCalls[0].due).toBeUndefined();
   });
 
   it('submits a task on the Task tab with the picked goal', async () => {
@@ -181,12 +203,16 @@ describe('AddPlanItemPage', () => {
     fireEvent.changeText(screen.getByTestId('plan-item-title'), 'Cruise intervals 4 × 1600 m');
     fireEvent.press(screen.getByTestId('plan-item-goal'));
     fireEvent.press(await screen.findByTestId('option-g2'));
+    selectPicker('plan-item-start', new Date(2026, 8, 5, 12));
+    selectPicker('plan-item-due', new Date(2026, 8, 8, 20));
     fireEvent.press(screen.getByTestId('add-plan-item-submit'));
 
     expect(await screen.findByTestId('list')).toBeTruthy();
     const params = taskCalls[0];
     expect(params.goalId).toBe('g2');
     expect(params.title).toBe('Cruise intervals 4 × 1600 m');
+    expect(params.startAt).toEqual(new Date(2026, 8, 5));
+    expect(params.due).toEqual(new Date(2026, 8, 8));
   });
 
   it('submits a milestone on the Milestone tab', async () => {
@@ -194,7 +220,8 @@ describe('AddPlanItemPage', () => {
 
     fireEvent.press(await screen.findByTestId('add-plan-item-segmented-milestone'));
     fireEvent.changeText(screen.getByTestId('milestone-name'), 'Race week');
-    fireEvent.changeText(screen.getByTestId('milestone-date'), '2026-10-18');
+    expect(screen.queryByTestId('milestone-date-clear')).toBeNull();
+    selectPicker('milestone-date', new Date(2026, 9, 18, 15));
     fireEvent.press(screen.getByTestId('add-plan-item-submit'));
 
     expect(await screen.findByTestId('list')).toBeTruthy();
@@ -211,7 +238,7 @@ describe('AddPlanItemPage', () => {
     fireEvent.press(screen.getByTestId('add-plan-item-submit'));
 
     expect(await screen.findByTestId('add-plan-item-error')).toHaveTextContent(
-      'Date must match YYYY-MM-DD.',
+      'Choose a milestone date.',
     );
     expect(milestoneCalls).toHaveLength(0);
   });

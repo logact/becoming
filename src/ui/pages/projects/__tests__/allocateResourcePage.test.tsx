@@ -9,6 +9,25 @@ import { Project } from '../../../../domain/project/Project';
 import { NavigationShell, useShellNavigation, type ShellDestination } from '../../../navigation/NavigationShell';
 import { AllocateResourcePage } from '../AllocateResourcePage';
 
+jest.mock('@react-native-community/datetimepicker', () => {
+  const ReactForMock = require('react');
+  return {
+    __esModule: true,
+    default: (props: Record<string, unknown>) => ReactForMock.createElement('NativeDateTimePicker', props),
+    DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn() },
+  };
+});
+
+function dateEvent() {
+  return { type: 'set', nativeEvent: { timestamp: 0, utcOffset: 0 } };
+}
+
+function selectPicker(testID: string, value: Date): void {
+  fireEvent.press(screen.getByTestId(testID + '-open'));
+  fireEvent(screen.getByTestId(testID + '-native'), 'change', dateEvent(), value);
+  fireEvent.press(screen.getByTestId(testID + '-done'));
+}
+
 type AllocateParams = Parameters<AllocateResourceService['allocate']>[0];
 
 const POOLS: ResourcePoolItem[] = [
@@ -105,8 +124,8 @@ describe('AllocateResourcePage', () => {
 
     fireEvent.press(await screen.findByTestId('pool-r1'));
     expect(screen.getByTestId('allocate-span-section')).toBeTruthy();
-    fireEvent.changeText(screen.getByTestId('allocate-start'), '2026-09-06 07:00');
-    fireEvent.changeText(screen.getByTestId('allocate-end'), '2026-09-06 09:00');
+    selectPicker('allocate-start', new Date(2026, 8, 6, 7, 0, 42));
+    selectPicker('allocate-end', new Date(2026, 8, 6, 9, 0, 57));
     fireEvent.press(screen.getByTestId('allocate-submit'));
 
     expect(await screen.findByTestId('list')).toBeTruthy();
@@ -130,18 +149,45 @@ describe('AllocateResourcePage', () => {
     expect(allocateCalls).toHaveLength(0);
   });
 
-  it('rejects a malformed span inline', async () => {
+  it('keeps Cancel lossless and requires both optional span endpoints', async () => {
     const { allocateCalls } = renderPage();
 
     fireEvent.press(await screen.findByTestId('pool-r1'));
-    fireEvent.changeText(screen.getByTestId('allocate-start'), '2026-09-06T07:00');
-    fireEvent.changeText(screen.getByTestId('allocate-end'), '2026-09-06 09:00');
+    selectPicker('allocate-start', new Date(2026, 8, 6, 7));
+    fireEvent.press(screen.getByTestId('allocate-end-open'));
+    fireEvent(
+      screen.getByTestId('allocate-end-native'),
+      'change',
+      dateEvent(),
+      new Date(2026, 8, 6, 9),
+    );
+    fireEvent.press(screen.getByTestId('allocate-end-cancel'));
     fireEvent.press(screen.getByTestId('allocate-submit'));
 
     expect(await screen.findByTestId('allocate-error')).toHaveTextContent(
-      'Start and end must match YYYY-MM-DD HH:mm.',
+      'Choose both a start and end.',
     );
     expect(allocateCalls).toHaveLength(0);
+  });
+
+  it('allows explicit endpoint clearing and preserves strict start-before-end validation', async () => {
+    const { allocateCalls } = renderPage();
+
+    fireEvent.press(await screen.findByTestId('pool-r1'));
+    selectPicker('allocate-start', new Date(2026, 8, 6, 9));
+    selectPicker('allocate-end', new Date(2026, 8, 6, 7));
+    fireEvent.press(screen.getByTestId('allocate-submit'));
+
+    expect(await screen.findByTestId('allocate-error')).toHaveTextContent(
+      'Start must be earlier than end.',
+    );
+    expect(allocateCalls).toHaveLength(0);
+
+    fireEvent.press(screen.getByTestId('allocate-end-clear'));
+    fireEvent.press(screen.getByTestId('allocate-submit'));
+    expect(await screen.findByTestId('allocate-error')).toHaveTextContent(
+      'Choose both a start and end.',
+    );
   });
 
   it('requires a selected resource before submitting', async () => {
