@@ -31,7 +31,7 @@
 ### 1. Dashboard entity navigation
 
 - [x] `dashboard-item-navigation` §2。
-- [ ] `dashboard-item-navigation` §3。
+- [x] `dashboard-item-navigation` §3。
 - [ ] `dashboard-item-navigation` §4–§5。
 - [ ] 按 `dashboard-item-navigation` §6 完成独立验收。
 

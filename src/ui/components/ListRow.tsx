@@ -55,6 +55,7 @@ export function ListRow({
     return (
       <Pressable
         testID={testID}
+        accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [styles.row, dense && styles.dense, pressed && styles.pressed]}
       >

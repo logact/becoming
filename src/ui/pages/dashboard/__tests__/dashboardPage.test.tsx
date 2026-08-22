@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import React from 'react';
+import { Pressable, Text } from 'react-native';
 
 import { makeFakeRepos } from '../../../../application/__tests__/fakes';
 import { AttentionService } from '../../../../application/attention/AttentionService';
@@ -31,9 +32,15 @@ import { Goal } from '../../../../domain/goal/Goal';
 import { Idea } from '../../../../domain/idea/Idea';
 import { Record as DomainRecord } from '../../../../domain/record/Record';
 import { Task } from '../../../../domain/task/Task';
+import { AttentionEntry } from '../../../../domain/attention/AttentionEntry';
+import { Project } from '../../../../domain/project/Project';
 import { appDestinations } from '../../../appDestinations';
 import { AppServicesProvider, type AppServices } from '../../../composition/AppServicesProvider';
-import { NavigationShell, type ShellDestination } from '../../../navigation/NavigationShell';
+import {
+  NavigationShell,
+  type ShellDestination,
+  useShellNavigation,
+} from '../../../navigation/NavigationShell';
 import { DashboardPage } from '../DashboardPage';
 
 const MINUTE = 60 * 1000;
@@ -93,12 +100,28 @@ async function makeServices() {
     createTaskFromIdea: new CreateTaskFromIdeaService(ideas, projects, goals, tasks, records, relations, transactionRunner),
     extractNoteFromIdea: new ExtractNoteFromIdeaService(ideas, notes, records, relations, transactionRunner),
   } as unknown as AppServices;
-  return { services, goals, tasks, ideas, records, attentionEntries };
+  return { services, goals, tasks, ideas, projects, records, attentionEntries };
+}
+
+function RouteProbe({ route }: { route: string }) {
+  const navigation = useShellNavigation();
+  return (
+    <Pressable testID={`route-${route}`} onPress={navigation.goBack}>
+      <Text>{route}</Text>
+    </Pressable>
+  );
 }
 
 function dashboardDestinations(): ShellDestination[] {
   return [
-    { id: 'dashboard', title: 'Dashboard', icon: 'grid', renderList: () => <DashboardPage /> },
+    {
+      id: 'dashboard',
+      title: 'Dashboard',
+      icon: 'grid',
+      renderList: () => <DashboardPage />,
+      renderDetail: (id) => <RouteProbe route={`goal:${id}`} />,
+      renderScreen: (id) => <RouteProbe route={id} />,
+    },
   ];
 }
 
@@ -169,17 +192,71 @@ describe('DashboardPage', () => {
     expect(doing.getByText('Write the report')).toBeTruthy();
     expect(doing.getByText('Buy groceries')).toBeTruthy();
     expect(doing.getByText('A wild idea')).toBeTruthy();
+    expect(screen.getByTestId('dashboard-doing-goal-g-doing').props.accessibilityRole).toBe('button');
+    expect(screen.getByTestId('dashboard-doing-task-t-doing').props.accessibilityRole).toBe('button');
+    expect(screen.getByTestId('dashboard-doing-idea-i-idea').props.accessibilityRole).toBe('button');
 
     const attention = within(screen.getByTestId('attention-section'));
     expect(attention.getByText('Needs attention')).toBeTruthy();
     expect(attention.getByText('Ship v2')).toBeTruthy();
     expect(attention.getByText('Goal · Failed')).toBeTruthy();
     expect(attention.getByText('File taxes')).toBeTruthy();
+    expect(screen.getByTestId('dashboard-attention-goal-g-failed').props.accessibilityRole).toBe('button');
 
     const activity = within(screen.getByTestId('activity-section'));
     expect(activity.getByText('Recent activity')).toBeTruthy();
     expect(activity.getByText('Finished chapter 3')).toBeTruthy();
     expect(activity.getByText('30 min')).toBeTruthy();
+    expect(screen.getByTestId('dashboard-activity-rec-1').props.onPress).toBeUndefined();
+    expect(screen.getByTestId('dashboard-activity-rec-1').props.accessibilityRole).toBeUndefined();
+  });
+
+  it('opens each Doing entity through its typed Dashboard route', async () => {
+    const now = new Date();
+    const ctx = await makeServices();
+    await ctx.goals.save(doingGoal('g-doing', 'Write the report', now));
+    await ctx.tasks.save(doingTask('t-doing', 'Buy groceries', now));
+    await ctx.ideas.save(Idea.create({ id: 'i-doing', content: 'A wild idea', now }));
+
+    renderShell(ctx.services, dashboardDestinations());
+
+    for (const [rowId, route] of [
+      ['dashboard-doing-goal-g-doing', 'goal:g-doing'],
+      ['dashboard-doing-task-t-doing', 'task:t-doing'],
+      ['dashboard-doing-idea-i-doing', 'idea:i-doing'],
+    ] as const) {
+      fireEvent.press(await screen.findByTestId(rowId));
+      const probe = await screen.findByTestId(`route-${route}`);
+      expect(screen.queryByTestId('tab-bar')).toBeNull();
+      fireEvent.press(probe);
+      await screen.findByTestId(rowId);
+    }
+  });
+
+  it('opens a Needs attention Project through its typed Dashboard route', async () => {
+    const now = new Date();
+    const ctx = await makeServices();
+    await ctx.goals.save(Goal.create({ id: 'g-parent', title: 'Parent goal', now }));
+    await ctx.projects.save(Project.create({
+      id: 'p-attention',
+      name: 'Attention project',
+      goalId: 'g-parent',
+      now,
+    }));
+    await ctx.attentionEntries.save(AttentionEntry.create({
+      id: 'a-project',
+      targetType: 'project',
+      targetId: 'p-attention',
+      kind: 'pin',
+      now,
+    }));
+
+    renderShell(ctx.services, dashboardDestinations());
+
+    const row = await screen.findByTestId('dashboard-attention-project-p-attention');
+    expect(row.props.accessibilityRole).toBe('button');
+    fireEvent.press(row);
+    expect(await screen.findByTestId('route-project:p-attention')).toBeTruthy();
   });
 
   it('removes an attention item and persists the dismissal', async () => {
@@ -191,10 +268,17 @@ describe('DashboardPage', () => {
 
     expect(await screen.findByText('Ship v2')).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('attention-remove-goal-g-failed'));
+    const stopPropagation = jest.fn();
+    fireEvent.press(
+      screen.getByTestId('attention-remove-goal-g-failed'),
+      { stopPropagation },
+    );
 
     // The page dismisses via the real AttentionService, then refetches.
     await waitFor(() => expect(screen.queryByText('Ship v2')).toBeNull());
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('dashboard-page')).toBeTruthy();
+    expect(screen.getByTestId('tab-bar')).toBeTruthy();
     expect(
       (await ctx.attentionEntries.list()).some(
         (entry) =>

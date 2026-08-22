@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { type GestureResponderEvent, Pressable, StyleSheet, Text } from 'react-native';
 
 import { colors, radii } from '../shared/theme';
 
@@ -9,6 +9,8 @@ export interface PrimaryChipButtonProps {
   disabled?: boolean;
   testID?: string;
   variant?: 'primary' | 'ghost' | 'danger';
+  /** Keep a nested chip action from also activating its pressable parent. */
+  stopPropagation?: boolean;
 }
 
 /** Filled green pill for primary actions (Resume, Plan, Add). */
@@ -18,11 +20,18 @@ export function PrimaryChipButton({
   disabled,
   testID,
   variant = 'primary',
+  stopPropagation = false,
 }: PrimaryChipButtonProps) {
+  const handlePress = (event: GestureResponderEvent): void => {
+    if (stopPropagation) event.stopPropagation();
+    onPress?.();
+  };
+
   return (
     <Pressable
       testID={testID}
-      onPress={disabled ? undefined : onPress}
+      accessibilityRole="button"
+      onPress={disabled || onPress === undefined ? undefined : handlePress}
       disabled={disabled}
       style={({ pressed }) => [
         styles.button,

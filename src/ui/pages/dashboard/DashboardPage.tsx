@@ -36,6 +36,8 @@ const ATTENTION_ICON: Record<AttentionItem['reason'], IconName> = {
   pinned: 'bulb',
 };
 
+type DashboardEntityType = DoingItem['type'] | AttentionItem['type'];
+
 function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
@@ -70,8 +72,8 @@ function attentionReasonText(item: AttentionItem, now: Date): string {
 /**
  * Dashboard tab: eyebrow date, headline stats, Doing now, Needs attention
  * (with the "Pin an item…" row pushing the attention-pin screen) and the
- * Recent activity panel. Rows are not pressable yet — detail pages are out
- * of scope for this task.
+ * Recent activity panel. Doing and attention entity rows open detail on the
+ * Dashboard stack; Recent activity remains informational.
  */
 export function DashboardPage() {
   const { dashboard, attention } = useAppServices();
@@ -86,6 +88,14 @@ export function DashboardPage() {
   const captureRevision = useCaptureRevision();
   const [loaded, setLoaded] = useState<{ view: DashboardView; now: Date } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const openEntity = (type: DashboardEntityType, id: string): void => {
+    if (type === 'goal') {
+      navigation.openDetail(id);
+      return;
+    }
+    navigation.pushScreen(`${type}:${id}`);
+  };
 
   const refresh = useCallback(async () => {
     try {
@@ -150,9 +160,11 @@ export function DashboardPage() {
             // bar; no progress data source exists yet, so rows render none.
             <ListRow
               key={`${item.type}-${item.id}`}
+              testID={`dashboard-doing-${item.type}-${item.id}`}
               icon={DOING_ICON[item.type]}
               title={item.title}
               subtitle={doingSubtitle(item, now)}
+              onPress={() => openEntity(item.type, item.id)}
               trailing={
                 item.type === 'idea' ? (
                   <StatusPill state="captured" label="Captured" />
@@ -172,13 +184,16 @@ export function DashboardPage() {
           {view.attention.map((item) => (
             <ListRow
               key={`${item.type}-${item.id}`}
+              testID={`dashboard-attention-${item.type}-${item.id}`}
               icon={ATTENTION_ICON[item.reason]}
               title={item.title}
               subtitle={attentionSubtitle(item, now)}
+              onPress={() => openEntity(item.type, item.id)}
               trailing={
                 <PrimaryChipButton
                   testID={`attention-remove-${item.type}-${item.id}`}
                   label="Remove"
+                  stopPropagation
                   onPress={() => void removeAttention(item)}
                 />
               }
@@ -204,6 +219,7 @@ export function DashboardPage() {
           {view.recentActivity.map((item) => (
             <ListRow
               key={item.id}
+              testID={`dashboard-activity-${item.id}`}
               icon={activityIcon(item.kind)}
               title={item.detail ?? item.kind}
               trailing={<Text style={styles.meta}>{relativeTime(item.occurredAt, now)}</Text>}
