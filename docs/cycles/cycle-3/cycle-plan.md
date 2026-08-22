@@ -53,8 +53,13 @@
 
 ### 3. Goal / Task schedule 领域与持久化
 
-- [ ] `start-time-and-date-input` §3。
+- [x] `start-time-and-date-input` §3。
 - [ ] `start-time-and-date-input` §4。
+
+§3 验证证据（2026-08-22）：
+
+- Goal / Task 增加可选 `startAt`、原子 `setSchedule`、日期顺序不变量与 `isReadyToStart`；保留生命周期语义，并让旧 due API 复用同一不变量。
+- focused：2 suites / 52 tests 通过；`npm run typecheck` 通过；full suite：90 suites / 574 tests 通过，0 snapshots。
 
 ### 4. Goal / Task schedule 应用层与读模型
 

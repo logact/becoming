@@ -136,6 +136,110 @@ describe('Goal', () => {
     expect(goal.due).toBe(t1);
   });
 
+  it('accepts an optional valid schedule at creation', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run', startAt: t1, due: t2, now: t0 });
+    expect(goal.startAt).toBe(t1);
+    expect(goal.due).toBe(t2);
+
+    const sameDate = Goal.create({ id: 'g2', title: 'Swim', startAt: t1, due: t1, now: t0 });
+    expect(sameDate.startAt).toBe(t1);
+    expect(sameDate.due).toBe(t1);
+  });
+
+  it('rejects an invalid schedule at creation', () => {
+    expect(() => Goal.create({ id: 'g1', title: 'Run', startAt: t2, due: t1, now: t0 })).toThrow(
+      DomainError,
+    );
+  });
+
+  it('atomically sets, changes, and clears either schedule date', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
+
+    goal.setSchedule(t1, t2, t1);
+    expect(goal.startAt).toBe(t1);
+    expect(goal.due).toBe(t2);
+    expect(goal.updatedAt).toBe(t1);
+
+    goal.setSchedule(t0, t1, t2);
+    expect(goal.startAt).toBe(t0);
+    expect(goal.due).toBe(t1);
+    expect(goal.updatedAt).toBe(t2);
+
+    goal.setSchedule(undefined, t2, t1);
+    expect(goal.startAt).toBeUndefined();
+    expect(goal.due).toBe(t2);
+
+    goal.setSchedule(t1, undefined, t2);
+    expect(goal.startAt).toBe(t1);
+    expect(goal.due).toBeUndefined();
+
+    goal.setSchedule(undefined, undefined, t1);
+    expect(goal.startAt).toBeUndefined();
+    expect(goal.due).toBeUndefined();
+  });
+
+  it('rejects invalid schedule updates without partially changing state', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run', startAt: t0, due: t2, now: t0 });
+
+    expect(() => goal.setSchedule(t2, t1, t1)).toThrow(DomainError);
+    expect(goal.startAt).toBe(t0);
+    expect(goal.due).toBe(t2);
+    expect(goal.updatedAt).toBe(t0);
+
+    goal.setSchedule(t1, t1, t1);
+    expect(goal.startAt).toBe(t1);
+    expect(goal.due).toBe(t1);
+  });
+
+  it('keeps legacy due updates inside the schedule invariant', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run', startAt: t1, due: t2, now: t0 });
+
+    expect(() => goal.setDue(t0, t1)).toThrow(DomainError);
+    expect(goal.startAt).toBe(t1);
+    expect(goal.due).toBe(t2);
+    expect(goal.updatedAt).toBe(t0);
+
+    goal.clearDue(t2);
+    expect(goal.startAt).toBe(t1);
+    expect(goal.due).toBeUndefined();
+    expect(goal.updatedAt).toBe(t2);
+  });
+
+  it('is ready only when a todo schedule has reached its start boundary', () => {
+    const goal = Goal.create({ id: 'g1', title: 'Run', startAt: t1, now: t0 });
+    expect(goal.isReadyToStart(t0)).toBe(false);
+    expect(goal.isReadyToStart(t1)).toBe(true);
+    expect(goal.isReadyToStart(t2)).toBe(true);
+    expect(Goal.create({ id: 'g2', title: 'Swim', now: t0 }).isReadyToStart(t2)).toBe(false);
+  });
+
+  it('is not ready while doing, paused, done, failed, or archived', () => {
+    const doing = Goal.create({ id: 'doing', title: 'Doing', startAt: t0, now: t0 });
+    doing.start(t1);
+    expect(doing.isReadyToStart(t2)).toBe(false);
+
+    const paused = Goal.create({ id: 'paused', title: 'Paused', startAt: t0, now: t0 });
+    paused.start(t1);
+    paused.pause(t2);
+    expect(paused.isReadyToStart(t2)).toBe(false);
+
+    const done = Goal.create({ id: 'done', title: 'Done', startAt: t0, now: t0 });
+    done.start(t1);
+    done.complete(t2);
+    expect(done.isReadyToStart(t2)).toBe(false);
+
+    const failed = Goal.create({ id: 'failed', title: 'Failed', startAt: t0, now: t0 });
+    failed.start(t1);
+    failed.fail(t2);
+    expect(failed.isReadyToStart(t2)).toBe(false);
+
+    const archived = Goal.create({ id: 'archived', title: 'Archived', startAt: t0, now: t0 });
+    archived.archive(t1);
+    expect(archived.isReadyToStart(t2)).toBe(false);
+    archived.unarchive(t2);
+    expect(archived.isReadyToStart(t2)).toBe(true);
+  });
+
   it('fails from doing or paused and rejects other statuses', () => {
     const goal = Goal.create({ id: 'g1', title: 'Run', now: t0 });
     expect(() => goal.fail(t1)).toThrow(DomainError);
@@ -205,15 +309,16 @@ describe('Goal', () => {
     expect(archived.isDueImminent(HOUR_MS, t0)).toBe(false);
   });
 
-  it('restores from persisted fields without enforcing invariants', () => {
+  it('restores persisted schedule fields and rejects an invalid schedule', () => {
     const goal = Goal.create({ id: 'g1', title: 'Run', description: 'A marathon', now: t0 });
     goal.start(t1);
-    goal.setDue(t2, t1);
+    goal.setSchedule(t1, t2, t1);
     goal.addLabel('l1');
     const restored = Goal.restore({
       id: goal.id,
       title: goal.title,
       description: goal.description,
+      startAt: goal.startAt,
       due: goal.due,
       status: goal.status,
       archived: goal.archived,
@@ -224,6 +329,7 @@ describe('Goal', () => {
     expect(restored.id).toBe(goal.id);
     expect(restored.title).toBe(goal.title);
     expect(restored.description).toBe(goal.description);
+    expect(restored.startAt).toBe(goal.startAt);
     expect(restored.due).toBe(goal.due);
     expect(restored.status).toBe(goal.status);
     expect(restored.archived).toBe(goal.archived);
@@ -231,6 +337,20 @@ describe('Goal', () => {
     expect(restored.labelIds).not.toBe(goal.labelIds);
     expect(restored.createdAt).toBe(goal.createdAt);
     expect(restored.updatedAt).toBe(goal.updatedAt);
+
+    expect(() =>
+      Goal.restore({
+        id: 'g2',
+        title: 'Invalid',
+        startAt: t2,
+        due: t1,
+        status: 'todo',
+        archived: false,
+        labelIds: [],
+        createdAt: t0,
+        updatedAt: t0,
+      }),
+    ).toThrow(DomainError);
   });
 
   describe('activateProject', () => {

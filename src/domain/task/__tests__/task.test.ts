@@ -114,6 +114,170 @@ describe('Task', () => {
     expect(task.due).toBe(t1);
   });
 
+  it('accepts an optional valid schedule at creation', () => {
+    const task = Task.create({
+      id: 't1',
+      title: 'Train',
+      startAt: t1,
+      due: t2,
+      projectId: 'p1',
+      now: t0,
+    });
+    expect(task.startAt).toBe(t1);
+    expect(task.due).toBe(t2);
+
+    const sameDate = Task.create({
+      id: 't2',
+      title: 'Stretch',
+      startAt: t1,
+      due: t1,
+      projectId: 'p1',
+      now: t0,
+    });
+    expect(sameDate.startAt).toBe(t1);
+    expect(sameDate.due).toBe(t1);
+  });
+
+  it('rejects an invalid schedule at creation', () => {
+    expect(() =>
+      Task.create({ id: 't1', title: 'Train', startAt: t2, due: t1, projectId: 'p1', now: t0 }),
+    ).toThrow(DomainError);
+  });
+
+  it('atomically sets, changes, and clears either schedule date', () => {
+    const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
+
+    task.setSchedule(t1, t2, t1);
+    expect(task.startAt).toBe(t1);
+    expect(task.due).toBe(t2);
+    expect(task.updatedAt).toBe(t1);
+
+    task.setSchedule(t0, t1, t2);
+    expect(task.startAt).toBe(t0);
+    expect(task.due).toBe(t1);
+    expect(task.updatedAt).toBe(t2);
+
+    task.setSchedule(undefined, t2, t1);
+    expect(task.startAt).toBeUndefined();
+    expect(task.due).toBe(t2);
+
+    task.setSchedule(t1, undefined, t2);
+    expect(task.startAt).toBe(t1);
+    expect(task.due).toBeUndefined();
+
+    task.setSchedule(undefined, undefined, t1);
+    expect(task.startAt).toBeUndefined();
+    expect(task.due).toBeUndefined();
+  });
+
+  it('rejects invalid schedule updates without partially changing state', () => {
+    const task = Task.create({
+      id: 't1',
+      title: 'Train',
+      startAt: t0,
+      due: t2,
+      projectId: 'p1',
+      now: t0,
+    });
+
+    expect(() => task.setSchedule(t2, t1, t1)).toThrow(DomainError);
+    expect(task.startAt).toBe(t0);
+    expect(task.due).toBe(t2);
+    expect(task.updatedAt).toBe(t0);
+
+    task.setSchedule(t1, t1, t1);
+    expect(task.startAt).toBe(t1);
+    expect(task.due).toBe(t1);
+  });
+
+  it('keeps legacy due updates inside the schedule invariant', () => {
+    const task = Task.create({
+      id: 't1',
+      title: 'Train',
+      startAt: t1,
+      due: t2,
+      projectId: 'p1',
+      now: t0,
+    });
+
+    expect(() => task.setDue(t0, t1)).toThrow(DomainError);
+    expect(task.startAt).toBe(t1);
+    expect(task.due).toBe(t2);
+    expect(task.updatedAt).toBe(t0);
+
+    task.clearDue(t2);
+    expect(task.startAt).toBe(t1);
+    expect(task.due).toBeUndefined();
+    expect(task.updatedAt).toBe(t2);
+  });
+
+  it('is ready only when a todo schedule has reached its start boundary', () => {
+    const task = Task.create({ id: 't1', title: 'Train', startAt: t1, projectId: 'p1', now: t0 });
+    expect(task.isReadyToStart(t0)).toBe(false);
+    expect(task.isReadyToStart(t1)).toBe(true);
+    expect(task.isReadyToStart(t2)).toBe(true);
+    expect(
+      Task.create({ id: 't2', title: 'Stretch', projectId: 'p1', now: t0 }).isReadyToStart(t2),
+    ).toBe(false);
+  });
+
+  it('is not ready while doing, paused, done, failed, or archived', () => {
+    const doing = Task.create({
+      id: 'doing',
+      title: 'Doing',
+      startAt: t0,
+      projectId: 'p1',
+      now: t0,
+    });
+    doing.start(t1);
+    expect(doing.isReadyToStart(t2)).toBe(false);
+
+    const paused = Task.create({
+      id: 'paused',
+      title: 'Paused',
+      startAt: t0,
+      projectId: 'p1',
+      now: t0,
+    });
+    paused.start(t1);
+    paused.pause(t2);
+    expect(paused.isReadyToStart(t2)).toBe(false);
+
+    const done = Task.create({
+      id: 'done',
+      title: 'Done',
+      startAt: t0,
+      projectId: 'p1',
+      now: t0,
+    });
+    done.start(t1);
+    done.complete(t2);
+    expect(done.isReadyToStart(t2)).toBe(false);
+
+    const failed = Task.create({
+      id: 'failed',
+      title: 'Failed',
+      startAt: t0,
+      projectId: 'p1',
+      now: t0,
+    });
+    failed.start(t1);
+    failed.fail(t2);
+    expect(failed.isReadyToStart(t2)).toBe(false);
+
+    const archived = Task.create({
+      id: 'archived',
+      title: 'Archived',
+      startAt: t0,
+      projectId: 'p1',
+      now: t0,
+    });
+    archived.archive(t1);
+    expect(archived.isReadyToStart(t2)).toBe(false);
+    archived.unarchive(t2);
+    expect(archived.isReadyToStart(t2)).toBe(true);
+  });
+
   it('fails from doing or paused and rejects other statuses', () => {
     const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     expect(() => task.fail(t1)).toThrow(DomainError);
@@ -211,10 +375,10 @@ describe('Task', () => {
     expect(archived.isOverdue(t1)).toBe(false);
   });
 
-  it('restores from persisted fields without enforcing invariants', () => {
+  it('restores persisted schedule fields and rejects an invalid schedule', () => {
     const task = Task.create({ id: 't1', title: 'Train', projectId: 'p1', now: t0 });
     task.start(t1);
-    task.setDue(t2, t1);
+    task.setSchedule(t1, t2, t1);
     task.assignGoal('g1', t1);
     task.assignMilestone('m1', t1);
     task.addLabel('l1');
@@ -222,6 +386,7 @@ describe('Task', () => {
       id: task.id,
       title: task.title,
       description: task.description,
+      startAt: task.startAt,
       due: task.due,
       status: task.status,
       archived: task.archived,
@@ -235,6 +400,7 @@ describe('Task', () => {
     expect(restored.id).toBe(task.id);
     expect(restored.title).toBe(task.title);
     expect(restored.description).toBe(task.description);
+    expect(restored.startAt).toBe(task.startAt);
     expect(restored.due).toBe(task.due);
     expect(restored.status).toBe(task.status);
     expect(restored.archived).toBe(task.archived);
@@ -245,5 +411,20 @@ describe('Task', () => {
     expect(restored.milestoneId).toBe(task.milestoneId);
     expect(restored.createdAt).toBe(task.createdAt);
     expect(restored.updatedAt).toBe(task.updatedAt);
+
+    expect(() =>
+      Task.restore({
+        id: 't2',
+        title: 'Invalid',
+        startAt: t2,
+        due: t1,
+        status: 'todo',
+        archived: false,
+        labelIds: [],
+        projectId: 'p1',
+        createdAt: t0,
+        updatedAt: t0,
+      }),
+    ).toThrow(DomainError);
   });
 });

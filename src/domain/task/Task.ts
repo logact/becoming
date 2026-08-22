@@ -12,6 +12,8 @@ export class Task {
     private _title: string,
     /** Optional longer explanation of what the task involves. */
     private _description: string | undefined,
+    /** Optional date on which the task is planned to become actionable. */
+    private _startAt: Date | undefined,
     /** Optional deadline by which the task should be done. */
     private _due: Date | undefined,
     /** Lifecycle status, changed only through start/pause/resume/complete/reopen. */
@@ -36,16 +38,19 @@ export class Task {
     id: TaskId;
     title: string;
     description?: string;
+    startAt?: Date;
     due?: Date;
     projectId: ProjectId;
     goalId?: GoalId;
     milestoneId?: MilestoneId;
     now: Date;
   }): Task {
+    Task.validateSchedule(params.startAt, params.due);
     return new Task(
       params.id,
       params.title,
       params.description,
+      params.startAt,
       params.due,
       'todo',
       false,
@@ -58,11 +63,12 @@ export class Task {
     );
   }
 
-  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  /** Rebuilds from persistence while preserving the schedule invariant. */
   static restore(params: {
     id: TaskId;
     title: string;
     description?: string;
+    startAt?: Date;
     due?: Date;
     status: TaskStatus;
     archived: boolean;
@@ -73,10 +79,12 @@ export class Task {
     createdAt: Date;
     updatedAt: Date;
   }): Task {
+    Task.validateSchedule(params.startAt, params.due);
     return new Task(
       params.id,
       params.title,
       params.description,
+      params.startAt,
       params.due,
       params.status,
       params.archived,
@@ -95,6 +103,10 @@ export class Task {
 
   get description(): string | undefined {
     return this._description;
+  }
+
+  get startAt(): Date | undefined {
+    return this._startAt;
   }
 
   get due(): Date | undefined {
@@ -160,8 +172,7 @@ export class Task {
   }
 
   setDue(due: Date, now: Date): void {
-    this._due = due;
-    this._updatedAt = now;
+    this.setSchedule(this._startAt, due, now);
   }
 
   /** Assigns the task to a goal within its project. */
@@ -177,7 +188,14 @@ export class Task {
   }
 
   clearDue(now: Date): void {
-    this._due = undefined;
+    this.setSchedule(this._startAt, undefined, now);
+  }
+
+  /** Atomically replaces the optional planned start and due dates. */
+  setSchedule(startAt: Date | undefined, due: Date | undefined, now: Date): void {
+    Task.validateSchedule(startAt, due);
+    this._startAt = startAt;
+    this._due = due;
     this._updatedAt = now;
   }
 
@@ -206,6 +224,16 @@ export class Task {
       return false;
     }
     return this._due !== undefined && this._due.getTime() < now.getTime();
+  }
+
+  /** True when a scheduled, unarchived todo task has reached its start date. */
+  isReadyToStart(now: Date): boolean {
+    return (
+      !this._archived &&
+      this._status === 'todo' &&
+      this._startAt !== undefined &&
+      this._startAt.getTime() <= now.getTime()
+    );
   }
 
   needsAttention(): boolean {
@@ -242,5 +270,11 @@ export class Task {
     }
     this._status = to;
     this._updatedAt = now;
+  }
+
+  private static validateSchedule(startAt: Date | undefined, due: Date | undefined): void {
+    if (startAt !== undefined && due !== undefined && startAt.getTime() > due.getTime()) {
+      throw new DomainError('Task start date must not be after its due date');
+    }
   }
 }

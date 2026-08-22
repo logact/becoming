@@ -18,6 +18,8 @@ export class Goal {
     private _title: string,
     /** Optional longer explanation of what achieving the goal means. */
     private _description: string | undefined,
+    /** Optional date on which the goal is planned to become actionable. */
+    private _startAt: Date | undefined,
     /** Optional deadline by which the goal should be achieved. */
     private _due: Date | undefined,
     /** Lifecycle status, changed only through start/pause/resume/complete/reopen. */
@@ -42,16 +44,19 @@ export class Goal {
     id: GoalId;
     title: string;
     description?: string;
+    startAt?: Date;
     due?: Date;
     projectId?: ProjectId;
     parentGoalId?: GoalId;
     milestoneId?: MilestoneId;
     now: Date;
   }): Goal {
+    Goal.validateSchedule(params.startAt, params.due);
     return new Goal(
       params.id,
       params.title,
       params.description,
+      params.startAt,
       params.due,
       'todo',
       false,
@@ -64,11 +69,12 @@ export class Goal {
     );
   }
 
-  /** Rebuilds from persistence; no invariants enforced beyond construction. */
+  /** Rebuilds from persistence while preserving the schedule invariant. */
   static restore(params: {
     id: GoalId;
     title: string;
     description?: string;
+    startAt?: Date;
     due?: Date;
     status: GoalStatus;
     archived: boolean;
@@ -79,10 +85,12 @@ export class Goal {
     createdAt: Date;
     updatedAt: Date;
   }): Goal {
+    Goal.validateSchedule(params.startAt, params.due);
     return new Goal(
       params.id,
       params.title,
       params.description,
+      params.startAt,
       params.due,
       params.status,
       params.archived,
@@ -101,6 +109,10 @@ export class Goal {
 
   get description(): string | undefined {
     return this._description;
+  }
+
+  get startAt(): Date | undefined {
+    return this._startAt;
   }
 
   get due(): Date | undefined {
@@ -181,12 +193,18 @@ export class Goal {
   }
 
   setDue(due: Date, now: Date): void {
-    this._due = due;
-    this._updatedAt = now;
+    this.setSchedule(this._startAt, due, now);
   }
 
   clearDue(now: Date): void {
-    this._due = undefined;
+    this.setSchedule(this._startAt, undefined, now);
+  }
+
+  /** Atomically replaces the optional planned start and due dates. */
+  setSchedule(startAt: Date | undefined, due: Date | undefined, now: Date): void {
+    Goal.validateSchedule(startAt, due);
+    this._startAt = startAt;
+    this._due = due;
     this._updatedAt = now;
   }
 
@@ -210,6 +228,16 @@ export class Goal {
       return false;
     }
     return this._due.getTime() - now.getTime() <= windowMs;
+  }
+
+  /** True when a scheduled, unarchived todo goal has reached its start date. */
+  isReadyToStart(now: Date): boolean {
+    return (
+      !this._archived &&
+      this._status === 'todo' &&
+      this._startAt !== undefined &&
+      this._startAt.getTime() <= now.getTime()
+    );
   }
 
   /** Archive is an independent flag and never overwrites status. */
@@ -242,5 +270,11 @@ export class Goal {
     }
     this._status = to;
     this._updatedAt = now;
+  }
+
+  private static validateSchedule(startAt: Date | undefined, due: Date | undefined): void {
+    if (startAt !== undefined && due !== undefined && startAt.getTime() > due.getTime()) {
+      throw new DomainError('Goal start date must not be after its due date');
+    }
   }
 }
