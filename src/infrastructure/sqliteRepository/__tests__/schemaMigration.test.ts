@@ -63,7 +63,24 @@ async function userVersion(db: NodeSqliteDatabase): Promise<number> {
   return row?.user_version ?? 0;
 }
 
+async function tableNames(db: NodeSqliteDatabase): Promise<string[]> {
+  const rows = await db.all<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+  );
+  return rows.map((row) => row.name);
+}
+
 describe('migrate upgrade paths', () => {
+  it('keeps capture as an application intent rather than a persistence model', async () => {
+    const db = new NodeSqliteDatabase(':memory:');
+
+    await migrate(db);
+
+    const tables = await tableNames(db);
+    expect(tables).toEqual(expect.arrayContaining(['goals', 'ideas', 'notes', 'tasks']));
+    expect(tables).not.toContain('captures');
+  });
+
   it('upgrades an original-v1 database, keeping its data readable', async () => {
     const db = new NodeSqliteDatabase(':memory:');
     for (const ddl of ORIGINAL_V1) {

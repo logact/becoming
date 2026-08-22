@@ -184,7 +184,7 @@ const CAPTURE_KINDS = {
     icon: 'checkCircle',
     placeholder: 'What needs to be done?',
     action: 'Create task',
-    hint: 'Project and timing can be added later.',
+    hint: 'Choose the Project this task belongs to.',
     toast: 'Task created',
   },
   goal: {
@@ -205,6 +205,26 @@ const CAPTURE_KINDS = {
   },
 };
 
+function captureTaskContext() {
+  return '<div class="capture-context" data-capture-context>' +
+    '<label class="capture-project-label" for="capture-project">Project <span>Required</span></label>' +
+    '<select class="capture-project" id="capture-project" data-capture-project>' +
+      '<option value="">Select a project</option>' +
+      '<option value="becoming-mvp" selected>Becoming MVP · Active</option>' +
+      '<option value="weekly-reflection">Weekly reflection · Planning</option>' +
+    '</select>' +
+    '<div class="capture-project-help">No project yet? Create a project first, or <button data-capture-fallback>save this to Decide later</button>.</div>' +
+  '</div>';
+}
+
+function updateCaptureSubmit(layer) {
+  const content = layer.querySelector('[data-capture-input]').value.trim();
+  const selected = layer.querySelector('[data-capture-kind].selected')?.dataset.captureKind;
+  const project = layer.querySelector('[data-capture-project]');
+  layer.querySelector('[data-capture-save]').disabled = content === '' ||
+    (selected === 'task' && (!project || project.value === ''));
+}
+
 function captureButton() {
   return '<button class="capture-fab" data-capture-open aria-label="Capture anything"><span class="capture-fab-icon">' + ic('plus', 18) + '</span><span>Capture</span></button>';
 }
@@ -220,6 +240,7 @@ function captureSheet() {
       '<div class="capture-kinds">' + Object.entries(CAPTURE_KINDS).map(([key, kind]) =>
         '<button class="capture-kind' + (key === 'inbox' ? ' selected' : '') + '" data-capture-kind="' + key + '">' + ic(kind.icon, 14) + '<span>' + kind.label + '</span></button>'
       ).join('') + '</div>' +
+      '<div data-capture-context-slot></div>' +
       '<div class="capture-foot"><span class="capture-hint" data-capture-hint>' + CAPTURE_KINDS.inbox.hint + '</span><button class="capture-save" data-capture-save disabled><span>' + CAPTURE_KINDS.inbox.action + '</span>' + ic('arrowUpRight', 14) + '</button></div>' +
     '</section>' +
   '</div>';
@@ -233,11 +254,14 @@ function openCapture(phone) {
 
 function selectCaptureKind(button) {
   const layer = button.closest('.capture-layer');
-  const kind = CAPTURE_KINDS[button.dataset.captureKind];
+  const key = button.dataset.captureKind;
+  const kind = CAPTURE_KINDS[key];
   layer.querySelectorAll('[data-capture-kind]').forEach(option => option.classList.toggle('selected', option === button));
   layer.querySelector('[data-capture-input]').placeholder = kind.placeholder;
   layer.querySelector('[data-capture-hint]').textContent = kind.hint;
   layer.querySelector('[data-capture-save] span').textContent = kind.action;
+  layer.querySelector('[data-capture-context-slot]').innerHTML = key === 'task' ? captureTaskContext() : '';
+  updateCaptureSubmit(layer);
 }
 
 const IDEA_STATUS = {
@@ -290,8 +314,16 @@ document.addEventListener('click', e => {
   if (captureClose) { captureClose.closest('.capture-layer').remove(); return; }
   const captureKind = e.target.closest('[data-capture-kind]');
   if (captureKind) { selectCaptureKind(captureKind); return; }
+  const captureFallback = e.target.closest('[data-capture-fallback]');
+  if (captureFallback) {
+    const layer = captureFallback.closest('.capture-layer');
+    selectCaptureKind(layer.querySelector('[data-capture-kind="inbox"]'));
+    layer.querySelector('[data-capture-input]').focus();
+    return;
+  }
   const captureSave = e.target.closest('[data-capture-save]');
   if (captureSave) {
+    if (captureSave.disabled) return;
     const phone = captureSave.closest('.phone');
     const selected = captureSave.closest('.capture-layer').querySelector('[data-capture-kind].selected');
     const toast = CAPTURE_KINDS[selected.dataset.captureKind].toast;
@@ -406,5 +438,12 @@ document.addEventListener('click', e => {
 
 document.addEventListener('input', e => {
   if (!e.target.matches('[data-capture-input]')) return;
-  e.target.closest('.capture-layer').querySelector('[data-capture-save]').disabled = e.target.value.trim() === '';
+  updateCaptureSubmit(e.target.closest('.capture-layer'));
+});
+
+document.addEventListener('change', e => {
+  if (!e.target.matches('[data-capture-project]')) return;
+  const layer = e.target.closest('.capture-layer');
+  layer.querySelector('[data-capture-context]').classList.toggle('missing', e.target.value === '');
+  updateCaptureSubmit(layer);
 });

@@ -17,6 +17,14 @@ Each app screen follows this vertical structure:
 
 the bottom navigation has the buttons (Dashboard,Library,Setting)
 
+### Universal capture
+
+- The Capture entry is owned by the app shell, so it is available on ordinary list, detail, and pushed screens without becoming a new tab or route. On list screens the floating button sits above the bottom tab bar; on pushed screens it sits above the bottom safe area.
+- Opening Capture dims the current screen and presents a bottom composer above the app content and tab bar. Focus moves directly to the text input. When the keyboard appears, the composer moves with it so the input, required context, and submit action remain visible.
+- Decide later, Idea, Task, Goal, and Note are presentation intents over the existing models. Changing intent updates the placeholder, explanatory copy, required fields, and submit label. Task alone shows a required Project picker; without a Project its submit action remains disabled and the composer offers a clear return to Decide later.
+- A modal or bottom sheet already on screen suppresses the Capture entry rather than stacking another overlay.
+- A successful save closes the composer, shows confirmation, and returns focus to the unchanged originating screen. The current navigation stack is never replaced or advanced by capture.
+
 
 ## pages
 1. dashboard  page show 

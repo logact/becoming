@@ -272,6 +272,14 @@
   .capture-kind svg{width:14px;height:14px;color:var(--green)}
   .capture-kind.selected{border-color:var(--green);background:var(--green);color:#F2F0E6}
   .capture-kind.selected svg{color:#F2F0E6}
+  .capture-context{margin-top:14px;padding:12px 13px;background:var(--bg);border:1px solid var(--line);border-radius:15px}
+  .capture-project-label{display:flex;align-items:center;justify-content:space-between;color:var(--ink);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+  .capture-project-label span{color:var(--sage);font-size:9.5px;letter-spacing:.08em}
+  .capture-project{width:100%;height:38px;margin-top:8px;padding:0 10px;border:1px solid var(--line);border-radius:11px;background:var(--panel);color:var(--ink);font:600 13px var(--sans);outline:0}
+  .capture-context.missing{border-color:#C9A49A}
+  .capture-context.missing .capture-project{border-color:#B97B6C}
+  .capture-project-help{margin-top:7px;color:var(--faint);font-size:10.5px;line-height:1.4}
+  .capture-project-help button{border:0;background:none;padding:0;color:var(--green);font:700 10.5px var(--sans);text-decoration:underline;cursor:pointer}
   .capture-foot{display:flex;align-items:center;gap:12px;margin-top:20px}
   .capture-hint{flex:1;font-size:11.5px;line-height:1.35;color:var(--faint)}
   .capture-save{height:42px;border:0;border-radius:999px;background:var(--green);color:#F2F0E6;padding:0 16px;display:flex;align-items:center;gap:6px;font:700 12.5px var(--sans);cursor:pointer}

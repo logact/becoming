@@ -125,3 +125,16 @@ Outlined chip: 1px `line` border, `muted` 11.5px / 600 text, fully rounded, `pan
 ## App shell
 
 Per `docs/design/design.md`: status area → navigation → scrollable content → bottom navigation (Dashboard / Library / Setting). Pushed detail screens hide the tab bar.
+
+### Capture FAB
+
+- A 50px-high pill is inset 18px from the trailing edge. Place it 14px above the tab bar on tab screens and 24px above the bottom safe area on pushed screens.
+- The surface is `green`; its leading 36×36 circular chip is `mint` with an 18px green plus. Label text is 13px / 700. Use a capture-only shadow of `0 8px 22px rgba(23,40,30,.28)` at the app-shell overlay level, above content and below sheets/toasts.
+- Pressed state scales to 96% with 72% opacity. Hide (rather than disable) the FAB while any modal, bottom sheet, or Capture composer is open. During the short opening transition it is non-interactive.
+
+### Capture composer
+
+- Present a panel attached to the bottom edge with 28px top corners, 20px horizontal padding, safe-area bottom padding, and `0 -18px 44px rgba(27,40,33,.22)` shadow. A `rgba(18,29,22,.42)` scrim covers the underlying app chrome. The composer is above app content and the tab bar but below toasts.
+- The text input is 112px high with an 18px radius. Intent chips are 34px pills. The Task Project field is a compact 38px picker in a 15px context panel and is visibly labeled `Required`.
+- Submit is a 42px green pill. Disabled uses 34% opacity and no pressed feedback; it applies to blank text and to Task without a selected Project. Pressed uses 55% opacity. Loading keeps the button width stable, replaces the trailing icon with a spinner, changes the label to `Saving…`, and locks the input, intent chips, Project picker, dismiss gesture, and submit against duplicate writes.
+- Validation appears next to its required context: Task without a Project accents the picker and explains `Create a project first`, with an inline escape back to Decide later. Errors preserve entered text and selections, restore interactive controls, and announce a concise message. Success closes and resets the composer before showing confirmation on the originating screen.
