@@ -3,6 +3,7 @@ import type { GoalRepository } from '../../domain/goal/repository/GoalRepository
 import type { IdeaRepository } from '../../domain/idea/repository/IdeaRepository';
 import type { LabelRepository } from '../../domain/label/repository/LabelRepository';
 import type { MilestoneRepository } from '../../domain/milestone/repository/MilestoneRepository';
+import type { NoteRepository } from '../../domain/note/repository/NoteRepository';
 import type { ProjectRepository } from '../../domain/project/repository/ProjectRepository';
 import type { RecordRepository } from '../../domain/record/repository/RecordRepository';
 import type { RelationRepository } from '../../domain/relation/repository/RelationRepository';
@@ -14,6 +15,7 @@ import { SqliteGoalRepository } from '../../infrastructure/sqliteRepository/Sqli
 import { SqliteIdeaRepository } from '../../infrastructure/sqliteRepository/SqliteIdeaRepository';
 import { SqliteLabelRepository } from '../../infrastructure/sqliteRepository/SqliteLabelRepository';
 import { SqliteMilestoneRepository } from '../../infrastructure/sqliteRepository/SqliteMilestoneRepository';
+import { SqliteNoteRepository } from '../../infrastructure/sqliteRepository/SqliteNoteRepository';
 import { SqliteProjectRepository } from '../../infrastructure/sqliteRepository/SqliteProjectRepository';
 import { SqliteRecordRepository } from '../../infrastructure/sqliteRepository/SqliteRecordRepository';
 import { SqliteRelationRepository } from '../../infrastructure/sqliteRepository/SqliteRelationRepository';
@@ -34,6 +36,7 @@ export interface TestRepositories {
   ideaRepo: IdeaRepository;
   labelRepo: LabelRepository;
   milestoneRepo: MilestoneRepository;
+  noteRepo: NoteRepository;
   projectRepo: ProjectRepository;
   recordRepo: RecordRepository;
   relationRepo: RelationRepository;
@@ -57,6 +60,7 @@ export async function makeFakeRepos(): Promise<TestRepositories> {
     ideaRepo: new SqliteIdeaRepository(db),
     labelRepo: new SqliteLabelRepository(db),
     milestoneRepo: new SqliteMilestoneRepository(db),
+    noteRepo: new SqliteNoteRepository(db),
     projectRepo: new SqliteProjectRepository(db),
     recordRepo: new SqliteRecordRepository(db),
     relationRepo: new SqliteRelationRepository(db),
