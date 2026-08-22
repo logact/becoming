@@ -12,6 +12,8 @@ export interface GoalDetailProject {
   status: ProjectStatus;
   /** Sub-goals decomposed inside this project. */
   subGoalCount: number;
+  /** Whether the Project is eligible to become this Goal's current plan. */
+  canSelectAsCurrentPlan: boolean;
 }
 
 export interface GoalDetailView {
@@ -55,6 +57,7 @@ export class GoalDetailService {
         name: project.name,
         status: project.status,
         subGoalCount: subGoals.length,
+        canSelectAsCurrentPlan: project.status === 'planning' || project.status === 'paused',
       });
     }
 

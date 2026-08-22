@@ -90,7 +90,7 @@
 - [x] `goal-project-management` §2。
 - [x] `goal-project-management` §3。
 - [x] `goal-project-management` §4。
-- [ ] `goal-project-management` §5。
+- [x] `goal-project-management` §5。
 
 §2 验证证据（2026-08-22）：
 
@@ -109,6 +109,13 @@
 - 新增独立 `SelectCurrentPlanService`：校验 Goal 与所选 Project 的存在性、archive、归属及 lifecycle eligibility，并通过 `Goal.activateProject` 统一执行首次激活、paused 重激活和当前方案切换，不在应用层复制状态切换规则。
 - 当前 active Project 查询刻意不添加 archived 过滤，确保 archived active Project 也会在切换时暂停；所选与原 active Project、`projectActivated` immutable Record、Goal / 所选 Project 两条 `logs` Relation 全部通过同一 `TransactionRunner` 原子持久化，activity detail 在切换时同时标明新旧 Project。
 - SQLite-backed focused：1 suite / 15 tests 通过，覆盖全部拒绝路径无 mutation、两侧 timeline 可见性及第二条 Relation 失败时两个 Project 状态与 activity 的完整回滚；`npm run typecheck` 通过；full suite：94 suites / 637 tests 通过，0 snapshots。
+
+§5 验证证据（2026-08-22）：
+
+- Goal detail 继续通过 Goal ID 与 `archived: false` 只返回所属 Goal 的非 archived Projects，并保留 Project 行导航所需的 `id` / `name` / `status`、sub-goal count 与由唯一 `active` Project 推导的 `activeProjectId`。
+- 每个 Project read item 新增必填应用层字段 `canSelectAsCurrentPlan`：仅 `planning` / `paused` 为 `true`，`active` / `done` / `failed` 为 `false`，UI 无需读取或复刻 domain lifecycle 规则；archived 与 foreign Projects 仍不进入读模型。
+- SQLite-backed integration 覆盖真实 `CreateGoalProjectService` 与 `SelectCurrentPlanService` 写入后，`projectCreated` / `projectActivated` Records 均按 newest-first 出现在 Goal recent activity，并验证激活后的 current-plan 与 eligibility 输出。
+- focused：1 suite / 8 tests 通过；`npm run typecheck` 通过；full suite：94 suites / 638 tests 通过，0 snapshots。
 
 ### 6. Goal Project Management UI 与接线
 

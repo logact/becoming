@@ -102,8 +102,14 @@ function detailFixture(now: Date): GoalDetailView {
       updatedAt: now,
     }),
     projects: [
-      { id: 'p-active', name: 'Spring training plan', status: 'active', subGoalCount: 3 },
-      { id: 'p-alt', name: 'Off-season base building', status: 'planning', subGoalCount: 2 },
+      {
+        id: 'p-active', name: 'Spring training plan', status: 'active', subGoalCount: 3,
+        canSelectAsCurrentPlan: false,
+      },
+      {
+        id: 'p-alt', name: 'Off-season base building', status: 'planning', subGoalCount: 2,
+        canSelectAsCurrentPlan: true,
+      },
     ],
     activeProjectId: 'p-active',
     recentActivity: [

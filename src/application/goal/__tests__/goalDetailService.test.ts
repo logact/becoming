@@ -3,6 +3,14 @@ import { Project } from '../../../domain/project/Project';
 import { Record as DomainRecord } from '../../../domain/record/Record';
 import { Relation } from '../../../domain/relation/Relation';
 import { GoalDetailService } from '../GoalDetailService';
+import {
+  PROJECT_ACTIVATED_RECORD_KIND,
+  SelectCurrentPlanService,
+} from '../SelectCurrentPlanService';
+import {
+  CreateGoalProjectService,
+  PROJECT_CREATED_RECORD_KIND,
+} from '../../project/CreateGoalProjectService';
 import { RECENT_ACTIVITY_LIMIT } from '../../dashboard/DashboardService';
 import { makeFakeRepos } from '../../__tests__/fakes';
 
@@ -16,9 +24,10 @@ async function makeService() {
     projectRepo: projects,
     relationRepo: relations,
     recordRepo: records,
+    transactionRunner,
   } = await makeFakeRepos();
   const service = new GoalDetailService(goals, projects, records);
-  return { service, goals, projects, relations, records };
+  return { service, goals, projects, relations, records, transactionRunner };
 }
 
 describe('GoalDetailService.getDetail', () => {
@@ -33,23 +42,53 @@ describe('GoalDetailService.getDetail', () => {
     expect(view.recentActivity).toEqual([]);
   });
 
-  it('lists the goal projects with status and sub-goal count', async () => {
+  it('lists non-archived Goal projects with navigation data, sub-goal counts, and application-level selection eligibility', async () => {
     const { service, goals, projects } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
     await projects.save(Project.create({ id: 'p1', name: 'Project p1', goalId: 'g1', now: t0 }));
     const active = Project.create({ id: 'p2', name: 'Project p2', goalId: 'g1', now: t0 });
     active.activate(t0);
     await projects.save(active);
+    const paused = Project.create({ id: 'p3', name: 'Project p3', goalId: 'g1', now: t0 });
+    paused.activate(t0);
+    paused.pause(t0);
+    await projects.save(paused);
+    const done = Project.create({ id: 'p4', name: 'Project p4', goalId: 'g1', now: t0 });
+    done.activate(t0);
+    done.complete(t0);
+    await projects.save(done);
+    const failed = Project.create({ id: 'p5', name: 'Project p5', goalId: 'g1', now: t0 });
+    failed.activate(t0);
+    failed.fail(t0);
+    await projects.save(failed);
     await goals.save(Goal.create({ id: 'g2', title: 'Sub goal', projectId: 'p1', now: t0 }));
     // Belongs to another goal: excluded.
-    await projects.save(Project.create({ id: 'p3', name: 'Project p3', goalId: 'other', now: t0 }));
+    await projects.save(Project.create({ id: 'p6', name: 'Project p6', goalId: 'other', now: t0 }));
 
     const view = await service.getDetail('g1');
 
     expect(view.goal?.id).toBe('g1');
     expect(view.projects).toEqual([
-      { id: 'p1', name: 'Project p1', status: 'planning', subGoalCount: 1 },
-      { id: 'p2', name: 'Project p2', status: 'active', subGoalCount: 0 },
+      {
+        id: 'p1', name: 'Project p1', status: 'planning', subGoalCount: 1,
+        canSelectAsCurrentPlan: true,
+      },
+      {
+        id: 'p2', name: 'Project p2', status: 'active', subGoalCount: 0,
+        canSelectAsCurrentPlan: false,
+      },
+      {
+        id: 'p3', name: 'Project p3', status: 'paused', subGoalCount: 0,
+        canSelectAsCurrentPlan: true,
+      },
+      {
+        id: 'p4', name: 'Project p4', status: 'done', subGoalCount: 0,
+        canSelectAsCurrentPlan: false,
+      },
+      {
+        id: 'p5', name: 'Project p5', status: 'failed', subGoalCount: 0,
+        canSelectAsCurrentPlan: false,
+      },
     ]);
     expect(view.activeProjectId).toBe('p2');
   });
@@ -131,6 +170,77 @@ describe('GoalDetailService.getDetail', () => {
     expect(view.recentActivity).toEqual([
       { id: 'r2', kind: 'noteAdded', detail: 'note', occurredAt: after(2) },
       { id: 'r1', kind: 'goalCreated', occurredAt: after(1) },
+    ]);
+  });
+
+  it('returns Project creation and current-plan activation records through Goal recent activity', async () => {
+    const {
+      service,
+      goals,
+      projects,
+      relations,
+      records,
+      transactionRunner,
+    } = await makeService();
+    await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));
+    const createProjects = new CreateGoalProjectService(
+      goals,
+      projects,
+      records,
+      relations,
+      transactionRunner,
+    );
+    const selectCurrentPlan = new SelectCurrentPlanService(
+      goals,
+      projects,
+      records,
+      relations,
+      transactionRunner,
+    );
+
+    await createProjects.create({
+      projectId: 'p1',
+      goalId: 'g1',
+      name: 'Project p1',
+      recordId: 'r-created',
+      goalRecordRelationId: 'rel-created-goal',
+      projectRecordRelationId: 'rel-created-project',
+      now: after(1),
+    });
+    await selectCurrentPlan.select({
+      goalId: 'g1',
+      selectedProjectId: 'p1',
+      recordId: 'r-activated',
+      goalRecordRelationId: 'rel-activated-goal',
+      projectRecordRelationId: 'rel-activated-project',
+      now: after(2),
+    });
+
+    const view = await service.getDetail('g1');
+
+    expect(view.recentActivity).toEqual([
+      {
+        id: 'r-activated',
+        kind: PROJECT_ACTIVATED_RECORD_KIND,
+        detail: 'Selected Project “Project p1” as current plan',
+        occurredAt: after(2),
+      },
+      {
+        id: 'r-created',
+        kind: PROJECT_CREATED_RECORD_KIND,
+        detail: 'Created Project “Project p1”',
+        occurredAt: after(1),
+      },
+    ]);
+    expect(view.activeProjectId).toBe('p1');
+    expect(view.projects).toEqual([
+      {
+        id: 'p1',
+        name: 'Project p1',
+        status: 'active',
+        subGoalCount: 0,
+        canSelectAsCurrentPlan: false,
+      },
     ]);
   });
 
