@@ -1,6 +1,6 @@
 # Cycle 2 聚合计划
 
-状态：**已批准，执行中**。用户于 2026-08-22 明确批准 Cycle 2。
+状态：**已完成**。用户于 2026-08-22 明确批准 Cycle 2；全周期实现、验收与报告均已完成。
 
 范围：
 
@@ -74,7 +74,7 @@
 
 - [x] 重跑 `project-detail-alignment` §5，重点覆盖 `tasks-page` §2.4 对 AddTask 接线的回归影响。
 - [x] 五份冻结计划中所有自动验证与手工验收章节完成。
-- [ ] 生成 `docs/cycles/cycle-2/cycle-report.md`，记录各层产出、验证结果、偏差、遗留项与任务 commit。
+- [x] 生成 `docs/cycles/cycle-2/cycle-report.md`，记录各层产出、验证结果、偏差、遗留项与任务 commit。
 
 全周期验收记录：以 HEAD 中五份冻结副本为准逐项复核。Ideas 覆盖 content/status/派生关系领域规则、Overview/Detail 与六类写用例、SQLite 事务回滚、Library → Ideas → detail、分组/status/编辑及列表/详情派生；按本周期裁决，最终入口和详情均保留 Goal / Task / Note，Note 提取会 handled 原 Idea、注册 `note:<id>` 并在 Idea/Note 两侧留下 activity。Notes 覆盖 pin/restore/archive 独立语义、read/command 服务、仓储往返/过滤/回滚、Active/Archived/Pinned/Linked、归档后 labels/links 保留。Tasks 覆盖 overdue 边界、六区块、全生命周期按钮与 records、Library → Tasks → detail → 返回及 AddTask activity。Project detail 覆盖头部统计、Tree/List/Roadmap、Today/Project due、Add/Allocate、导航/组合根/dev seed，并保留 SQLite-backed Add Task 刷新与 `taskCreated` logs 回归。Universal Capture 覆盖五种 intent 映射、Project 约束、四类 SQLite round-trip 与中途失败回滚、FAB/safe-area/sheet/keyboard/accessibility/重复提交、三 tab 与 Goal/Project/Task/Idea/Note detail、导航栈保持、toast/activity 及 Dashboard/Ideas/Goals/Tasks/Notes 无 remount 刷新。原型与 design/domain 文档静态对照一致；未发现需补代码或测试的缺口。`npm run typecheck` 通过；`npm test -- --runInBand` 通过（88 suites / 536 tests）。
 
