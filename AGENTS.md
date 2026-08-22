@@ -12,10 +12,14 @@ docs/design/: something related to the design and UI
 docs/models/: something related to the model define and behaviour
 docs/issues/issue-{}: each issue ,each file,users record for feature ,task ... like github issue.
 docs/issues/index.md: the index of all issues.
+docs/issues/future : the issue wait to be handled in the future
+docs/issues/archived: the issues has been archived
+docs/issues/: working issues except the future folder's  , archieved folder's
 docs/exce-plans/{plan}/plan.md: the plans to implement some issues
 docs/exce-plans/archived: the archived plans. which shouldn't be refered and retrived normally.
 docs/cycles/cycle-{idx}/cycle-plan.md: the aggregate plan for this agent cycle
 docs/cycles/cycle-{idx}/cycle-report.md: the report after finish the plan.
+
  
 
 ## Development Rules
@@ -48,6 +52,8 @@ you should generate the plan
 each time you finish a task in the cycle workflow you should add commit and comment with cycle info and the task info
 
 when you execute a task you should use entirly new sub-agent to implement the task.
+
+Don't use the the Orca the tasks ,manage the tasks by yourself
   
 ## About prototype
 when the user ask you to generate/modify the prototype ,the user just need to quickly verify their idea ,so just quckly finish it, without too much verification work .

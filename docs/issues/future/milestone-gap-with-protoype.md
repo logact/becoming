@@ -1,0 +1,1 @@
+the milestone  in the project detail page ,has some gap with the prototype. we should be able to add task or sub-goal under a milestone.
