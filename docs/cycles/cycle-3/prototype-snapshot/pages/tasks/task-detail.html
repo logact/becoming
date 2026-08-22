@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Task detail</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+<style>
+  /* lifecycle actions: primary + secondary outlined buttons in one row */
+  .task-actions{display:flex;gap:9px;margin:14px 18px 0}
+  .task-actions .chip-btn{flex:1;padding:10px 0;font-size:13.5px;text-align:center}
+  .btn-ghost{flex:1;border:1.5px solid var(--green);color:var(--green);background:none;font-family:inherit;font-size:13.5px;font-weight:700;padding:9px 0;border-radius:999px;cursor:pointer}
+  .btn-ghost.danger{border-color:var(--red);color:var(--red)}
+  .desc{font-size:15px;line-height:1.65;color:var(--ink);padding:16px 18px}
+</style>
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Task detail';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Task', 'pencil') +
+  '<div class="scroll">' +
+    '<div class="gd">' +
+      '<span class="chip lg">' + ic('checkCircle', 24) + '</span>' +
+      '<h1>Long run 14 km</h1>' +
+      '<div class="gd-meta"><span class="pill doing">' + ic('circle', 11) + 'Doing</span><span class="dot">·</span><span class="gd-target">Due Sat, Aug 22</span></div>' +
+      lblRow(['Health']) +
+    '</div>' +
+
+    // lifecycle actions for the current status (doing): Pause / Complete / Fail
+    '<div class="task-actions">' +
+      '<button class="chip-btn press">' + ic('check', 13) + ' Complete</button>' +
+      '<button class="btn-ghost press">' + ic('pause', 12) + ' Pause</button>' +
+      '<button class="btn-ghost danger press">' + ic('alert', 12) + ' Fail</button>' +
+    '</div>' +
+
+    sec('Belongs to') +
+    '<div class="panel">' +
+      '<div class="row press" data-go="project-detail"><span class="chip">' + ic('box', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Spring training plan</div><div class="row-sub">Project</div></div>' + CHEV + '</div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Build base fitness</div><div class="row-sub">Goal · Run a half marathon</div></div>' + CHEV + '</div>' +
+    '</div>' +
+
+    sec('Description') +
+    '<div class="panel"><div class="desc">Easy aerobic run at conversational pace, heart rate zone 2. Route: riverside loop. Fuel: one gel at km 8, water at both fountains. If it rains, swap with Sunday\'s recovery run instead of skipping.</div></div>' +
+
+    sec('Execution records') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('play', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Started</div><div class="row-sub">taskStarted</div></div>' +
+        '<span class="row-meta">Mon 7:12</span></div>' +
+      '<div class="row"><span class="chip">' + ic('pauseCircle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Paused — waiting for new shoes</div><div class="row-sub">taskPaused</div></div>' +
+        '<span class="row-meta">Tue 18:40</span></div>' +
+      '<div class="row"><span class="chip">' + ic('play', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Resumed</div><div class="row-sub">taskResumed</div></div>' +
+        '<span class="row-meta">Wed 6:55</span></div>' +
+      '<div class="row"><span class="chip">' + ic('plus', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Created</div><div class="row-sub">taskCreated</div></div>' +
+        '<span class="row-meta">Aug 10</span></div>' +
+    '</div>' +
+    '<div class="sec-note">Every lifecycle transition appends an immutable record here, newest first.</div>' +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

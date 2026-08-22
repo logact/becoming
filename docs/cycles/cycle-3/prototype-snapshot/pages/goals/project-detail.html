@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Project detail</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Project detail';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Project', 'pencil') +
+  '<div class="scroll">' +
+    '<div class="gd">' +
+      '<span class="chip lg">' + ic('box', 24) + '</span>' +
+      '<h1>Spring training plan</h1>' +
+      '<div class="gd-meta"><span class="pill active">' + ic('circle', 11) + 'Active</span><span class="dot">·</span><span class="gd-target">Week 6 of 16 · ends Oct 18</span></div>' +
+      '<div class="progress" style="height:7px;margin-top:15px"><i style="width:62%"></i></div>' +
+      '<div class="gd-progress-label"><span><b>62%</b> complete</span><span>2 of 3 sub-goals · 13 of 21 tasks</span></div>' +
+    '</div>' +
+
+    sec('Plan — goal · sub-goals · tasks') +
+    '<div class="segmented">' +
+      '<button class="seg active" data-seg="tree">Tree</button>' +
+      '<button class="seg" data-seg="list">List</button>' +
+      '<button class="seg" data-seg="roadmap">Roadmap</button>' +
+    '</div>' +
+    '<div data-panel="tree">' +
+    '<div class="tree">' +
+      // root: the goal this project serves
+      '<div class="trow troot press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Run a half marathon</div><div class="row-sub">Goal · 3 sub-goals · 21 tasks</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="tchildren">' +
+
+        // sub-goal 1 (done)
+        '<div class="trow press" data-go="goal-detail">' +
+          '<div class="row-main"><div class="row-title">5 km under 24:00</div><div class="row-sub">Sub-goal · 4 / 4 tasks</div></div>' +
+          '<span class="pill done">' + ic('check', 11) + 'Done</span></div>' +
+        '<div class="tchildren">' +
+          '<div class="trow t-done"><span class="check done">' + ic('check', 15) + '</span>' +
+            '<div class="row-main"><div class="row-title">Base run 8 km</div><div class="row-sub">Mon · Easy pace</div></div>' +
+            '<span class="row-meta">Done</span></div>' +
+        '</div>' +
+
+        // sub-goal 2 (doing) — with a nested sub-goal to show arbitrary depth
+        '<div class="trow press" data-go="goal-detail">' +
+          '<div class="row-main"><div class="row-title">10 km under 50:00</div><div class="row-sub">Sub-goal · 6 / 9 tasks</div></div>' +
+          '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+        '<div class="tchildren">' +
+          '<div class="trow"><span class="check doing"></span>' +
+            '<div class="row-main"><div class="row-title">Intervals 6 × 800 m</div><div class="row-sub">Today · Track session</div></div>' +
+            '<span class="row-meta">Doing</span></div>' +
+          '<div class="trow"><span class="check"></span>' +
+            '<div class="row-main"><div class="row-title">Tempo run 6 km</div><div class="row-sub">Thu · Threshold pace</div></div>' +
+            '<span class="row-meta">Todo</span></div>' +
+
+          // nested sub-goal (level 3)
+          '<div class="trow press" data-go="goal-detail">' +
+            '<div class="row-main"><div class="row-title">Threshold endurance</div><div class="row-sub">Sub-goal · 1 / 3 tasks</div></div>' +
+            '<span class="pill todo">' + ic('circle', 11) + 'Todo</span></div>' +
+          '<div class="tchildren">' +
+            '<div class="trow"><span class="check done">' + ic('check', 15) + '</span>' +
+              '<div class="row-main"><div class="row-title">Lactate test 3 km</div><div class="row-sub">Last week</div></div>' +
+              '<span class="row-meta">Done</span></div>' +
+            '<div class="trow"><span class="check"></span>' +
+              '<div class="row-main"><div class="row-title">Cruise intervals 4 × 1600 m</div><div class="row-sub">Fri</div></div>' +
+              '<span class="row-meta">Todo</span></div>' +
+            '<div class="trow press" data-go="add-plan-item"><span class="add-row"><span class="plus-c">' + ic('plus', 12) + '</span>Add task or sub-goal</span></div>' +
+          '</div>' +
+
+          '<div class="trow press" data-go="add-plan-item"><span class="add-row"><span class="plus-c">' + ic('plus', 12) + '</span>Add task or sub-goal</span></div>' +
+        '</div>' +
+
+        // sub-goal 3 (todo)
+        '<div class="trow press" data-go="goal-detail">' +
+          '<div class="row-main"><div class="row-title">Race day: finish under 1:55</div><div class="row-sub">Sub-goal · 3 / 8 tasks</div></div>' +
+          '<span class="pill todo">' + ic('circle', 11) + 'Todo</span></div>' +
+        '<div class="tchildren">' +
+          '<div class="trow"><span class="check"></span>' +
+            '<div class="row-main"><div class="row-title">Long run 16 km</div><div class="row-sub">Sun · Zone 2</div></div>' +
+            '<span class="row-meta">Todo</span></div>' +
+          '<div class="trow press" data-go="add-plan-item"><span class="add-row"><span class="plus-c">' + ic('plus', 12) + '</span>Add task or sub-goal</span></div>' +
+        '</div>' +
+
+        '<div class="trow press" data-go="add-plan-item"><span class="add-row"><span class="plus-c">' + ic('plus', 12) + '</span>Add sub-goal</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="sec-note">Sub-goals nest as deep as the plan needs; each task targets the goal it sits under.</div>' +
+    '</div>' +
+
+    '<div data-panel="list" class="hidden">' +
+    '<div class="blist">' +
+      '<div class="group-label">Sub-goals</div>' +
+      '<div class="row press" data-go="goal-detail"><div class="row-main"><div class="row-title">5 km under 24:00</div><div class="row-sub">4 / 4 tasks</div></div><span class="pill done">' + ic('check', 11) + 'Done</span></div>' +
+      '<div class="row press" data-go="goal-detail"><div class="row-main"><div class="row-title">10 km under 50:00</div><div class="row-sub">6 / 9 tasks · incl. Threshold endurance</div></div><span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="row press" data-go="goal-detail"><div class="row-main"><div class="row-title">Threshold endurance</div><div class="row-sub">under 10 km under 50:00 · 1 / 3 tasks</div></div><span class="pill todo">' + ic('circle', 11) + 'Todo</span></div>' +
+      '<div class="row press" data-go="goal-detail"><div class="row-main"><div class="row-title">Race day: finish under 1:55</div><div class="row-sub">3 / 8 tasks</div></div><span class="pill todo">' + ic('circle', 11) + 'Todo</span></div>' +
+      '<div class="group-label">Tasks</div>' +
+      '<div class="row t-done"><span class="check done">' + ic('check', 15) + '</span><div class="row-main"><div class="row-title">Base run 8 km</div><div class="row-sub">5 km under 24:00 · Mon · Easy pace</div></div><span class="row-meta">Done</span></div>' +
+      '<div class="row"><span class="check doing"></span><div class="row-main"><div class="row-title">Intervals 6 × 800 m</div><div class="row-sub">10 km under 50:00 · Today · Track session</div></div><span class="row-meta">Doing</span></div>' +
+      '<div class="row"><span class="check"></span><div class="row-main"><div class="row-title">Tempo run 6 km</div><div class="row-sub">10 km under 50:00 · Thu · Threshold pace</div></div><span class="row-meta">Todo</span></div>' +
+      '<div class="row t-done"><span class="check done">' + ic('check', 15) + '</span><div class="row-main"><div class="row-title">Lactate test 3 km</div><div class="row-sub">Threshold endurance · Last week</div></div><span class="row-meta">Done</span></div>' +
+      '<div class="row"><span class="check"></span><div class="row-main"><div class="row-title">Cruise intervals 4 × 1600 m</div><div class="row-sub">Threshold endurance · Fri</div></div><span class="row-meta">Todo</span></div>' +
+      '<div class="row"><span class="check"></span><div class="row-main"><div class="row-title">Long run 16 km</div><div class="row-sub">Race day: finish under 1:55 · Sun · Zone 2</div></div><span class="row-meta">Todo</span></div>' +
+    '</div>' +
+    '<div class="sec-note">Flat view of the whole tree — sub-goals show their parent, tasks show the goal they target.</div>' +
+    '</div>' +
+
+    '<div data-panel="roadmap" class="hidden">' +
+    '<div class="rm">' +
+      // milestone 1 (reached)
+      '<div class="rm-item rm-ms press">' +
+        '<div class="rm-date"><b>Sep 6</b>Sat</div><span class="rm-dot flag"></span>' +
+        '<div class="row-main"><div class="row-title">Base phase</div><div class="row-sub">Milestone · 1 sub-goal</div></div>' +
+        '<span class="pill done">' + ic('check', 11) + 'Reached</span></div>' +
+      '<div class="rm-item rm-child press" data-go="goal-detail">' +
+        '<div class="rm-date"></div><span class="rm-dot sm done"></span>' +
+        '<div class="row-main"><div class="row-title">5 km under 24:00</div><div class="row-sub">Sub-goal · 4 / 4 tasks</div></div>' +
+        '<span class="pill done">' + ic('check', 11) + 'Done</span></div>' +
+
+      '<div class="rm-today"><span>Today</span><i></i></div>' +
+
+      // milestone 2 (upcoming)
+      '<div class="rm-item rm-ms press">' +
+        '<div class="rm-date"><b>Sep 27</b>Sun</div><span class="rm-dot flag" style="background:var(--panel)"></span>' +
+        '<div class="row-main"><div class="row-title">Mid-plan test</div><div class="row-sub">Milestone · 2 sub-goals · 1 task</div></div>' +
+        '<span class="pill todo">' + ic('circle', 11) + 'Upcoming</span></div>' +
+      '<div class="rm-item rm-child press" data-go="goal-detail">' +
+        '<div class="rm-date"></div><span class="rm-dot sm doing"></span>' +
+        '<div class="row-main"><div class="row-title">10 km under 50:00</div><div class="row-sub">Sub-goal · 6 / 9 tasks</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="rm-item rm-child press" data-go="goal-detail">' +
+        '<div class="rm-date"></div><span class="rm-dot sm"></span>' +
+        '<div class="row-main"><div class="row-title">Threshold endurance</div><div class="row-sub">Sub-goal · under 10 km under 50:00 · 1 / 3</div></div>' +
+        '<span class="pill todo">' + ic('circle', 11) + 'Todo</span></div>' +
+      '<div class="rm-item rm-child press">' +
+        '<div class="rm-date"></div><span class="check" style="width:24px;height:24px;border-radius:8px"></span>' +
+        '<div class="row-main"><div class="row-title">Cruise intervals 4 × 1600 m</div><div class="row-sub">Task · Threshold endurance · Fri</div></div>' +
+        '<span class="row-meta">Todo</span></div>' +
+      '<div class="rm-item rm-child press" data-go="add-plan-item">' +
+        '<div class="rm-date"></div><span class="add-row"><span class="plus-c">' + ic('plus', 12) + '</span>Add sub-goal or task</span></div>' +
+
+      // milestone 3 (upcoming, on the project due)
+      '<div class="rm-item rm-ms press">' +
+        '<div class="rm-date"><b>Oct 18</b>Sun</div><span class="rm-dot flag" style="background:var(--panel)"></span>' +
+        '<div class="row-main"><div class="row-title">Race week</div><div class="row-sub">Milestone · 1 sub-goal · 1 task</div></div>' +
+        '<span class="pill todo">' + ic('circle', 11) + 'Upcoming</span></div>' +
+      '<div class="rm-item rm-child press" data-go="goal-detail">' +
+        '<div class="rm-date"></div><span class="rm-dot sm"></span>' +
+        '<div class="row-main"><div class="row-title">Race day: finish under 1:55</div><div class="row-sub">Sub-goal · 3 / 8 tasks</div></div>' +
+        '<span class="pill todo">' + ic('circle', 11) + 'Todo</span></div>' +
+      '<div class="rm-item rm-child press">' +
+        '<div class="rm-date"></div><span class="check" style="width:24px;height:24px;border-radius:8px"></span>' +
+        '<div class="row-main"><div class="row-title">Long run 16 km</div><div class="row-sub">Task · Race day · Sun · Zone 2</div></div>' +
+        '<span class="row-meta">Todo</span></div>' +
+      '<div class="rm-item rm-child press" data-go="add-plan-item">' +
+        '<div class="rm-date"></div><span class="add-row"><span class="plus-c">' + ic('plus', 12) + '</span>Add sub-goal or task</span></div>' +
+
+      // project due + add milestone
+      '<div class="rm-item">' +
+        '<div class="rm-date"><b>Oct 18</b>Sun</div><span class="rm-dot flag"></span>' +
+        '<div class="row-main"><div class="row-title">Project due</div><div class="row-sub">Spring training plan ends</div></div>' +
+        '<span class="chip">' + ic('box', 17) + '</span></div>' +
+      '<div class="rm-item rm-child press" data-go="add-plan-item">' +
+        '<div class="rm-date"></div><span class="add-row"><span class="plus-c">' + ic('plus', 12) + '</span>Add milestone</span></div>' +
+    '</div>' +
+    '<div class="sec-note">Milestones anchor the phases of the plan; sub-goals and tasks are assigned to a milestone from their add forms.</div>' +
+    '</div>' +
+
+    sec('Resources — allocated to this project') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Time budget</div><div class="row-sub">Mon–Fri 6:30 – 7:30 AM · Sat 7:00 – 10:00 AM</div></div><span class="value">8 h / wk</span></div>' +
+      '<div class="row"><span class="chip">' + ic('banknote', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Gear budget</div></div><span class="value">¥3,000 / mo</span></div>' +
+      '<div class="row"><span class="chip">' + ic('sparkle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">AI coach tokens</div></div><span class="value">50 k left</span></div>' +
+      '<div class="row press" data-go="allocate-resource"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>Allocate resource</span></div>' +
+    '</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'check', t:'Completed “Long run 14 km”', s:'2 h ago · 1:18:24', w:'2 h' },
+      { i:'clock', t:'Logged “Intervals 6 × 800 m”', s:'Yesterday · 40:12', w:'1 d' },
+      { i:'doc', t:'Note “Race pacing strategy”', s:'3 d ago · extracted method', w:'3 d' },
+    ]) +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

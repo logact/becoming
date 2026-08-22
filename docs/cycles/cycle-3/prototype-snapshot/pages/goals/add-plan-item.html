@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Add to plan</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Add to plan';
+
+// resource allocation rows, shared by both panels; amounts come out of the project's share
+const spanNote = 'Time is allocated as concrete spans (minute precision, may cross days); the amount equals the duration and spans never overlap.';
+const allocRows = () =>
+  '<div class="row"><span class="chip">' + ic('clock', 17) + '</span>' +
+    '<div class="row-main"><div class="row-title">Time budget</div><div class="row-sub">4 h free inside the project’s spans</div></div></div>' +
+  '<div class="row press"><span class="flabel">Span</span>' +
+    '<div class="row-main"><div class="row-title" style="font-size:15.5px">Sat, Sep 6 · 7:00 – 9:00 AM</div>' +
+    '<div class="row-sub">2 h — the amount is the span’s duration</div></div>' + CHEV + '</div>' +
+  '<div class="row press" data-go="select-span"><span class="add-row"><span class="plus-c">' + ic('plus', 15) + '</span>Add span</span></div>' +
+  '<div class="row"><span class="chip">' + ic('banknote', 17) + '</span>' +
+    '<div class="row-main"><div class="row-title">Gear budget</div><div class="row-sub">¥1,800 of ¥3,000 unallocated</div></div>' +
+    '<input class="alloc-amt" value="¥500"></div>' +
+  '<div class="row"><span class="chip">' + ic('sparkle', 17) + '</span>' +
+    '<div class="row-main"><div class="row-title">AI coach tokens</div><div class="row-sub">50 k left in project</div></div>' +
+    '<input class="alloc-amt" placeholder="0"></div>';
+
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Add to plan') +
+  '<div class="scroll">' +
+    '<div class="segmented">' +
+      '<button class="seg active" data-seg="subgoal">Sub-goal</button>' +
+      '<button class="seg" data-seg="task">Task</button>' +
+      '<button class="seg" data-seg="milestone">Milestone</button>' +
+    '</div>' +
+
+    // ---------- sub-goal ----------
+    '<div data-panel="subgoal">' +
+      '<div class="panel">' +
+        '<div class="row"><span class="flabel">Title</span><input class="finput" placeholder="e.g. 15 km under 75:00"></div>' +
+        '<div class="row press"><span class="flabel">Under</span>' +
+          '<div class="row-main"><div class="row-title" style="font-size:15.5px">10 km under 50:00</div>' +
+          '<div class="row-sub">Parent goal — tap to move it in the tree</div></div>' + CHEV + '</div>' +
+        '<div class="row press"><span class="flabel">Due</span>' +
+          '<div class="row-main"><div class="row-title" style="font-size:15.5px">Sun, Oct 12</div>' +
+          '<div class="row-sub">Must be earlier than the project due · Oct 18</div></div>' + CHEV + '</div>' +
+        '<div class="row press"><span class="flabel">Milestone</span>' +
+          '<div class="row-main"><div class="row-title" style="font-size:15.5px">Race week</div>' +
+          '<div class="row-sub">Optional — groups this sub-goal on the roadmap</div></div>' + CHEV + '</div>' +
+      '</div>' +
+
+      sec('Allocate from project resources') +
+      '<div class="panel">' + allocRows() + '</div>' +
+      '<div class="sec-note">A sub-goal can only hold what the project has free. Its own tasks draw from its pot in turn. ' + spanNote + '</div>' +
+
+      '<button class="btn-primary press">Add sub-goal</button>' +
+    '</div>' +
+
+    // ---------- task ----------
+    '<div data-panel="task" class="hidden">' +
+      '<div class="panel">' +
+        '<div class="row"><span class="flabel">Title</span><input class="finput" placeholder="e.g. Cruise intervals 4 × 1600 m"></div>' +
+        '<div class="row press"><span class="flabel">Goal</span>' +
+          '<div class="row-main"><div class="row-title" style="font-size:15.5px">Threshold endurance</div>' +
+          '<div class="row-sub">The goal this task implements — any level of the tree</div></div>' + CHEV + '</div>' +
+        '<div class="row press"><span class="flabel">Due</span>' +
+          '<div class="row-main"><div class="row-title" style="font-size:15.5px">Fri, Sep 5 · 6:00 PM</div>' +
+          '<div class="row-sub">Due-soon warning 2 h ahead on the dashboard</div></div>' + CHEV + '</div>' +
+        '<div class="row press"><span class="flabel">Milestone</span>' +
+          '<div class="row-main"><div class="row-title" style="font-size:15.5px">Mid-plan test</div>' +
+          '<div class="row-sub">Optional — shown under this milestone on the roadmap</div></div>' + CHEV + '</div>' +
+      '</div>' +
+
+      sec('Allocate from project resources') +
+      '<div class="panel">' + allocRows() + '</div>' +
+      '<div class="sec-note">Tasks draw from the project’s resources directly, or from their goal’s pot once the goal holds an allocation. ' + spanNote + '</div>' +
+
+      '<button class="btn-primary press">Add task</button>' +
+    '</div>' +
+
+    // ---------- milestone ----------
+    '<div data-panel="milestone" class="hidden">' +
+      '<div class="panel">' +
+        '<div class="row"><span class="flabel">Name</span><input class="finput" placeholder="e.g. Race week"></div>' +
+        '<div class="row press"><span class="flabel">Date</span>' +
+          '<div class="row-main"><div class="row-title" style="font-size:15.5px">Sun, Oct 18</div>' +
+          '<div class="row-sub">Anchors a phase on the roadmap · before the project due</div></div>' + CHEV + '</div>' +
+      '</div>' +
+      '<div class="sec-note">A milestone is just a named date inside the project. Assign sub-goals and tasks to it from their own tabs above.</div>' +
+
+      '<button class="btn-primary press">Add milestone</button>' +
+    '</div>' +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

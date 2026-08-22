@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — iOS Prototype</title>
+<style>
+  :root{
+    --ink:#1B2821;
+    --muted:#79837A;
+    --faint:#9AA398;
+    --green:#1F3D2D;
+    --serif:ui-serif,"New York",Georgia,"Times New Roman",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:var(--sans);background:#ECE9DD;color:var(--ink)}
+
+  /* ---------- board ---------- */
+  .board-header{text-align:center;padding:60px 20px 6px}
+  .board-header h1{font-family:var(--serif);font-size:42px;font-weight:700;letter-spacing:-.5px;color:var(--green)}
+  .board-header .tagline{margin-top:8px;font-family:var(--serif);font-style:italic;font-size:16px;color:var(--muted)}
+  .board-header .hint{margin-top:14px;font-size:12.5px;color:var(--faint);line-height:1.6}
+  .board-header a{color:var(--green)}
+  .board{display:flex;flex-wrap:wrap;gap:64px 44px;justify-content:center;align-items:flex-start;padding:48px 24px 96px}
+  .phone-wrap{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .phone-wrap iframe{display:block;width:480px;height:922px;border:0;background:#ECE9DD}
+  .phone-wrap figcaption{font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#8B8C7E}
+  .phone-wrap figcaption a{color:inherit;text-decoration:none}
+  .phone-wrap figcaption a:hover{color:var(--green);text-decoration:underline}
+</style>
+</head>
+<body>
+
+<header class="board-header">
+  <h1>Becoming</h1>
+  <p class="tagline">Record what you do. Shape what you become.</p>
+  <p class="hint">iOS prototype · v0.3 — hierarchy: Goal → Project → Sub-goal / Task. Each frame embeds its page from <code>pages/</code> and is fully interactive: tap the tabs, list rows, segmented controls and back buttons.<br>
+  Flow: Library → Goals → Goal detail → Project detail &nbsp;·&nbsp; Library → Ideas &nbsp;·&nbsp; Dashboard → Pin to attention &nbsp;·&nbsp; Dashboard ⇄ Library ⇄ Setting<br>
+  <a href="pages/index.html">Pages index — jump straight to any page</a></p>
+</header>
+
+<main class="board">
+  <figure class="phone-wrap"><iframe src="pages/dashboard/dashboard.html" title="Dashboard"></iframe><figcaption><a href="pages/dashboard/dashboard.html">01 · Dashboard</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/dashboard/attention-pin.html" title="Pin to attention"></iframe><figcaption><a href="pages/dashboard/attention-pin.html">02 · Pin to attention</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/library/library.html" title="Library"></iframe><figcaption><a href="pages/library/library.html">03 · Library</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/goals/goals.html" title="Goals"></iframe><figcaption><a href="pages/goals/goals.html">04 · Goals</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/goals/goal-detail.html" title="Goal detail"></iframe><figcaption><a href="pages/goals/goal-detail.html">05 · Goal detail</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/goals/project-detail.html" title="Project detail"></iframe><figcaption><a href="pages/goals/project-detail.html">06 · Project detail</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/goals/add-plan-item.html" title="Add plan item"></iframe><figcaption><a href="pages/goals/add-plan-item.html">07 · Add plan item</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/goals/select-span.html" title="Select span"></iframe><figcaption><a href="pages/goals/select-span.html">08 · Select span</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/goals/allocate-resource.html" title="Allocate resource"></iframe><figcaption><a href="pages/goals/allocate-resource.html">09 · Allocate resource</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/tasks/tasks.html" title="Tasks"></iframe><figcaption><a href="pages/tasks/tasks.html">10 · Tasks</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/tasks/task-detail.html" title="Task detail"></iframe><figcaption><a href="pages/tasks/task-detail.html">11 · Task detail</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/ideas/ideas.html" title="Ideas"></iframe><figcaption><a href="pages/ideas/ideas.html">12 · Ideas</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/ideas/idea-detail.html" title="Idea detail"></iframe><figcaption><a href="pages/ideas/idea-detail.html">13 · Idea detail</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/notes/notes.html" title="Notes"></iframe><figcaption><a href="pages/notes/notes.html">14 · Notes</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/notes/note-detail.html" title="Note detail"></iframe><figcaption><a href="pages/notes/note-detail.html">15 · Note detail</a></figcaption></figure>
+  <figure class="phone-wrap"><iframe src="pages/setting/setting.html" title="Setting"></iframe><figcaption><a href="pages/setting/setting.html">16 · Setting</a></figcaption></figure>
+</main>
+
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Note detail</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Note detail';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Note', 'pencil') +
+  '<div class="scroll">' +
+    '<div class="idea-card">' +
+      '<div class="idea-card-top"><span class="chip lg">' + ic('doc', 24) + '</span>' +
+        '<button class="pin-toggle on" data-pin-toggle aria-label="Toggle pin">' + ic('pin', 15) + '</button></div>' +
+      '<div class="idea-card-content">Weekly review methodology: summarize records and completed work every Sunday before planning.</div>' +
+      '<div class="idea-card-note">Updated 2 days ago</div>' +
+      lblRow(['Growth']) +
+    '</div>' +
+
+    sec('Linked') +
+    '<div class="panel" data-link-list>' +
+      '<div class="row press" data-go="idea-detail"><span class="chip">' + ic('bulb', 17) + '</span><div class="row-main"><div class="row-title">Auto-generate a weekly review</div><div class="row-sub">Idea · source, extracted from</div></div>' + CHEV + '</div>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span><div class="row-main"><div class="row-title">Build a weekly review system</div><div class="row-sub">Goal · Todo</div></div>' + CHEV + '</div>' +
+      '<button class="link-add press" data-link-add>' + ic('plus', 12) + 'Link a goal or project</button>' +
+    '</div>' +
+    '<div class="sec-note">Links live in the relation layer — a note can point at any goal, project, or idea without owning it.</div>' +
+
+    sec('Actions') +
+    '<div class="panel">' +
+      '<div class="row press" data-note-archive><span class="chip">' + ic('archive', 17) + '</span><div class="row-main"><div class="row-title">Archive note</div><div class="row-sub">Independent flag — labels and links stay intact</div></div></div>' +
+      '<div class="row press row-danger"><span class="chip">' + ic('minus', 17) + '</span><div class="row-main"><div class="row-title">Delete note</div></div></div>' +
+    '</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'pencil', t:'Edited content', s:'Note updated', w:'2 d' },
+      { i:'pin', t:'Pinned to top of Notes', s:'Note pinned', w:'1 w' },
+      { i:'arrowUpRight', t:'Extracted from “Auto-generate a weekly review”', s:'Created from idea', w:'2 w' },
+    ]) +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

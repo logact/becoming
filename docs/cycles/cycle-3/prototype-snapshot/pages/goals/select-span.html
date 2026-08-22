@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Add span</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Add span';
+
+// timeline geometry: 6:00–11:00 mapped to 0–100% (20% per hour)
+const tlHour = (pct, label) =>
+  '<span class="tl-hour" style="top:' + pct + '%">' + label + '</span>';
+const tlBlock = (cls, topPct, heightPct, inner) =>
+  '<div class="tl-block ' + cls + '" style="top:' + topPct + '%;height:calc(' + heightPct + '% - 6px);margin-top:3px">' + inner + '</div>';
+
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Add span') +
+  '<div class="scroll">' +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Time budget</div>' +
+        '<div class="row-sub">Carving from Spring training plan’s span</div></div></div>' +
+    '</div>' +
+
+    // days the project holds no span are disabled
+    '<div class="daystrip">' +
+      '<div class="daychip">Mon<b>1</b></div>' +
+      '<div class="daychip">Tue<b>2</b></div>' +
+      '<div class="daychip">Wed<b>3</b></div>' +
+      '<div class="daychip">Thu<b>4</b></div>' +
+      '<div class="daychip">Fri<b>5</b></div>' +
+      '<div class="daychip on">Sat<b>6</b></div>' +
+      '<div class="daychip off">Sun<b>7</b></div>' +
+    '</div>' +
+
+    '<div class="tl">' +
+      tlHour(0, '6 AM') + tlHour(20, '7 AM') + tlHour(40, '8 AM') + tlHour(60, '9 AM') + tlHour(80, '10 AM') +
+      tlBlock('tl-out', 0, 20, 'Not allocated to project') +
+      tlBlock('tl-taken', 20, 20, '10 km under 50:00 · taken') +
+      tlBlock('tl-sel', 40, 20, '<span class="handle top"></span>Selected · 8:00 – 9:00 AM<span class="handle bot"></span>') +
+      tlBlock('tl-free', 60, 20, '+ Free · 9:00 – 10:00 AM') +
+      tlBlock('tl-out', 80, 20, 'Not allocated to project') +
+    '</div>' +
+
+    '<div class="panel" style="margin-top:14px">' +
+      '<div class="row"><span class="flabel">Start</span>' +
+        '<div class="row-main"><div class="row-title" style="font-size:15.5px">8:00 AM</div></div>' +
+        '<span class="stepper"><button class="step-btn">' + ic('minus', 13) + '</button><button class="step-btn">' + ic('plus', 13) + '</button></span></div>' +
+      '<div class="row"><span class="flabel">End</span>' +
+        '<div class="row-main"><div class="row-title" style="font-size:15.5px">9:00 AM</div></div>' +
+        '<span class="stepper"><button class="step-btn">' + ic('minus', 13) + '</button><button class="step-btn">' + ic('plus', 13) + '</button></span></div>' +
+    '</div>' +
+
+    '<div class="sec-note">Only sections the project still holds can be selected — taken and outside sections are disabled. Drag the handles or step by minutes; the amount equals the duration.</div>' +
+
+    '<button class="btn-primary press">Reserve 1 h</button>' +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Ideas</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Ideas';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Ideas') +
+  '<div class="scroll">' +
+    '<div style="height:12px"></div>' +
+    '<div class="panel"><div class="capture"><span class="plus-c">' + ic('plus', 15) + '</span><span>Capture an idea…</span><button class="chip-btn">Add</button></div></div>' +
+
+    '<div class="segmented">' +
+      '<button class="seg active" data-seg="open">Open · 4</button>' +
+      '<button class="seg" data-seg="handled">Handled · 12</button>' +
+    '</div>' +
+
+    '<div data-panel="open">' +
+      sec('To process') +
+      '<div class="blist">' +
+        '<div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('bulb', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title">Habit streak widget</div><div class="row-sub"><span class="idea-state captured">Captured</span><span class="idea-sep">·</span><span>2 w ago</span></div></div>' +
+          '<button class="idea-derive" aria-label="Create from Habit streak widget" data-derive-open data-idea-title="Habit streak widget">' + ic('plus', 15) + '</button></div>' +
+        '<div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('bulb', 17) + '</span>' +
+          '<div class="row-main"><div class="row-title">Share goal progress with friends</div><div class="row-sub"><span class="idea-state captured">Captured</span><span class="idea-sep">·</span><span>3 d ago</span></div></div>' +
+          '<button class="idea-derive" aria-label="Create from Share goal progress" data-derive-open data-idea-title="Share goal progress with friends">' + ic('plus', 15) + '</button></div>' +
+      '</div>' +
+      sec('Exploring') +
+      '<div class="blist"><div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('sparkle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Auto-generate weekly review</div><div class="row-sub"><span class="idea-state exploring">Exploring</span><span class="idea-sep">·</span><span>5 d ago</span></div></div>' +
+        '<button class="idea-derive" aria-label="Create from weekly review" data-derive-open data-idea-title="Auto-generate a weekly review">' + ic('plus', 15) + '</button></div></div>' +
+      sec('Paused') +
+      '<div class="blist"><div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('pauseCircle', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Pomodoro focus mode</div><div class="row-sub"><span class="idea-state paused">Paused</span><span class="idea-sep">·</span><span>1 mo ago</span></div></div>' +
+        '<button class="idea-derive" aria-label="Create from Pomodoro focus mode" data-derive-open data-idea-title="Pomodoro focus mode">' + ic('plus', 15) + '</button></div></div>' +
+      '<div class="sec-note">Tap an idea to explore it, or use + to create a Goal, Task, or Note immediately.</div>' +
+    '</div>' +
+
+    '<div data-panel="handled" class="hidden">' +
+      sec('Recently handled') +
+      '<div class="blist">' +
+        '<div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('bulb', 17) + '</span><div class="row-main"><div class="row-title">Morning pages</div><div class="row-sub"><span class="idea-state handled">Handled</span><span class="idea-sep">·</span><span>Goal created · 2 w ago</span></div></div><button class="idea-derive" data-derive-open data-idea-title="Morning pages">' + ic('plus', 15) + '</button></div>' +
+        '<div class="row press idea-row" data-go="idea-detail"><span class="chip">' + ic('bulb', 17) + '</span><div class="row-main"><div class="row-title">Personal decision journal</div><div class="row-sub"><span class="idea-state handled">Handled</span><span class="idea-sep">·</span><span>Note + Task · 3 w ago</span></div></div><button class="idea-derive" data-derive-open data-idea-title="Personal decision journal">' + ic('plus', 15) + '</button></div>' +
+      '</div>' +
+      '<div class="sec-note">Handled ideas are preserved with links to everything created from them.</div>' +
+    '</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'plus', t:'Captured “Share goal progress…”', s:'Idea · 3 d ago', w:'3 d' },
+      { i:'sparkle', t:'Exploring “Auto weekly review”', s:'Idea · 5 d ago', w:'5 d' },
+      { i:'arrowUpRight', t:'“Morning pages” became a Goal', s:'Transformed · 2 w ago', w:'2 w' },
+    ]) +
+  '</div>' +
+  tabbar('library')
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

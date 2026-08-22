@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Idea detail</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Idea detail';
+const IDEA_TITLE = 'Auto-generate a weekly review';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Idea', 'pencil') +
+  '<div class="scroll">' +
+    '<div class="idea-card">' +
+      '<div class="idea-card-top"><span class="chip lg">' + ic('bulb', 24) + '</span>' +
+        '<button class="idea-status-button" data-status-open data-status-current="exploring" aria-label="Change idea status"><span class="pill exploring" data-status-pill>' + ic('sparkle', 11) + 'Exploring</span><span class="status-edit">' + ic('pencil', 10) + '</span></button></div>' +
+      '<div class="idea-card-content">Auto-generate a weekly review from completed tasks, goals, and records every Sunday.</div>' +
+      '<div class="idea-card-note">Updated 5 days ago</div>' +
+      lblRow(['Growth', 'Work']) +
+    '</div>' +
+
+    sec('Create from this idea') +
+    '<div class="derive-grid">' +
+      '<button class="derive-tile" data-create-type="goal" data-idea-title="' + IDEA_TITLE + '"><span class="chip">' + ic('target', 19) + '</span><span>Goal</span></button>' +
+      '<button class="derive-tile" data-create-type="task" data-idea-title="' + IDEA_TITLE + '"><span class="chip">' + ic('checkCircle', 19) + '</span><span>Task</span></button>' +
+      '<button class="derive-tile" data-create-type="note" data-idea-title="' + IDEA_TITLE + '"><span class="chip">' + ic('doc', 19) + '</span><span>Note</span></button>' +
+    '</div>' +
+    '<div class="sec-note">The original idea stays intact. New items link back here, and the idea moves to Handled.</div>' +
+
+    sec('Created from this idea') +
+    '<div class="panel" data-derived-list>' +
+      '<div class="row press" data-go="goal-detail"><span class="chip">' + ic('target', 17) + '</span><div class="row-main"><div class="row-title">Build a weekly review system</div><div class="row-sub">Goal · Todo</div></div>' + CHEV + '</div>' +
+      '<div class="row press" data-go="task-detail"><span class="chip">' + ic('checkCircle', 17) + '</span><div class="row-main"><div class="row-title">Prototype weekly summary</div><div class="row-sub">Task · Becoming MVP</div></div>' + CHEV + '</div>' +
+      '<div class="row press" data-go="note-detail"><span class="chip">' + ic('doc', 17) + '</span><div class="row-main"><div class="row-title">Weekly review methodology</div><div class="row-sub">Note · created 2 d ago</div></div>' + CHEV + '</div>' +
+    '</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'checkCircle', t:'Created task “Prototype weekly summary”', s:'Derived from this idea', w:'2 d' },
+      { i:'target', t:'Created goal “Build a weekly review system”', s:'Derived from this idea', w:'3 d' },
+      { i:'sparkle', t:'Started exploring', s:'Idea · status changed', w:'5 d' },
+      { i:'plus', t:'Captured this idea', s:'Idea created', w:'2 w' },
+    ]) +
+  '</div>'
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>

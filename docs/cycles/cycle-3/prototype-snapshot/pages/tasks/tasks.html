@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Becoming — Tasks</title>
+<link rel="stylesheet" href="../shared/prototype.css">
+</head>
+<body>
+<main class="board" id="board"></main>
+<script>
+const PAGE_TITLE = 'Tasks';
+const SCREEN = () =>
+statusBar() +
+  inlineNav('Tasks', 'plus') +
+  '<div class="scroll">' +
+    // overview: task counts at a glance
+    '<div class="stats">' +
+      '<div class="stat"><div class="stat-num">3</div><div class="stat-label">Doing</div></div>' +
+      '<div class="stat"><div class="stat-num c-ink">8</div><div class="stat-label">Todo</div></div>' +
+      '<div class="stat"><div class="stat-num">12</div><div class="stat-label">Done</div></div>' +
+      '<div class="stat"><div class="stat-num c-amber">2</div><div class="stat-label">Overdue</div></div>' +
+    '</div>' +
+
+    sec('Needs attention') +
+    '<div class="panel">' +
+      '<div class="row press" data-go="task-detail"><span class="chip">' + ic('alert', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Intervals 6 × 800 m</div><div class="row-sub">Spring training plan · Due yesterday</div></div>' +
+        '<span class="pill conflict">' + ic('alert', 11) + 'Overdue 1 d</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="chip">' + ic('clock', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Book race slot — city half</div><div class="row-sub">Spring training plan · Registration closes soon</div></div>' +
+        '<span class="pill blocked">' + ic('clock', 11) + 'Due in 1 h</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="chip">' + ic('alert', 17) + '</span>' +
+        '<div class="row-main"><div class="row-title">Draft release checklist</div><div class="row-sub">Becoming MVP · Failed yesterday</div></div>' +
+        '<span class="pill conflict">' + ic('alert', 11) + 'Failed</span></div>' +
+    '</div>' +
+    '<div class="sec-note">Overdue tasks, tasks due within 2 hours, and failed tasks surface here automatically.</div>' +
+
+    sec('Doing now') +
+    '<div class="blist">' +
+      '<div class="row press" data-go="task-detail"><span class="check doing"></span>' +
+        '<div class="row-main"><div class="row-title">Long run 14 km</div><div class="row-sub">Spring training plan · Due Sat</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="check doing"></span>' +
+        '<div class="row-main"><div class="row-title">Write chapter 3 outline</div><div class="row-sub">Evening reading plan</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Review N3 grammar deck</div><div class="row-sub">Japanese immersion</div></div>' +
+        '<span class="pill paused">' + ic('pause', 11) + 'Paused</span></div>' +
+    '</div>' +
+
+    sec('By status') +
+    '<div class="panel">' +
+      '<div class="row"><span class="pill doing">' + ic('circle', 11) + 'Doing</span><div class="row-main"></div><span class="count">3</span></div>' +
+      '<div class="row"><span class="pill todo">' + ic('circle', 11) + 'Todo</span><div class="row-main"></div><span class="count">8</span></div>' +
+      '<div class="row"><span class="pill paused">' + ic('pause', 11) + 'Paused</span><div class="row-main"></div><span class="count">2</span></div>' +
+      '<div class="row"><span class="pill conflict">' + ic('alert', 11) + 'Failed</span><div class="row-main"></div><span class="count">1</span></div>' +
+      '<div class="row"><span class="pill done">' + ic('check', 11) + 'Done</span><div class="row-main"></div><span class="count">12</span></div>' +
+    '</div>' +
+
+    sec('By label') +
+    '<div class="panel">' +
+      '<div class="row"><span class="chip">' + ic('tag', 17) + '</span><div class="row-main"><div class="row-title">Health</div></div><span class="count">6</span></div>' +
+      '<div class="row"><span class="chip">' + ic('tag', 17) + '</span><div class="row-main"><div class="row-title">Work</div></div><span class="count">4</span></div>' +
+      '<div class="row"><span class="chip">' + ic('tag', 17) + '</span><div class="row-main"><div class="row-title">Growth</div></div><span class="count">5</span></div>' +
+    '</div>' +
+
+    sec('All tasks') +
+    '<div class="panel">' +
+      '<div class="group-label">Doing</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check doing"></span>' +
+        '<div class="row-main"><div class="row-title">Long run 14 km</div><div class="row-sub">Spring training plan · Due Sat</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="row press" data-go="task-detail"><span class="check doing"></span>' +
+        '<div class="row-main"><div class="row-title">Write chapter 3 outline</div><div class="row-sub">Evening reading plan</div></div>' +
+        '<span class="pill doing">' + ic('circle', 11) + 'Doing</span></div>' +
+      '<div class="group-label">Todo</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Buy new running shoes</div><div class="row-sub">Spring training plan · Due next Mon</div></div>' +
+        CHEV + '</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Plan tempo session week 7</div><div class="row-sub">Spring training plan</div></div>' +
+        CHEV + '</div>' +
+      '<div class="group-label">Paused</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Review N3 grammar deck</div><div class="row-sub">Japanese immersion · Paused 3 d ago</div></div>' +
+        '<span class="pill paused">' + ic('pause', 11) + 'Paused</span></div>' +
+      '<div class="group-label">Failed</div>' +
+      '<div class="row press" data-go="task-detail"><span class="check"></span>' +
+        '<div class="row-main"><div class="row-title">Draft release checklist</div><div class="row-sub">Becoming MVP · Failed yesterday</div></div>' +
+        '<span class="pill conflict">' + ic('alert', 11) + 'Failed</span></div>' +
+      '<div class="group-label">Done</div>' +
+      '<div class="row press t-done" data-go="task-detail"><span class="check done">' + ic('check', 15) + '</span>' +
+        '<div class="row-main"><div class="row-title">Recovery run 6 km</div><div class="row-sub">Spring training plan · Completed Tue</div></div>' +
+        '<span class="pill done">' + ic('check', 11) + 'Done</span></div>' +
+    '</div>' +
+
+    sec('Recent activity') +
+    activityPanel([
+      { i:'check', t:'Completed “Recovery run 6 km”', s:'Task · Spring training plan', w:'2 d' },
+      { i:'play', t:'Started “Long run 14 km”', s:'Task · Spring training plan', w:'3 d' },
+      { i:'alert', t:'Failed “Draft release checklist”', s:'Task · Becoming MVP', w:'1 d' },
+    ]) +
+  '</div>' +
+  tabbar('library')
+;
+</script>
+<script src="../shared/prototype.js"></script>
+</body>
+</html>
