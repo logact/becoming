@@ -72,9 +72,11 @@
 
 ### 7. 全周期回归与交付
 
-- [ ] 重跑 `project-detail-alignment` §5，重点覆盖 `tasks-page` §2.4 对 AddTask 接线的回归影响。
+- [x] 重跑 `project-detail-alignment` §5，重点覆盖 `tasks-page` §2.4 对 AddTask 接线的回归影响。
 - [ ] 五份冻结计划中所有自动验证与手工验收章节完成。
 - [ ] 生成 `docs/cycles/cycle-2/cycle-report.md`，记录各层产出、验证结果、偏差、遗留项与任务 commit。
+
+项目详情回归记录：按冻结 §5 静态对照 `project-detail.html`、`add-plan-item.html`、`allocate-resource.html`，复核头部周数/进度、Tree/List/Roadmap 与 Today/Project due、Sub-goal/Task/Milestone、资源分配、activity、导航解析、组合根和 dev seed。新增 SQLite-backed 组合回归，覆盖 Library → Project → Add Task → 返回后 Tree 刷新，并验证 `AddTaskService` 五依赖构造、页面生成 `recordId`/`relationId`、`taskCreated` record + `logs` relation；另锁定 seed 的嵌套目标、3 个 milestone、数量/时间资源及 Task activity。聚焦验证 9 suites / 59 tests 通过；`npm run typecheck` 通过；`npm test -- --runInBand` 通过（88 suites / 536 tests）。未发现需修改的产品代码。
 
 ## 提交与报告规则
 
