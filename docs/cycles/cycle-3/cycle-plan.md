@@ -89,7 +89,7 @@
 
 - [x] `goal-project-management` §2。
 - [x] `goal-project-management` §3。
-- [ ] `goal-project-management` §4。
+- [x] `goal-project-management` §4。
 - [ ] `goal-project-management` §5。
 
 §2 验证证据（2026-08-22）：
@@ -103,6 +103,12 @@
 - 新增独立 `CreateGoalProjectService`：载入并校验 serving Goal，通过 `Project.create` 构造永久关联 Goal 的 `planning` Project，传入 Goal Due 执行严格早于约束，并返回新 Project ID。
 - Project、`projectCreated` immutable Record 与 Goal / Project 两条 `logs` Relation 全部由同一 `TransactionRunner` 原子写入；unknown / archived Goal、空白名称、等于或晚于 Goal Due 均在任何写入前拒绝，第二条 timeline Relation 失败时完整回滚。
 - SQLite-backed focused：1 suite / 9 tests 通过；`npm run typecheck` 通过；full suite 首跑遇到无关 `CaptureComposer` async timing 失败，该 suite 单独复跑通过，随后 full suite：93 suites / 622 tests 通过，0 snapshots。
+
+§4 验证证据（2026-08-22）：
+
+- 新增独立 `SelectCurrentPlanService`：校验 Goal 与所选 Project 的存在性、archive、归属及 lifecycle eligibility，并通过 `Goal.activateProject` 统一执行首次激活、paused 重激活和当前方案切换，不在应用层复制状态切换规则。
+- 当前 active Project 查询刻意不添加 archived 过滤，确保 archived active Project 也会在切换时暂停；所选与原 active Project、`projectActivated` immutable Record、Goal / 所选 Project 两条 `logs` Relation 全部通过同一 `TransactionRunner` 原子持久化，activity detail 在切换时同时标明新旧 Project。
+- SQLite-backed focused：1 suite / 15 tests 通过，覆盖全部拒绝路径无 mutation、两侧 timeline 可见性及第二条 Relation 失败时两个 Project 状态与 activity 的完整回滚；`npm run typecheck` 通过；full suite：94 suites / 637 tests 通过，0 snapshots。
 
 ### 6. Goal Project Management UI 与接线
 
