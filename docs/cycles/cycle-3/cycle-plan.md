@@ -156,8 +156,18 @@
 - [x] `goal-project-management` §8。
 - [x] `start-time-and-date-input` §9。
 - [x] 按 `goal-project-management` §9、`start-time-and-date-input` §10 完成独立验收。
-- [ ] 对三份冻结计划执行跨计划集成回归，运行 `npm run typecheck` 与 `npm test -- --runInBand`。
+- [x] 对三份冻结计划执行跨计划集成回归，运行 `npm run typecheck` 与 `npm test -- --runInBand`。
 - [ ] 生成 `docs/cycles/cycle-3/cycle-report.md`，按 domain、application、infrastructure、UI 分层记录产出、验证、偏差、遗留项及任务 commit。
+
+跨计划集成回归证据（2026-08-22）：
+
+- 共享 route / composition 审核确认 Dashboard 与 Library 复用同一 Goal / Task / Project / Idea / Note entity resolver；Goal wrapper 同时注入 `CreateGoalProjectService`、`SelectCurrentPlanService` 与 `ScheduleGoalService`，Task wrapper 同时注入 `TaskLifecycleService` 与 `ScheduleTaskService`，production composition 全部基于同一组 SQLite repositories 与 `SqliteTransactionRunner` 构造。Goal detail 的 Project 嵌套路由继续留在发起 destination 栈，Back 恢复原 Dashboard / Library 上下文。
+- Dashboard 审核覆盖 Doing 与 Needs attention 的 typed entity navigation、Back / tab-bar 恢复、`readyToStart` Goal / Task 文案且 scheduled `todo` 不进入 Doing、Remove 阻止 row navigation 并通过真实 `AttentionService` 持久化 dismiss、Recent activity 维持非交互。既有 focused regression 同时覆盖所有 Dashboard entity types、ready 优先级 / 去重 / 排序与 dismissal。
+- Goal detail 的 New Project、Choose current plan 与 Schedule 共用 shell 的单一 sheet slot；任一普通 sheet 存在时 Global Capture button 被 shell 抑制，关闭后恢复。Project creation 的 `goal-project-due` 与 Goal schedule 的 `goal-schedule-editor-*` 各自持有独立 controlled state / native picker test IDs；Project Due 仍受 Goal Due 前一个本地日历日的 native `maximumDate` 与提交 / domain 双重校验，未与 reciprocal Goal Start / Due bounds 冲突。
+- Create from Idea 的 Goal / Task creation 将 picker 选出的本地日历 `Date` 直接传入真实 creation commands；创建后 Idea detail 刷新，derived Goal 使用 `openDetail`、derived Task 使用 `task:<id>` shared route，因而均进入已注入 schedule service 的详情页。Add to plan 的 Sub-goal / Task / Milestone 与 Allocate resource 的 datetime span 同样保留 semantic `Date` command values、required / optional、clear / cancel 与 range validation；Project detail 的 add-plan-item / allocate-resource 嵌套路由未退化。
+- SQLite v4 审核确认 fresh Goal / Task DDL、conditional `start_at` migration、partial-v3 healing、repository epoch-ms round trip 与 `PRAGMA user_version = 4` 一致；`makeFakeRepos()` 继续使用 `NodeSqliteDatabase(':memory:')`、`migrate(db)` 与 production SQLite repository implementations。Quick Capture / CaptureComposer / GlobalCapture 相对 Cycle 3 准备基线无改动，SQLite integration 继续覆盖四种 capture intent 与 rollback。
+- broad focused integration：32 suites / 257 tests 通过，0 snapshots；`npm run typecheck` 通过；full suite：95 suites / 657 tests 通过，0 snapshots。production `rg` 未发现 `YYYY-MM-DD` / `YYYY-MM-DD HH:mm`、`parseDateText` / `parseDateTimeText`，所有 production date / datetime form call sites 均使用 shared `DatePickerRow`；`git diff --check` 通过。
+- 未发现跨计划实现缺口或冻结计划偏差；本任务仅记录该集成验收证据，保留 cycle-report checkbox 待后续独立任务完成。
 
 联合独立验收证据（2026-08-22）：
 
