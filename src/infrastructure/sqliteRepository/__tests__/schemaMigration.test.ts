@@ -96,6 +96,11 @@ describe('migrate upgrade paths', () => {
     expect(await columnNames(db, 'milestones')).toEqual(
       expect.arrayContaining(['id', 'project_id', 'title', 'date', 'created_at', 'updated_at']),
     );
+    expect(await columnNames(db, 'notes')).toEqual(
+      expect.arrayContaining([
+        'id', 'content', 'archived', 'pinned_at', 'created_at', 'updated_at',
+      ]),
+    );
 
     const dashboard = new DashboardService(
       new SqliteGoalRepository(db),
@@ -193,5 +198,26 @@ describe('migrate upgrade paths', () => {
     );
     // The rebuilt table is empty and queryable through the repository.
     expect(await new SqliteGoalRepository(db).list()).toEqual([]);
+  });
+
+  it('rebuilds a pre-release notes table that is missing pinned_at', async () => {
+    const db = new NodeSqliteDatabase(':memory:');
+    await db.exec(
+      `CREATE TABLE notes (
+        id TEXT PRIMARY KEY, content TEXT NOT NULL, archived INTEGER NOT NULL,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    );
+    await db.run(
+      `INSERT INTO notes (id, content, archived, created_at, updated_at)
+       VALUES ('n-old', 'legacy', 0, 1, 1)`,
+    );
+    await db.exec('PRAGMA user_version = 3');
+
+    await migrate(db);
+
+    expect(await columnNames(db, 'notes')).toEqual(
+      ['id', 'content', 'archived', 'pinned_at', 'created_at', 'updated_at'],
+    );
+    expect(await db.all('SELECT * FROM notes')).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 import type { SqliteDatabase } from './SqliteDatabase';
 
 /** Model types whose labelIds are stored in the generic entity_labels table. */
-export type LabeledEntityType = 'goal' | 'task' | 'idea' | 'project' | 'resource';
+export type LabeledEntityType = 'goal' | 'task' | 'idea' | 'note' | 'project' | 'resource';
 
 /**
  * Loads one entity's label ids from entity_labels. Order is deterministic

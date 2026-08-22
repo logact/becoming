@@ -40,6 +40,14 @@ const MIGRATION_V1: string[] = [
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS notes (
+    id TEXT PRIMARY KEY,
+    content TEXT NOT NULL,
+    archived INTEGER NOT NULL,
+    pinned_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -220,6 +228,7 @@ const EXPECTED_COLUMNS: Record<string, string[]> = {
     'project_id', 'goal_id', 'milestone_id', 'created_at', 'updated_at',
   ],
   ideas: ['id', 'content', 'status', 'archived', 'created_at', 'updated_at'],
+  notes: ['id', 'content', 'archived', 'pinned_at', 'created_at', 'updated_at'],
   projects: [
     'id', 'name', 'goal_id', 'due', 'status', 'archived', 'created_at', 'updated_at',
   ],

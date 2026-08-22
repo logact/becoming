@@ -8,7 +8,7 @@ The project has the following core model:
    - ResourceType: a user-defined kind of resource; kind is `quantity` or `time`, and it owns the unit (e.g. 'USD', 'minutes').
    - Resource: a global pool of one type with a total amount (minutes for time resources); the total allocated never exceeds the pool.
    - ResourceAllocation: a portion of a pool assigned to a project. Quantity allocations carry an amount; time allocations carry a minute-precision span (part of a day or several days) whose amount equals its duration. Time spans never overlap.
-6. Note: The extract thought,methodlogy from the user
+6. Note: an extracted thought or methodology. Its content is non-empty and trimmed. `pinnedAt` records the most recent pin action; pin and unpin do not change `updatedAt`, while pinning an already pinned Note refreshes `pinnedAt`. Archive and pin are independent, so archiving preserves `pinnedAt`.
 7. Record: System model's change ,user's record have done for some tasks.
 8. AttentionEntry: the user intent for the dashboard attention section. kind 'pin'(user added the item) or 'dismiss'(user hid the item); rule-derived attention items(failed/overdue/resource-exhausted) are computed, not stored.
 9. Milestone: a named date inside a project (`projectId`, required). It has no status of its own — Reached/Upcoming is derived by comparing its date with now. Goals and tasks of the project link to it via their optional `milestoneId`, anchoring the project's roadmap.
@@ -42,3 +42,4 @@ Archive is a indepent filed so that when archieve a item we won't cover its stat
 6. Project `complete()`: active → done.
 7. Goal-scoped activity: `RecordRepository.listByTarget` matches relations where the record is either the source or the target end.
 8. Idea derivation is represented only by a directed Relation: the new model is the source and the preserved Idea is the target (`goal|task|note --derivedFrom--> idea`). The Idea does not store derived IDs, and derived models do not store an Idea ID.
+9. Note links use directed Relations: extraction from an Idea is `note --derivedFrom--> idea`, while Goal and Project references are `note --relatesTo--> goal|project`.

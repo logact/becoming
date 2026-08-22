@@ -51,6 +51,12 @@ the bottom navigation has the buttons (Dashboard,Library,Setting)
 
    Idea detail presents the complete content, labels, update time, and a status picker in which all four statuses are directly selectable. Create from this idea offers Goal, Task, and Note. The original Idea is preserved and each new item links back through `goal|task|note --derivedFrom--> idea`; creating an item moves the Idea to Handled without preventing later derivations. Created items and Idea-related activity remain visible on the detail page.
 
+5. Notes page is a uniform-row overview with Active and Archived segments:
+   1. Active Notes are split into Pinned and All notes. Pinned rows sort by `pinnedAt` descending; unpinned rows sort by `updatedAt` descending.
+   2. Archived Notes use one dimmed list sorted by `updatedAt` and ignore pin state for grouping and order.
+   3. Note detail shows content, pin and archive actions, labels, and a Linked section containing its source Idea and related Goals or Projects.
+   4. Pinning is an organization action and does not change the content update time. Archive and pin remain independent.
+
 
 
 ## Show Recent Activity under each model pages
