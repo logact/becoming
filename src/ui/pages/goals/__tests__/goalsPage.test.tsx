@@ -25,7 +25,8 @@ function makeStubs(overviewView: GoalsOverviewView, detailView: GoalDetailView) 
   const detail = { getDetail: jest.fn(async (_goalId: string) => detailView) };
   const createProject = { create: jest.fn(async () => undefined) };
   const selectCurrentPlan = { select: jest.fn(async () => undefined) };
-  return { library, overview, detail, createProject, selectCurrentPlan };
+  const schedule = { schedule: jest.fn(async () => undefined) };
+  return { library, overview, detail, createProject, selectCurrentPlan, schedule };
 }
 
 /** The app's Library chain: hub → goals screen → goal detail. */
@@ -43,6 +44,7 @@ function goalsDestinations(stubs: ReturnType<typeof makeStubs>): ShellDestinatio
           detail={stubs.detail}
           createProject={stubs.createProject}
           selectCurrentPlan={stubs.selectCurrentPlan}
+          schedule={stubs.schedule}
         />
       ),
     },
@@ -66,6 +68,7 @@ function overviewFixture(now: Date): GoalsOverviewView {
         reason: 'overdue',
         due: new Date(now.getTime() + 20 * HOUR),
       },
+      { id: 'g-ready', title: 'Ready goal', reason: 'readyToStart', startAt: now },
     ],
     focus: [
       {
@@ -149,6 +152,8 @@ describe('GoalsPage', () => {
     expect(attention.getByText('Ship MVP')).toBeTruthy();
     expect(attention.getByText('File taxes')).toBeTruthy();
     expect(attention.getByText(/^Due in \d+ h$/)).toBeTruthy();
+    expect(attention.getAllByText('Ready to start').length).toBeGreaterThan(0);
+    expect(attention.getByText(/Ready to start · Start /)).toBeTruthy();
 
     const focus = within(screen.getByTestId('focus-section'));
     expect(focus.getByText('Run a half marathon')).toBeTruthy();

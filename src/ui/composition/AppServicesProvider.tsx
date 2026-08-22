@@ -6,6 +6,7 @@ import type { CaptureOptionsService } from '../../application/capture/CaptureOpt
 import type { QuickCaptureService } from '../../application/capture/QuickCaptureService';
 import type { DashboardService } from '../../application/dashboard/DashboardService';
 import type { GoalDetailService } from '../../application/goal/GoalDetailService';
+import type { ScheduleGoalService } from '../../application/goal/ScheduleGoalService';
 import type { SelectCurrentPlanService } from '../../application/goal/SelectCurrentPlanService';
 import type { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
 import type { CaptureIdeaService } from '../../application/idea/CaptureIdeaService';
@@ -37,6 +38,7 @@ import type { AllocateResourceService } from '../../application/resource/Allocat
 import type { ResourcePoolsService } from '../../application/resource/ResourcePoolsService';
 import type { TaskDetailService } from '../../application/task/TaskDetailService';
 import type { TaskLifecycleService } from '../../application/task/TaskLifecycleService';
+import type { ScheduleTaskService } from '../../application/task/ScheduleTaskService';
 import type { TasksOverviewService } from '../../application/task/TasksOverviewService';
 
 /**
@@ -52,6 +54,7 @@ export interface AppServices {
   pinCandidates: PinCandidatesService;
   goalsOverview: GoalsOverviewService;
   goalDetail: GoalDetailService;
+  scheduleGoal: ScheduleGoalService;
   createGoalProject: CreateGoalProjectService;
   selectCurrentPlan: SelectCurrentPlanService;
   projectsOverview: ProjectsOverviewService;
@@ -66,6 +69,7 @@ export interface AppServices {
   tasksOverview: TasksOverviewService;
   taskDetail: TaskDetailService;
   taskLifecycle: TaskLifecycleService;
+  scheduleTask: ScheduleTaskService;
   ideasOverview: IdeasOverviewService;
   ideaDetail: IdeaDetailService;
   ideaDerivationOptions: IdeaDerivationOptionsService;

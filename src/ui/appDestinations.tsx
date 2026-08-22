@@ -95,7 +95,14 @@ function EntityIdeaDetailScreen({ ideaId }: { ideaId: string }) {
 
 function EntityTaskDetailScreen({ taskId }: { taskId: string }) {
   const services = useAppServices();
-  return <TaskDetailPage taskId={taskId} detail={services.taskDetail} lifecycle={services.taskLifecycle} />;
+  return (
+    <TaskDetailPage
+      taskId={taskId}
+      detail={services.taskDetail}
+      lifecycle={services.taskLifecycle}
+      schedule={services.scheduleTask}
+    />
+  );
 }
 
 /** Goal detail shared by every destination that can open a Goal entity. */
@@ -107,6 +114,7 @@ function EntityGoalDetailPage({ goalId }: { goalId: string }) {
       detail={services.goalDetail}
       createProject={services.createGoalProject}
       selectCurrentPlan={services.selectCurrentPlan}
+      schedule={services.scheduleGoal}
     />
   );
 }

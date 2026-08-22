@@ -234,6 +234,23 @@ describe('DashboardPage', () => {
     }
   });
 
+  it('renders ready-to-start Goal and Task copy without presenting scheduled todo items as Doing', async () => {
+    const now = new Date();
+    const startAt = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const ctx = await makeServices();
+    await ctx.goals.save(Goal.create({ id: 'g-ready', title: 'Ready goal', startAt, now }));
+    await ctx.tasks.save(Task.create({ id: 't-ready', title: 'Ready task', projectId: 'p1', startAt, now }));
+
+    renderShell(ctx.services, dashboardDestinations());
+
+    expect(await screen.findByText(/^Goal · Ready to start · Start /)).toBeTruthy();
+    expect(screen.getByText(/^Task · Ready to start · Start /)).toBeTruthy();
+    expect(screen.getByTestId('dashboard-attention-goal-g-ready')).toBeTruthy();
+    expect(screen.getByTestId('dashboard-attention-task-t-ready')).toBeTruthy();
+    expect(screen.queryByTestId('dashboard-doing-goal-g-ready')).toBeNull();
+    expect(screen.queryByTestId('dashboard-doing-task-t-ready')).toBeNull();
+  });
+
   it('opens a Needs attention Project through its typed Dashboard route', async () => {
     const now = new Date();
     const ctx = await makeServices();

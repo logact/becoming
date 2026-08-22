@@ -4,6 +4,7 @@ import { CaptureOptionsService } from '../../application/capture/CaptureOptionsS
 import { QuickCaptureService } from '../../application/capture/QuickCaptureService';
 import { DashboardService } from '../../application/dashboard/DashboardService';
 import { GoalDetailService } from '../../application/goal/GoalDetailService';
+import { ScheduleGoalService } from '../../application/goal/ScheduleGoalService';
 import { SelectCurrentPlanService } from '../../application/goal/SelectCurrentPlanService';
 import { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
 import { CaptureIdeaService } from '../../application/idea/CaptureIdeaService';
@@ -36,6 +37,7 @@ import { ConsumeResourceService } from '../../application/resource/ConsumeResour
 import { ResourcePoolsService } from '../../application/resource/ResourcePoolsService';
 import { TaskDetailService } from '../../application/task/TaskDetailService';
 import { TaskLifecycleService } from '../../application/task/TaskLifecycleService';
+import { ScheduleTaskService } from '../../application/task/ScheduleTaskService';
 import { TasksOverviewService } from '../../application/task/TasksOverviewService';
 import { openExpoDatabase } from '../../infrastructure/sqliteRepository/ExpoSqliteDatabase';
 import { migrate } from '../../infrastructure/sqliteRepository/schema';
@@ -120,6 +122,7 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
     pinCandidates: new PinCandidatesService(goals, tasks, ideas, attentionEntries),
     goalsOverview: new GoalsOverviewService(goals, labels),
     goalDetail: new GoalDetailService(goals, projects, records),
+    scheduleGoal: new ScheduleGoalService(goals, records, relations, transactionRunner),
     createGoalProject: new CreateGoalProjectService(
       goals, projects, records, relations, transactionRunner,
     ),
@@ -137,6 +140,7 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
     tasksOverview: new TasksOverviewService(tasks, projects, labels, records),
     taskDetail: new TaskDetailService(tasks, projects, goals, records),
     taskLifecycle: new TaskLifecycleService(tasks, records, relations),
+    scheduleTask: new ScheduleTaskService(tasks, records, relations, transactionRunner),
     ideasOverview: new IdeasOverviewService(ideas, records),
     ideaDetail: new IdeaDetailService(
       ideas, goals, tasks, notes, projects, labels, relations, records,

@@ -37,15 +37,18 @@ function shortDate(date: Date): string {
 }
 
 function attentionSubtitle(item: GoalAttentionItem): string {
-  return item.reason === 'failed'
-    ? 'Failed'
-    : `Target ${shortDate(item.due as Date)}`;
+  if (item.reason === 'failed') return 'Failed';
+  if (item.reason === 'readyToStart') {
+    return item.startAt === undefined ? 'Ready to start' : `Ready to start · Start ${shortDate(item.startAt)}`;
+  }
+  return `Target ${shortDate(item.due as Date)}`;
 }
 
 function attentionPillLabel(item: GoalAttentionItem, now: Date): string {
   if (item.reason === 'failed') {
     return 'Failed';
   }
+  if (item.reason === 'readyToStart') return 'Ready to start';
   const due = item.due as Date;
   return due.getTime() < now.getTime()
     ? `Overdue ${relativeTime(due, now)}`
@@ -137,7 +140,7 @@ export function GoalsPage({ overview }: GoalsPageProps) {
             <ListRow
               key={item.id}
               testID={`attention-goal-${item.id}`}
-              icon={item.reason === 'failed' ? 'alert' : 'clock'}
+              icon={item.reason === 'failed' ? 'alert' : item.reason === 'readyToStart' ? 'play' : 'clock'}
               title={item.title}
               subtitle={attentionSubtitle(item)}
               trailing={

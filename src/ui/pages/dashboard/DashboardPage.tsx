@@ -29,11 +29,11 @@ const DOING_ICON: Record<DoingItem['type'], IconName> = {
   idea: 'bulb',
 };
 
-// Scheduling attention receives its presentation in the scheduling UI slice.
-const ATTENTION_ICON: Record<string, IconName> = {
+const ATTENTION_ICON: Record<AttentionItem['reason'], IconName> = {
   failed: 'alert',
   overdue: 'clock',
   resourceExhausted: 'banknote',
+  readyToStart: 'play',
   pinned: 'bulb',
 };
 
@@ -65,6 +65,10 @@ function attentionReasonText(item: AttentionItem, now: Date): string {
         : `Due in ${relativeTime(item.due, now)}`;
     case 'resourceExhausted':
       return 'Resource ≥ 90% used';
+    case 'readyToStart':
+      return item.startAt === undefined
+        ? 'Ready to start'
+        : `Ready to start · Start ${relativeTime(item.startAt, now)}`;
     case 'pinned':
       return 'Pinned';
   }
@@ -209,7 +213,7 @@ export function DashboardPage() {
           />
         </ListSection>
         <SectionNote>
-          Failed, due-soon (goal/project 1 d, task 2 h) and resource-exhausted (≥90%) items surface
+          Failed, due-soon (goal/project 1 d, task 2 h), resource-exhausted (≥90%) and ready-to-start items surface
           automatically. Pin anything yourself — it stays until you remove it.
         </SectionNote>
       </View>

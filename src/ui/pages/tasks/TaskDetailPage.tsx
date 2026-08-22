@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { TaskDetailService, TaskDetailView } from '../../../application/task/TaskDetailService';
 import type { TaskLifecycleService } from '../../../application/task/TaskLifecycleService';
+import type { ScheduleTaskService } from '../../../application/task/ScheduleTaskService';
 import type { TaskStatus } from '../../../domain/task/Task';
 import type { TaskId } from '../../../domain/shared/ids';
 import { Icon } from '../../components/Icon';
@@ -13,6 +14,7 @@ import { ListSection } from '../../components/ListSection';
 import { PrimaryChipButton } from '../../components/PrimaryChipButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SectionNote } from '../../components/SectionNote';
+import { ScheduleEditor } from '../../components/ScheduleEditor';
 import { StatusPill, type StatusState } from '../../components/StatusPill';
 import { useShellNavigation } from '../../navigation/NavigationShell';
 import { createId } from '../../shared/id';
@@ -39,10 +41,11 @@ export interface TaskDetailPageProps {
   taskId: TaskId;
   detail: Pick<TaskDetailService, 'getDetail'>;
   lifecycle: LifecyclePort;
+  schedule: Pick<ScheduleTaskService, 'schedule'>;
 }
 
 /** Task detail with lifecycle actions and immutable execution records. */
-export function TaskDetailPage({ taskId, detail, lifecycle }: TaskDetailPageProps) {
+export function TaskDetailPage({ taskId, detail, lifecycle, schedule }: TaskDetailPageProps) {
   const navigation = useShellNavigation();
   const [loaded, setLoaded] = useState<{ view: TaskDetailView; now: Date } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -99,6 +102,27 @@ export function TaskDetailPage({ taskId, detail, lifecycle }: TaskDetailPageProp
   const { view, now } = loaded;
   const { task } = view;
   const pill = TASK_STATUS_PILL[task.status];
+  const presentSchedule = (): void => navigation.presentSheet(
+    <ScheduleEditor
+      entityLabel="Task"
+      initialStartAt={task.startAt}
+      initialDue={task.due}
+      testID="task-schedule-editor"
+      onCancel={navigation.dismissSheet}
+      onSave={async (startAt, due) => {
+        await schedule.schedule({
+          taskId: task.id,
+          ...(startAt === undefined ? {} : { startAt }),
+          ...(due === undefined ? {} : { due }),
+          recordId: createId(),
+          relationId: createId(),
+          now: new Date(),
+        });
+        navigation.dismissSheet();
+        await refresh();
+      }}
+    />,
+  );
   const button = (method: LifecycleMethod, label: string, variant: 'primary' | 'ghost' | 'danger' = 'primary') => (
     <PrimaryChipButton
       key={method}
@@ -127,13 +151,23 @@ export function TaskDetailPage({ taskId, detail, lifecycle }: TaskDetailPageProp
             <Text style={styles.title}>{task.title}</Text>
             <View style={styles.metaRow}>
               <StatusPill state={pill.state} label={pill.label} />
-              {task.due === undefined ? null : <Text style={styles.meta}>Due {shortDate(task.due)}</Text>}
+              <Text testID="task-schedule-summary" style={styles.meta}>
+                {task.startAt === undefined && task.due === undefined
+                  ? 'No schedule'
+                  : [
+                    task.startAt === undefined ? 'Start not set' : `Start ${shortDate(task.startAt)}`,
+                    task.due === undefined ? 'Due not set' : `Due ${shortDate(task.due)}`,
+                  ].join(' · ')}
+              </Text>
             </View>
           </View>
         </View>
 
         <View testID="task-actions-section" style={styles.actionSection}>
-          <View style={styles.actions}>{actions}</View>
+          <View style={styles.actions}>
+            {actions}
+            <PrimaryChipButton testID="task-schedule-action" label="Schedule" variant="ghost" onPress={presentSchedule} />
+          </View>
           {actionError === null ? null : <Text style={styles.error}>{actionError}</Text>}
         </View>
 

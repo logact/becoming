@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { GoalDetailService, GoalDetailView } from '../../../application/goal/GoalDetailService';
+import type { ScheduleGoalService } from '../../../application/goal/ScheduleGoalService';
 import type { SelectCurrentPlanService } from '../../../application/goal/SelectCurrentPlanService';
 import type { CreateGoalProjectService } from '../../../application/project/CreateGoalProjectService';
 import type { GoalStatus } from '../../../domain/goal/Goal';
@@ -15,6 +16,7 @@ import { ListSection } from '../../components/ListSection';
 import { PrimaryChipButton } from '../../components/PrimaryChipButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SectionNote } from '../../components/SectionNote';
+import { ScheduleEditor } from '../../components/ScheduleEditor';
 import { StatTile } from '../../components/StatTile';
 import { StatusPill, type StatusState } from '../../components/StatusPill';
 import { useShellNavigation } from '../../navigation/NavigationShell';
@@ -54,6 +56,7 @@ export interface GoalDetailPageProps {
   detail: Pick<GoalDetailService, 'getDetail'>;
   createProject: Pick<CreateGoalProjectService, 'create'>;
   selectCurrentPlan: Pick<SelectCurrentPlanService, 'select'>;
+  schedule: Pick<ScheduleGoalService, 'schedule'>;
 }
 
 /**
@@ -68,6 +71,7 @@ export function GoalDetailPage({
   detail,
   createProject,
   selectCurrentPlan,
+  schedule,
 }: GoalDetailPageProps) {
   const navigation = useShellNavigation();
   const [loaded, setLoaded] = useState<{ view: GoalDetailView; now: Date } | null>(null);
@@ -134,6 +138,27 @@ export function GoalDetailPage({
       onSelected={refresh}
     />,
   );
+  const presentSchedule = (): void => navigation.presentSheet(
+    <ScheduleEditor
+      entityLabel="Goal"
+      initialStartAt={goal.startAt}
+      initialDue={goal.due}
+      testID="goal-schedule-editor"
+      onCancel={navigation.dismissSheet}
+      onSave={async (startAt, due) => {
+        await schedule.schedule({
+          goalId: goal.id,
+          ...(startAt === undefined ? {} : { startAt }),
+          ...(due === undefined ? {} : { due }),
+          recordId: createId(),
+          relationId: createId(),
+          now: new Date(),
+        });
+        navigation.dismissSheet();
+        await refresh();
+      }}
+    />,
+  );
 
   return (
     <View testID="goal-detail-page" style={styles.screen}>
@@ -143,7 +168,17 @@ export function GoalDetailPage({
           <Text style={styles.title}>{goal.title}</Text>
           <View style={styles.metaRow}>
             <StatusPill state={statusPill.state} label={statusPill.label} />
-            {goal.due ? <Text style={styles.meta}>Target {shortDate(goal.due)}</Text> : null}
+            <Text testID="goal-schedule-summary" style={styles.meta}>
+              {goal.startAt === undefined && goal.due === undefined
+                ? 'No schedule'
+                : [
+                  goal.startAt === undefined ? 'Start not set' : `Start ${shortDate(goal.startAt)}`,
+                  goal.due === undefined ? 'Due not set' : `Due ${shortDate(goal.due)}`,
+                ].join(' · ')}
+            </Text>
+          </View>
+          <View style={styles.scheduleAction}>
+            <PrimaryChipButton testID="goal-schedule-action" label="Schedule" variant="ghost" onPress={presentSchedule} />
           </View>
           {goal.labelIds.length > 0 ? (
             <Text testID="goal-detail-labels" style={styles.labels}>
@@ -467,6 +502,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 6,
   },
   meta: { fontSize: 12.5, fontWeight: '500', color: colors.faint },
+  scheduleAction: { flexDirection: 'row', marginTop: 10 },
   labels: { fontSize: 12.5, fontWeight: '600', color: colors.muted, marginTop: 10, marginHorizontal: 6 },
   statCell: { marginTop: 12 },
   trailing: { flexDirection: 'row', alignItems: 'center', gap: 8 },

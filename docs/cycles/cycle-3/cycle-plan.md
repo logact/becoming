@@ -131,7 +131,14 @@
 
 ### 7. Goal / Task scheduling UI
 
-- [ ] `start-time-and-date-input` §7。
+- [x] `start-time-and-date-input` §7。
+
+验证证据（2026-08-22）：
+
+- Goal / Task detail header 将 Start 与 Due 同时展示，两者都缺失时明确显示 **No schedule**；共享 `ScheduleEditor` 提供可选 Start / Due native picker，以本地日历日互设 `maximumDate` / `minimumDate`，支持同日、替换与单独清除任一日期，提交前 UI guard 与 domain 最终校验并存。
+- Goal / Task 的 Schedule action 分别调用独立 `ScheduleGoalService` / `ScheduleTaskService`，生成 Record / Relation IDs；成功后关闭 editor 并刷新 header 与 activity，失败保留已选值并 inline 显示错误，write-in-flight guard 阻止重复提交。`AppServices` / `composeServices` 注册两个真实 service，Dashboard / Library 共用 Goal / Task route 均注入，SQLite-backed composition regression 验证两种实体的持久化与 activity 可见性。
+- Dashboard、Goals、Tasks 对 `readyToStart` 统一使用 **Ready to start** copy 与 play icon；Dashboard reason→icon 为完整 typed mapping，reason switch 显式处理 ready 分支。已排期 `todo` 仍不进入 Doing，Task 的显式 **Start** 等 lifecycle labels 与行为未改。
+- native picker boundary 测试覆盖 initial / set / replace / clear each date、同日互惠 bounds、非法 range UI guard / domain-service error、Cancel、错误值保留、duplicate-submit guard、成功刷新 activity、ready attention copy 与显式 Start 保留。focused：12 suites / 56 tests 通过；`npm run typecheck` 通过；full suite：96 suites / 660 tests 通过，0 snapshots。
 
 ### 8. 迁移其余日期输入
 

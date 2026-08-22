@@ -3,6 +3,7 @@ import React from 'react';
 import { Text } from 'react-native';
 
 import type { GoalDetailView } from '../../../../application/goal/GoalDetailService';
+import type { ScheduleGoalCommand } from '../../../../application/goal/ScheduleGoalService';
 import type { SelectCurrentPlanCommand } from '../../../../application/goal/SelectCurrentPlanService';
 import type { CreateGoalProjectCommand } from '../../../../application/project/CreateGoalProjectService';
 import { Goal } from '../../../../domain/goal/Goal';
@@ -29,6 +30,7 @@ function renderDetail(initialView: GoalDetailView, goalId = 'g-run') {
   const detail = { getDetail: jest.fn(async (_id: string) => view) };
   const createProject = { create: jest.fn(async (_command: CreateGoalProjectCommand) => undefined) };
   const selectCurrentPlan = { select: jest.fn(async (_command: SelectCurrentPlanCommand) => undefined) };
+  const schedule = { schedule: jest.fn(async (_command: ScheduleGoalCommand) => undefined) };
   const destinations: ShellDestination[] = [
     {
       id: 'library',
@@ -40,6 +42,7 @@ function renderDetail(initialView: GoalDetailView, goalId = 'g-run') {
           detail={detail}
           createProject={createProject}
           selectCurrentPlan={selectCurrentPlan}
+          schedule={schedule}
         />
       ),
       renderScreen: (id) => <Text testID={`route-${id}`}>{id}</Text>,
@@ -50,6 +53,7 @@ function renderDetail(initialView: GoalDetailView, goalId = 'g-run') {
     detail,
     createProject,
     selectCurrentPlan,
+    schedule,
     setView: (next: GoalDetailView) => { view = next; },
   };
 }
@@ -94,7 +98,7 @@ describe('GoalDetailPage', () => {
     const header = within(await screen.findByTestId('goal-detail-header'));
     expect(header.getByText('Run a half marathon')).toBeTruthy();
     expect(header.getByText('Doing')).toBeTruthy();
-    expect(header.getByText(/^Target /)).toBeTruthy();
+    expect(header.getByText(/Start not set · Due /)).toBeTruthy();
     expect(header.getByText('l-health')).toBeTruthy();
     expect(header.getByText('1 / 2')).toBeTruthy();
 
@@ -118,6 +122,13 @@ describe('GoalDetailPage', () => {
     await screen.findByText('No project yet.');
     expect(screen.getByTestId('new-goal-project')).toBeTruthy();
     expect(screen.queryByTestId('choose-current-plan')).toBeNull();
+  });
+
+  it('shows a clear No schedule header state', async () => {
+    const fixture = detailFixture(new Date());
+    fixture.goal = Goal.create({ id: 'g-run', title: 'Run a half marathon', now: new Date() });
+    renderDetail(fixture);
+    expect(within(await screen.findByTestId('goal-detail-header')).getByText('No schedule')).toBeTruthy();
   });
 
   it('creates through the native bounded due picker, closes, refreshes, and displays the Project', async () => {
@@ -276,6 +287,40 @@ describe('GoalDetailPage', () => {
     expect(screen.getByTestId('route-project:p-alt')).toBeTruthy();
   });
 
+  it('schedules a Goal with generated activity IDs, closes, refreshes, and shows the new activity', async () => {
+    const fixture = detailFixture(new Date());
+    const harness = renderDetail(fixture);
+    harness.schedule.schedule.mockImplementation(async (command) => {
+      fixture.goal!.setSchedule(command.startAt, command.due, command.now);
+      harness.setView({
+        ...fixture,
+        recentActivity: [{
+          id: command.recordId,
+          kind: 'goalScheduleChanged',
+          detail: 'Changed schedule for “Run a half marathon”',
+          occurredAt: command.now,
+        }, ...fixture.recentActivity],
+      });
+    });
+
+    fireEvent.press(await screen.findByTestId('goal-schedule-action'));
+    expect(screen.getByTestId('goal-schedule-editor-start-value').props.children).toBe('Select date');
+    fireEvent.press(screen.getByTestId('goal-schedule-editor-start-open'));
+    expect(screen.getByTestId('goal-schedule-editor-start-native').props.maximumDate).toEqual(new Date(2026, 8, 20));
+    fireEvent(screen.getByTestId('goal-schedule-editor-start-native'), 'change', dateEvent(), new Date(2026, 8, 15, 18));
+    fireEvent.press(screen.getByTestId('goal-schedule-editor-start-done'));
+    fireEvent.press(screen.getByTestId('goal-schedule-editor-save'));
+
+    await waitFor(() => expect(harness.schedule.schedule).toHaveBeenCalledWith(expect.objectContaining({
+      goalId: 'g-run', startAt: new Date(2026, 8, 15), due: new Date(2026, 8, 20),
+      recordId: expect.any(String), relationId: expect.any(String), now: expect.any(Date),
+    })));
+    expect(screen.queryByTestId('goal-schedule-editor')).toBeNull();
+    expect(await screen.findByText(/Start .* · Due /)).toBeTruthy();
+    expect(screen.getByText('Changed schedule for “Run a half marathon”')).toBeTruthy();
+    expect(harness.detail.getDetail).toHaveBeenCalledTimes(2);
+  });
+
   it('renders Unknown goal when the read service returns null', async () => {
     const unknown = detailFixture(new Date());
     renderDetail({ ...unknown, goal: null }, 'g-missing');
@@ -294,6 +339,7 @@ describe('GoalDetailPage', () => {
           detail={detail}
           createProject={{ create: jest.fn() }}
           selectCurrentPlan={{ select: jest.fn() }}
+          schedule={{ schedule: jest.fn() }}
         />
       ),
     }];

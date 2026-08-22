@@ -41,6 +41,9 @@ function taskSubtitle(item: TaskListItem): string {
 
 function attentionText(item: TaskAttentionItem, now: Date): string {
   if (item.reason === 'failed') return 'Failed';
+  if (item.reason === 'readyToStart') {
+    return item.startAt === undefined ? 'Ready to start' : `Ready to start · Start ${shortDate(item.startAt)}`;
+  }
   if (item.due === undefined) return item.reason === 'overdue' ? 'Overdue' : 'Due soon';
   return item.reason === 'overdue'
     ? `Overdue ${relativeTime(item.due, now)}`
@@ -112,19 +115,19 @@ export function TasksPage({ overview }: TasksPageProps) {
             <ListRow
               key={item.id}
               testID={`task-attention-${item.id}`}
-              icon={item.reason === 'dueSoon' ? 'clock' : 'alert'}
+              icon={item.reason === 'readyToStart' ? 'play' : item.reason === 'dueSoon' ? 'clock' : 'alert'}
               title={item.title}
               subtitle={`${item.projectName} · ${attentionText(item, now)}`}
               trailing={<StatusPill
-                state={item.reason === 'dueSoon' ? 'blocked' : 'conflict'}
-                label={item.reason === 'dueSoon' ? 'Due soon' : item.reason === 'failed' ? 'Failed' : 'Overdue'}
+                state={item.reason === 'dueSoon' || item.reason === 'readyToStart' ? 'blocked' : 'conflict'}
+                label={item.reason === 'readyToStart' ? 'Ready to start' : item.reason === 'dueSoon' ? 'Due soon' : item.reason === 'failed' ? 'Failed' : 'Overdue'}
               />}
               onPress={() => openTask(item.id)}
             />
           ))}
         </ListSection>
         {view.attention.length === 0 ? <SectionNote>Nothing here.</SectionNote> : null}
-        <SectionNote>Failed tasks first, then overdue and due-soon tasks.</SectionNote>
+        <SectionNote>Failed tasks first, then overdue, due-soon, and ready-to-start tasks.</SectionNote>
       </View>
 
       <View testID="doing-now-section">

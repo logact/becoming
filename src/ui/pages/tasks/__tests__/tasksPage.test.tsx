@@ -14,7 +14,10 @@ function fixture(): TasksOverviewView {
   const failed = { id: 'failed', title: 'Failed task', status: 'failed' as const, projectName: 'Project', labelIds: [] };
   return {
     stats: { doing: 1, todo: 1, done: 0, overdue: 0 },
-    attention: [{ ...failed, reason: 'failed' }],
+    attention: [
+      { ...failed, reason: 'failed' },
+      { id: 'ready', title: 'Ready task', projectName: 'Project', reason: 'readyToStart', startAt: now },
+    ],
     doingNow: [doing],
     byStatus: { todo: 1, doing: 1, paused: 0, failed: 1, done: 0 },
     byLabel: [{ labelId: 'l1', name: 'Focus', count: 1 }],
@@ -35,6 +38,8 @@ describe('TasksPage', () => {
 
     expect(within(await screen.findByTestId('task-stats')).getByText('Doing')).toBeTruthy();
     expect(screen.getByTestId('task-attention-section')).toBeTruthy();
+    expect(screen.getAllByText('Ready to start').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Ready to start · Start /)).toBeTruthy();
     expect(screen.getByTestId('doing-now-section')).toBeTruthy();
     expect(screen.getByTestId('task-by-status-section')).toBeTruthy();
     expect(screen.getByTestId('task-by-label-section')).toBeTruthy();
