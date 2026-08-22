@@ -16,6 +16,12 @@ describe('Project', () => {
     expect(project.updatedAt).toBe(t0);
   });
 
+  it('rejects a blank name at creation', () => {
+    expect(() =>
+      Project.create({ id: 'p1', name: '  ', goalId: 'g1', now: t0 }),
+    ).toThrow(DomainError);
+  });
+
   it('activates from planning, pauses, and reactivates from paused', () => {
     const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
     project.activate(t1);
@@ -27,11 +33,31 @@ describe('Project', () => {
     expect(project.status).toBe('active');
   });
 
-  it('rejects invalid transitions', () => {
+  it('rejects activation from active, done, and failed', () => {
+    const active = Project.create({ id: 'p1', name: 'Active plan', goalId: 'g1', now: t0 });
+    active.activate(t1);
+    expect(() => active.activate(t2)).toThrow(DomainError);
+    expect(active.status).toBe('active');
+    expect(active.updatedAt).toBe(t1);
+
+    const done = Project.create({ id: 'p2', name: 'Done plan', goalId: 'g1', now: t0 });
+    done.activate(t1);
+    done.complete(t2);
+    expect(() => done.activate(t1)).toThrow(DomainError);
+    expect(done.status).toBe('done');
+    expect(done.updatedAt).toBe(t2);
+
+    const failed = Project.create({ id: 'p3', name: 'Failed plan', goalId: 'g1', now: t0 });
+    failed.activate(t1);
+    failed.fail(t2);
+    expect(() => failed.activate(t1)).toThrow(DomainError);
+    expect(failed.status).toBe('failed');
+    expect(failed.updatedAt).toBe(t2);
+  });
+
+  it('rejects pausing from planning', () => {
     const project = Project.create({ id: 'p1', name: 'Q1 plan', goalId: 'g1', now: t0 });
     expect(() => project.pause(t1)).toThrow(DomainError);
-    project.activate(t1);
-    expect(() => project.activate(t2)).toThrow(DomainError);
   });
 
   it('archives without touching status', () => {

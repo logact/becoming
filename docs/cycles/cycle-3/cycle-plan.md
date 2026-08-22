@@ -87,10 +87,16 @@
 
 ### 5. Goal Project Management 领域、应用与读模型
 
-- [ ] `goal-project-management` §2。
+- [x] `goal-project-management` §2。
 - [ ] `goal-project-management` §3。
 - [ ] `goal-project-management` §4。
 - [ ] `goal-project-management` §5。
+
+§2 验证证据（2026-08-22）：
+
+- `Project.create` 与 `rename` 一致拒绝空白名称；`Project.activate` 仅允许 `planning` / `paused` 转为 `active`，并拒绝 `active` / `done` / `failed`，失败时保留原状态与 `updatedAt`。
+- 保留 Project Due 严格早于 serving Goal Due 的不变量，以及 `Goal.activateProject` 的归属校验、旧方案暂停与新方案激活行为。
+- focused：2 suites / 50 tests 通过；`npm run typecheck` 通过；full suite：92 suites / 613 tests 通过，0 snapshots。
 
 ### 6. Goal Project Management UI 与接线
 

@@ -35,6 +35,9 @@ export class Project {
     goalDue?: Date;
     now: Date;
   }): Project {
+    if (params.name.trim().length === 0) {
+      throw new DomainError('Project name must not be empty');
+    }
     const project = new Project(
       params.id,
       params.name,
@@ -99,8 +102,8 @@ export class Project {
 
   /** planning|paused → active */
   activate(now: Date): void {
-    if (this._status === 'active') {
-      throw new DomainError('Project is already active');
+    if (this._status !== 'planning' && this._status !== 'paused') {
+      throw new DomainError(`Cannot activate Project from ${this._status}`);
     }
     this._status = 'active';
     this._updatedAt = now;
