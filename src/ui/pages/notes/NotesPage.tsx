@@ -83,7 +83,8 @@ export function NotesPage({ overview, capture }: NotesPageProps) {
   const { view, now } = loaded;
   const row = (note: NoteListItem, archived = false) => {
     const labels = note.labels.map((label) => label.name).join(', ');
-    const time = note.pinnedAt !== null && !archived
+    const pinned = note.pinnedAt !== null && !archived;
+    const time = pinned
       ? `Pinned ${relativeTime(note.pinnedAt, now)}`
       : `${archived ? 'Archived' : 'Updated'} ${relativeTime(note.updatedAt, now)}`;
     return (
@@ -93,7 +94,16 @@ export function NotesPage({ overview, capture }: NotesPageProps) {
           icon={archived ? 'archive' : 'doc'}
           title={noteTitle(note.content)}
           subtitle={labels.length === 0 ? time : `${labels} · ${time}`}
-          trailing={<Icon name="chevron" size={12} color={colors.chevron} />}
+          trailing={(
+            <View style={styles.rowTrailing}>
+              {pinned ? (
+                <View testID={`note-pin-marker-${note.id}`}>
+                  <Icon name="pin" size={12} color={colors.sage} />
+                </View>
+              ) : null}
+              <Icon name="chevron" size={12} color={colors.chevron} />
+            </View>
+          )}
           onPress={() => navigation.pushScreen(`note:${note.id}`)}
         />
       </View>
@@ -164,6 +174,7 @@ const styles = StyleSheet.create({
   captureInput: { flex: 1, minHeight: 38, maxHeight: 100, color: colors.ink, fontSize: 15, textAlignVertical: 'top' },
   captureButton: { borderRadius: radii.pill, paddingVertical: 8, paddingHorizontal: 15, backgroundColor: colors.green },
   captureButtonText: { color: colors.primaryTextOnGreen, fontSize: 12.5, fontWeight: '700' },
+  rowTrailing: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   archived: { opacity: 0.62 },
   error: { color: colors.conflictRed, fontSize: 12.5, marginHorizontal: spacing.screenMargin, marginTop: 7 },
   bottomSpace: { height: spacing.sectionTop },

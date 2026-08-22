@@ -1,4 +1,5 @@
 import { Note } from '../../../domain/note/Note';
+import { Relation } from '../../../domain/relation/Relation';
 import type { RelationRepository } from '../../../domain/relation/repository/RelationRepository';
 import { makeFakeRepos } from '../../__tests__/fakes';
 import { ArchiveNoteService } from '../ArchiveNoteService';
@@ -36,6 +37,35 @@ describe('ArchiveNoteService', () => {
     expect(await repos.relationRepo.findById('relation-1')).toMatchObject({
       sourceType: 'record', sourceId: 'record-1', targetType: 'note',
       targetId: 'note-1', kind: 'logs',
+    });
+  });
+
+  it('archives without removing labels or existing links', async () => {
+    const repos = await makeFakeRepos();
+    const note = Note.create({ id: 'note-1', content: 'A linked note', now: createdAt });
+    note.addLabel('label-1');
+    await repos.noteRepo.save(note);
+    await repos.relationRepo.save(Relation.create({
+      id: 'existing-link',
+      sourceType: 'note',
+      sourceId: 'note-1',
+      targetType: 'goal',
+      targetId: 'goal-1',
+      kind: 'relatesTo',
+      now: createdAt,
+    }));
+
+    await makeService(repos).setArchived({
+      noteId: 'note-1', archived: true, recordId: 'record-1',
+      recordRelationId: 'archive-log', now,
+    });
+
+    expect(await repos.noteRepo.findById('note-1')).toMatchObject({
+      archived: true, labelIds: ['label-1'],
+    });
+    expect(await repos.relationRepo.findById('existing-link')).toMatchObject({
+      sourceType: 'note', sourceId: 'note-1', targetType: 'goal',
+      targetId: 'goal-1', kind: 'relatesTo',
     });
   });
 

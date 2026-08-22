@@ -42,12 +42,14 @@ describe('NotesPage', () => {
     setup();
     expect(within(await screen.findByTestId('note-group-pinned')).getByText('Pinned method')).toBeTruthy();
     expect(screen.getByText(/Growth · Pinned/)).toBeTruthy();
+    expect(screen.getByTestId('note-pin-marker-pinned')).toBeTruthy();
     expect(within(screen.getByTestId('note-group-active')).getByText('Active thought')).toBeTruthy();
 
     fireEvent.press(screen.getByTestId('notes-segmented-archived'));
     expect(within(screen.getByTestId('note-group-archived')).getByText('Archived thought')).toBeTruthy();
     expect(within(screen.getByTestId('note-row-archived')).getByText(/^Archived (now|\d)/)).toBeTruthy();
     expect(screen.queryByText(/Pinned 2 d ago/)).toBeNull();
+    expect(screen.queryByTestId('note-pin-marker-archived')).toBeNull();
   });
 
   it('captures a note, clears the input, returns to Active, and refreshes', async () => {

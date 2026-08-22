@@ -57,7 +57,9 @@
 
 - [x] `ideas-workflow` §5.1–§5.4。
 - [x] `notes` §5.1–§5.4；执行 §5.3 时与 Ideas 的 Create from Idea 流程合并验收。
-- [ ] `ideas-workflow` §6、`notes` §6。
+- [x] `ideas-workflow` §6、`notes` §6。
+
+验收记录：已按冻结 §6、Ideas/Notes 原型及本周期“保留 Note 派生”裁决完成独立核查；Library 导航、Ideas 分组/状态编辑、Goal/Task/Note 派生与 Task 必选 Project、handled/关系/双侧 activity、Notes Active/Archived/Pinned、Linked/归档/置顶语义及 SQLite 回滚均有自动验证。对照原型补齐 Pinned 行的 pin 标记，并增加归档后 labels/links 保留的 SQLite-backed 回归测试。`npm run typecheck` 通过；`npm test -- --runInBand` 通过（82 suites / 490 tests）。
 
 ### 6. Universal Capture
 
