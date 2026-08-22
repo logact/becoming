@@ -88,7 +88,7 @@
 ### 5. Goal Project Management 领域、应用与读模型
 
 - [x] `goal-project-management` §2。
-- [ ] `goal-project-management` §3。
+- [x] `goal-project-management` §3。
 - [ ] `goal-project-management` §4。
 - [ ] `goal-project-management` §5。
 
@@ -97,6 +97,12 @@
 - `Project.create` 与 `rename` 一致拒绝空白名称；`Project.activate` 仅允许 `planning` / `paused` 转为 `active`，并拒绝 `active` / `done` / `failed`，失败时保留原状态与 `updatedAt`。
 - 保留 Project Due 严格早于 serving Goal Due 的不变量，以及 `Goal.activateProject` 的归属校验、旧方案暂停与新方案激活行为。
 - focused：2 suites / 50 tests 通过；`npm run typecheck` 通过；full suite：92 suites / 613 tests 通过，0 snapshots。
+
+§3 验证证据（2026-08-22）：
+
+- 新增独立 `CreateGoalProjectService`：载入并校验 serving Goal，通过 `Project.create` 构造永久关联 Goal 的 `planning` Project，传入 Goal Due 执行严格早于约束，并返回新 Project ID。
+- Project、`projectCreated` immutable Record 与 Goal / Project 两条 `logs` Relation 全部由同一 `TransactionRunner` 原子写入；unknown / archived Goal、空白名称、等于或晚于 Goal Due 均在任何写入前拒绝，第二条 timeline Relation 失败时完整回滚。
+- SQLite-backed focused：1 suite / 9 tests 通过；`npm run typecheck` 通过；full suite 首跑遇到无关 `CaptureComposer` async timing 失败，该 suite 单独复跑通过，随后 full suite：93 suites / 622 tests 通过，0 snapshots。
 
 ### 6. Goal Project Management UI 与接线
 
