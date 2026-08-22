@@ -30,4 +30,16 @@ export class NodeSqliteDatabase implements SqliteDatabase {
     const row = this.db.prepare(sql).get(...params);
     return row === undefined ? null : (row as unknown as T);
   }
+
+  async transaction<T>(work: () => Promise<T>): Promise<T> {
+    this.db.exec('BEGIN');
+    try {
+      const result = await work();
+      this.db.exec('COMMIT');
+      return result;
+    } catch (cause: unknown) {
+      this.db.exec('ROLLBACK');
+      throw cause;
+    }
+  }
 }

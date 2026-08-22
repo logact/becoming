@@ -21,6 +21,14 @@ export class ExpoSqliteDatabase implements SqliteDatabase {
   async first<T>(sql: string, params: SqlValue[] = []): Promise<T | null> {
     return this.db.getFirstAsync<T>(sql, params);
   }
+
+  async transaction<T>(work: () => Promise<T>): Promise<T> {
+    let result!: T;
+    await this.db.withTransactionAsync(async () => {
+      result = await work();
+    });
+    return result;
+  }
 }
 
 /**

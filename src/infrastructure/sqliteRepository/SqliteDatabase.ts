@@ -15,4 +15,6 @@ export interface SqliteDatabase {
   all<T>(sql: string, params?: SqlValue[]): Promise<T[]>;
   /** Runs a query and returns the first row, or null when there is none. */
   first<T>(sql: string, params?: SqlValue[]): Promise<T | null>;
+  /** Runs all work on this connection in one commit/rollback boundary. */
+  transaction<T>(work: () => Promise<T>): Promise<T>;
 }

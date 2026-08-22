@@ -19,7 +19,14 @@ import { SqliteRecordRepository } from '../../infrastructure/sqliteRepository/Sq
 import { SqliteRelationRepository } from '../../infrastructure/sqliteRepository/SqliteRelationRepository';
 import { SqliteResourceRepository } from '../../infrastructure/sqliteRepository/SqliteResourceRepository';
 import { SqliteTaskRepository } from '../../infrastructure/sqliteRepository/SqliteTaskRepository';
+import { SqliteTransactionRunner } from '../../infrastructure/sqliteRepository/SqliteTransactionRunner';
 import { migrate } from '../../infrastructure/sqliteRepository/schema';
+import type { TransactionRunner } from '../shared/TransactionRunner';
+
+/** Lightweight runner for unit tests that do not need rollback semantics. */
+export const immediateTransactionRunner: TransactionRunner = {
+  run: <T>(work: () => Promise<T>): Promise<T> => work(),
+};
 
 export interface TestRepositories {
   attentionEntryRepo: AttentionEntryRepository;
@@ -32,6 +39,7 @@ export interface TestRepositories {
   relationRepo: RelationRepository;
   resourceRepo: ResourceRepository;
   taskRepo: TaskRepository;
+  transactionRunner: TransactionRunner;
 }
 
 /**
@@ -54,5 +62,6 @@ export async function makeFakeRepos(): Promise<TestRepositories> {
     relationRepo: new SqliteRelationRepository(db),
     resourceRepo: new SqliteResourceRepository(db),
     taskRepo: new SqliteTaskRepository(db),
+    transactionRunner: new SqliteTransactionRunner(db),
   };
 }

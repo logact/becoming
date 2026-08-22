@@ -36,6 +36,23 @@ describe('Relation', () => {
     expect(relation.sourceId).not.toBe(relation.targetId);
   });
 
+  it.each(['goal', 'task', 'note'] as const)('creates a %s derived-from-Idea relation', (sourceType) => {
+    const relation = Relation.derivedFromIdea({
+      id: `rel-${sourceType}`,
+      sourceType,
+      sourceId: `${sourceType}-1`,
+      ideaId: 'idea-1',
+      now,
+    });
+    expect(relation).toMatchObject({
+      sourceType,
+      sourceId: `${sourceType}-1`,
+      targetType: 'idea',
+      targetId: 'idea-1',
+      kind: 'derivedFrom',
+    });
+  });
+
   it('rejects a relation linking a model to itself', () => {
     expect(() =>
       Relation.create({

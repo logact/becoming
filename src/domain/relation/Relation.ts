@@ -2,6 +2,7 @@ import { DomainError } from '../shared/errors';
 import type { RelationId } from '../shared/ids';
 
 export type RelationEndType = 'goal' | 'task' | 'idea' | 'project' | 'resource' | 'note' | 'record';
+export type IdeaDerivedType = 'goal' | 'task' | 'note';
 
 /**
  * A directed link between two core models (e.g. a task derived from an idea,
@@ -52,6 +53,24 @@ export class Relation {
       params.detail,
 
     );
+  }
+
+  static derivedFromIdea(params: {
+    id: RelationId;
+    sourceType: IdeaDerivedType;
+    sourceId: string;
+    ideaId: string;
+    now: Date;
+  }): Relation {
+    return Relation.create({
+      id: params.id,
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+      targetType: 'idea',
+      targetId: params.ideaId,
+      kind: 'derivedFrom',
+      now: params.now,
+    });
   }
 
   /** Rebuilds from persistence; no invariants enforced beyond construction. */

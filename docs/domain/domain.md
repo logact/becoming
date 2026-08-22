@@ -2,7 +2,7 @@
 The project has the following core model:
 1. Goal: target state aim to achieve. A goal may have multiple projects (different plans); its active project is the one of its projects whose status is `active`. A goal with a `projectId` is a sub-goal decomposed inside that project; `parentGoalId` carries the goal-tree structure. A top-level goal has neither.
 3. Task: the action to implement some goal. A task always belongs to a project (`projectId`, required); within the project it may name the goal it implements (`goalId`, optional — a task without one is treated as hanging under the project's root goal) and link to a milestone (`milestoneId`, optional).
-2. Idea: casually written idea , maybe later transformed to any other model
+2. Idea: a casually captured thought that may later be developed into another model. Its workflow status is user-controlled: `captured`, `exploring`, `paused`, or `handled`. `handled` means the thought has been processed into useful outcomes; it is not archived and may still derive more Goals, Tasks, or Notes.
 4. Project: a container that manage the goal's status and how the goal decompose to subgoals and manage the task to implement thess task. A goal may have mutilp project(that means the goal have different plan)
 5. Resource: the resource a project can allocate. Three parts:
    - ResourceType: a user-defined kind of resource; kind is `quantity` or `time`, and it owns the unit (e.g. 'USD', 'minutes').
@@ -41,3 +41,4 @@ Archive is a indepent filed so that when archieve a item we won't cover its stat
 5. `Goal.activateProject(project, currentActive, now)` enforces decision 4: it pauses the previously active project before activating the new one.
 6. Project `complete()`: active → done.
 7. Goal-scoped activity: `RecordRepository.listByTarget` matches relations where the record is either the source or the target end.
+8. Idea derivation is represented only by a directed Relation: the new model is the source and the preserved Idea is the target (`goal|task|note --derivedFrom--> idea`). The Idea does not store derived IDs, and derived models do not store an Idea ID.

@@ -43,6 +43,14 @@ the bottom navigation has the buttons (Dashboard,Library,Setting)
    Task detail shows project/goal context, description, immutable execution records,
    and only the lifecycle actions valid for its current status.
 
+4. Ideas page supports capture and workflow triage:
+   1. Open contains non-archived `captured`, `exploring`, and `paused` Ideas, grouped as To process, Exploring, and Paused.
+   2. Handled contains non-archived `handled` Ideas. Handled means processed, not archived; a handled Idea remains available for further derivation.
+   3. Each row opens Idea detail, while its separate `+` action opens Create from Idea without triggering row navigation.
+   4. Recent activity contains Idea record kinds and appears at the bottom of the page.
+
+   Idea detail presents the complete content, labels, update time, and a status picker in which all four statuses are directly selectable. Create from this idea offers Goal, Task, and Note. The original Idea is preserved and each new item links back through `goal|task|note --derivedFrom--> idea`; creating an item moves the Idea to Handled without preventing later derivations. Created items and Idea-related activity remain visible on the detail page.
+
 
 
 ## Show Recent Activity under each model pages

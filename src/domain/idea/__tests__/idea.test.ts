@@ -25,11 +25,40 @@ describe('Idea', () => {
     expect(idea.status).toBe('exploring');
   });
 
-  it('rejects invalid transitions', () => {
+  it.each(['captured', 'exploring', 'paused', 'handled'] as const)(
+    'lets the user switch directly to %s',
+    (status) => {
+      const idea = Idea.restore({
+        id: 'i1',
+        content: 'App for habits',
+        status: status === 'captured' ? 'handled' : 'captured',
+        archived: false,
+        labelIds: [],
+        createdAt: t0,
+        updatedAt: t0,
+      });
+      idea.changeStatus(status, t1);
+      expect(idea.status).toBe(status);
+      expect(idea.updatedAt).toBe(t1);
+    },
+  );
+
+  it('provides semantic wrappers for every status', () => {
     const idea = Idea.create({ id: 'i1', content: 'App for habits', now: t0 });
-    expect(() => idea.pause(t1)).toThrow(DomainError);
     idea.explore(t1);
-    expect(() => idea.explore(t2)).toThrow(DomainError);
+    expect(idea.status).toBe('exploring');
+    idea.pause(t1);
+    expect(idea.status).toBe('paused');
+    idea.handle(t2);
+    expect(idea.status).toBe('handled');
+    idea.returnToInbox(t2);
+    expect(idea.status).toBe('captured');
+  });
+
+  it('does not update updatedAt when status stays the same', () => {
+    const idea = Idea.create({ id: 'i1', content: 'App for habits', now: t0 });
+    idea.changeStatus('captured', t1);
+    expect(idea.updatedAt).toBe(t0);
   });
 
   it('archives without touching status', () => {
@@ -46,9 +75,15 @@ describe('Idea', () => {
   it('edits content but rejects empty content', () => {
     const idea = Idea.create({ id: 'i1', content: 'App for habits', now: t0 });
     expect(() => idea.edit('   ', t1)).toThrow(DomainError);
-    idea.edit('App for goals', t1);
+    idea.edit('  App for goals  ', t1);
     expect(idea.content).toBe('App for goals');
     expect(idea.updatedAt).toBe(t1);
+  });
+
+  it('rejects blank creation and trims content', () => {
+    expect(() => Idea.create({ id: 'i1', content: '   ', now: t0 })).toThrow(DomainError);
+    expect(Idea.create({ id: 'i2', content: '  Useful thought  ', now: t0 }).content)
+      .toBe('Useful thought');
   });
 
   it('adds and removes labels idempotently', () => {

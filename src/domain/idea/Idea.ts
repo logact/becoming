@@ -10,7 +10,7 @@ export class Idea {
     readonly id: IdeaId,
     /** The idea's text; must not be blank. */
     private _content: string,
-    /** Lifecycle status, changed only through explore/pause. */
+    /** User-controlled workflow classification. */
     private _status: IdeaStatus,
     /** Independent archive flag; archiving never overwrites the status. */
     private _archived: boolean,
@@ -23,7 +23,11 @@ export class Idea {
   ) {}
 
   static create(params: { id: IdeaId; content: string; now: Date }): Idea {
-    return new Idea(params.id, params.content, 'captured', false, [], params.now, params.now);
+    const content = params.content.trim();
+    if (content.length === 0) {
+      throw new DomainError('Idea content must not be empty');
+    }
+    return new Idea(params.id, content, 'captured', false, [], params.now, params.now);
   }
 
   /** Rebuilds from persistence; no invariants enforced beyond construction. */
@@ -63,29 +67,35 @@ export class Idea {
     return this._updatedAt;
   }
 
-  /** captured|paused → exploring */
-  explore(now: Date): void {
-    if (this._status === 'exploring') {
-      throw new DomainError('Idea is already exploring');
-    }
-    this._status = 'exploring';
+  /** Changes the user-controlled workflow classification; same-state is a no-op. */
+  changeStatus(next: IdeaStatus, now: Date): void {
+    if (next === this._status) return;
+    this._status = next;
     this._updatedAt = now;
   }
 
-  /** exploring → paused */
+  explore(now: Date): void {
+    this.changeStatus('exploring', now);
+  }
+
   pause(now: Date): void {
-    if (this._status !== 'exploring') {
-      throw new DomainError(`Cannot pause Idea from ${this._status}`);
-    }
-    this._status = 'paused';
-    this._updatedAt = now;
+    this.changeStatus('paused', now);
+  }
+
+  handle(now: Date): void {
+    this.changeStatus('handled', now);
+  }
+
+  returnToInbox(now: Date): void {
+    this.changeStatus('captured', now);
   }
 
   edit(content: string, now: Date): void {
-    if (content.trim().length === 0) {
+    const trimmed = content.trim();
+    if (trimmed.length === 0) {
       throw new DomainError('Idea content must not be empty');
     }
-    this._content = content;
+    this._content = trimmed;
     this._updatedAt = now;
   }
 
