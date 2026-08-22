@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React, { useState } from 'react';
 import { View } from 'react-native';
 
@@ -165,8 +165,10 @@ describe('CaptureComposer', () => {
     expect(screen.getByTestId('capture-composer')).toBeTruthy();
     expect(screen.getByTestId('capture-submit').props.accessibilityState.busy).toBe(true);
 
-    resolve?.();
-    await waitFor(() => expect(screen.queryByTestId('capture-composer')).toBeNull());
+    await act(async () => {
+      resolve?.();
+    });
+    expect(screen.queryByTestId('capture-composer')).toBeNull();
   });
 
   it('keeps the draft and shows an inline error when saving fails', async () => {
