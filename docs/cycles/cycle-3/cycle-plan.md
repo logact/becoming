@@ -155,9 +155,17 @@
 
 - [x] `goal-project-management` §8。
 - [x] `start-time-and-date-input` §9。
-- [ ] 按 `goal-project-management` §9、`start-time-and-date-input` §10 完成独立验收。
+- [x] 按 `goal-project-management` §9、`start-time-and-date-input` §10 完成独立验收。
 - [ ] 对三份冻结计划执行跨计划集成回归，运行 `npm run typecheck` 与 `npm test -- --runInBand`。
 - [ ] 生成 `docs/cycles/cycle-3/cycle-report.md`，按 domain、application、infrastructure、UI 分层记录产出、验证、偏差、遗留项及任务 commit。
+
+联合独立验收证据（2026-08-22）：
+
+- 逐项复核 `goal-project-management` §9：Goal detail 的 New Project entry 在有/无 Project 时恒定存在；domain / application 双层拒绝空白名称与不合法 Due，新建 Project 永久归属 Goal 且默认为 `planning`。Goal-detail read model 只返回所属 Goal 的 non-archived Projects，并只将 `planning` / `paused` 标记为可选；UI 将 active 显示为 selected / disabled，首次选择直接执行，替换 active 时先确认。service 继续显式拒绝 archived / done / failed / foreign / unknown / already-active Project 及 unknown / archived Goal，并通过同一 SQLite transaction 原子暂停旧 active、激活所选项、写 immutable Record 与 Goal / selected Project 两条 timeline Relation；creation 同样原子写 Project、Record 及 Goal / new Project timelines。成功后 sheet 关闭、detail 刷新并更新 Project 列表 / Current plan marker；Dashboard 与 Library 复用同一个 Goal route wrapper 及同一组 production services，SQLite-backed composition regression 从两条 route 验证真实写入。`git diff 3c7a504..a486b71` 确认该 feature 未修改 schema / migration / SQLite repository。
+- 逐项复核 `start-time-and-date-input` §10：Goal / Task 的 optional `startAt` / `due` 由 domain `setSchedule` 原子 set / change / clear，按本地日历日校验 `startAt <= due` 并接受同日时分倒序；`isReadyToStart` 只派生 non-archived `todo`，不改变 lifecycle。Dashboard / Goals / Tasks 均保留 failed、overdue / dueSoon、resource exhaustion、ready-to-start、pinned 优先级与单 target 去重，ready 项按最早 `startAt` 排序；scheduled `todo` 不进入 Doing，显式 Start 行为不变。SQLite fresh DDL、v4 conditional migration、repository epoch-ms mapping 覆盖 populated / absent 往返、v3 数据保留及单列 partial migration healing。Schedule services 覆盖四种 optional 组合、unknown / archived、linked immutable activity 及 late Relation failure rollback。
+- Shared `DatePickerRow` 审核覆盖 date / datetime、本地 calendar / minute preservation、iOS draft Done / Cancel / backdrop、Android atomic date→time dialog、empty optional today seed、bounds、optional explicit Clear、required no-Clear 与 disabled 状态。Create from Idea、Add to plan、Milestone、Project Due、Allocate resource、Goal / Task detail 全部使用 native picker；structured Goal / Task creation 传递 semantic `Date`，Quick Capture / CaptureComposer 未增加 schedule。production `rg` 未发现 `YYYY-MM-DD` / `YYYY-MM-DD HH:mm` 指引、date text parser 或手工 date TextInput。
+- 文档审核发现并修正 1 处矛盾：`docs/domain/domain.md` 的 AttentionEntry glossary 原先漏列 ready-to-start；现已与后文 domain rule 和 design 文档一致。未发现代码或测试缺口，也未产生实现偏差。
+- focused domain / application / infrastructure / UI / composition：32 suites / 302 tests 通过，0 snapshots；`npm run typecheck` 通过；full suite：95 suites / 657 tests 通过，0 snapshots；`git diff --check` 通过。
 
 `goal-project-management` §8 验证证据（2026-08-22）：
 

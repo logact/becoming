@@ -10,7 +10,7 @@ The project has the following core model:
    - ResourceAllocation: a portion of a pool assigned to a project. Quantity allocations carry an amount; time allocations carry a minute-precision span (part of a day or several days) whose amount equals its duration. Time spans never overlap.
 6. Note: an extracted thought or methodology. Its content is non-empty and trimmed. `pinnedAt` records the most recent pin action; pin and unpin do not change `updatedAt`, while pinning an already pinned Note refreshes `pinnedAt`. Archive and pin are independent, so archiving preserves `pinnedAt`.
 7. Record: System model's change ,user's record have done for some tasks.
-8. AttentionEntry: the user intent for the dashboard attention section. kind 'pin'(user added the item) or 'dismiss'(user hid the item); rule-derived attention items(failed/overdue/resource-exhausted) are computed, not stored.
+8. AttentionEntry: the user intent for the dashboard attention section. kind 'pin'(user added the item) or 'dismiss'(user hid the item); rule-derived attention items (failed, overdue/due-soon, resource-exhausted, and ready-to-start) are computed, not stored.
 9. Milestone: a named date inside a project (`projectId`, required). It has no status of its own — Reached/Upcoming is derived by comparing its date with now. Goals and tasks of the project link to it via their optional `milestoneId`, anchoring the project's roadmap.
 
 ## Other models
