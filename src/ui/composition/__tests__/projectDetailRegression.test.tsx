@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
+import { Pressable } from 'react-native';
 
 import { makeFakeRepos } from '../../../application/__tests__/fakes';
 import { AddMilestoneService } from '../../../application/project/AddMilestoneService';
@@ -11,11 +12,21 @@ import { ConsumeResourceService } from '../../../application/resource/ConsumeRes
 import { Goal } from '../../../domain/goal/Goal';
 import { Project } from '../../../domain/project/Project';
 import { appDestinations } from '../../appDestinations';
-import { NavigationShell } from '../../navigation/NavigationShell';
+import { NavigationShell, useShellNavigation } from '../../navigation/NavigationShell';
 import { AppServicesProvider, type AppServices } from '../AppServicesProvider';
 import { seedDevData } from '../devSeed';
 
 const now = new Date('2026-08-22T08:00:00Z');
+
+function DashboardProjectLauncher() {
+  const navigation = useShellNavigation();
+  return (
+    <Pressable
+      testID="dashboard-open-project"
+      onPress={() => navigation.pushScreen('project:project-1')}
+    />
+  );
+}
 
 describe('Project detail regression composition', () => {
   it('keeps the dev seed populated for the project detail prototype', async () => {
@@ -148,5 +159,51 @@ describe('Project detail regression composition', () => {
       }),
     ).toHaveLength(1);
     expect(await screen.findByTestId(`plan-task-${task.id}`)).toBeTruthy();
+  });
+
+  it('keeps nested Project routes on the Dashboard destination stack', async () => {
+    const repos = await makeFakeRepos();
+    await repos.goalRepo.save(Goal.create({ id: 'goal-1', title: 'Ship the plan', now }));
+    await repos.projectRepo.save(
+      Project.create({ id: 'project-1', name: 'Release plan', goalId: 'goal-1', now }),
+    );
+    const services = {
+      projectDetail: new ProjectDetailService(
+        repos.projectRepo,
+        repos.goalRepo,
+        repos.taskRepo,
+        repos.resourceRepo,
+        repos.recordRepo,
+        repos.milestoneRepo,
+      ),
+      addSubGoal: new AddSubGoalService(repos.projectRepo, repos.goalRepo),
+      addTask: new AddTaskService(
+        repos.projectRepo,
+        repos.goalRepo,
+        repos.taskRepo,
+        repos.recordRepo,
+        repos.relationRepo,
+      ),
+      addMilestone: new AddMilestoneService(repos.projectRepo, repos.milestoneRepo),
+      resourcePools: { list: jest.fn(async () => []) },
+      allocateResource: { allocate: jest.fn(async () => undefined) },
+    } as unknown as AppServices;
+    const dashboard = appDestinations().find((destination) => destination.id === 'dashboard');
+    if (dashboard === undefined) throw new Error('Dashboard destination missing');
+
+    render(
+      <AppServicesProvider services={services}>
+        <NavigationShell destinations={[
+          { ...dashboard, renderList: () => <DashboardProjectLauncher /> },
+        ]} />
+      </AppServicesProvider>,
+    );
+
+    fireEvent.press(screen.getByTestId('dashboard-open-project'));
+    expect(await screen.findByTestId('project-detail-page')).toBeTruthy();
+    fireEvent.press(await screen.findByTestId('add-plan-item-goal-1'));
+
+    expect(await screen.findByTestId('add-plan-item-page')).toBeTruthy();
+    expect(screen.queryByTestId('dashboard-open-project')).toBeNull();
   });
 });

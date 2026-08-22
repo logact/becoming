@@ -3,6 +3,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { appDestinations } from '../../appDestinations';
 import type { AppServices } from '../../composition/AppServicesProvider';
 import { AppServicesProvider } from '../../composition/AppServicesProvider';
 import { ToastProvider } from '../../shared/Toast';
@@ -54,6 +55,11 @@ function DetailRouteLaunchers() {
       ))}
     </View>
   );
+}
+
+function UnknownRouteLauncher() {
+  const navigation = useShellNavigation();
+  return <Pressable testID="open-unknown" onPress={() => navigation.pushScreen('unknown-route')} />;
 }
 
 function detailDestinations(): ShellDestination[] {
@@ -282,5 +288,59 @@ describe('NavigationShell', () => {
     await waitFor(() => expect(services.quickCapture.capture).toHaveBeenCalledWith(
       expect.objectContaining({ intent: 'goal', content: 'A goal' }),
     ));
+  });
+});
+
+describe('app destination entity routes', () => {
+  function destination(id: 'dashboard' | 'library'): ShellDestination {
+    const result = appDestinations().find((item) => item.id === id);
+    if (result === undefined) throw new Error(`${id} destination missing`);
+    return result;
+  }
+
+  it.each([
+    'project:project-1',
+    'project:project-1:add-plan-item:parent=goal-1',
+    'project:project-1:allocate-resource',
+    'task:task-1',
+    'idea:idea-1',
+    'note:note-1',
+  ])('shares the %s entity screen implementation between Dashboard and Library', (route) => {
+    const dashboardRoute = destination('dashboard').renderScreen?.(route);
+    const libraryRoute = destination('library').renderScreen?.(route);
+
+    expect(dashboardRoute).not.toBeNull();
+    expect(libraryRoute).not.toBeNull();
+    expect(dashboardRoute?.type).toBe(libraryRoute?.type);
+  });
+
+  it('shares Goal detail rendering between Dashboard and Library', () => {
+    const dashboardRoute = destination('dashboard').renderDetail?.('goal-1');
+    const libraryRoute = destination('library').renderDetail?.('goal-1');
+
+    expect(dashboardRoute).not.toBeNull();
+    expect(dashboardRoute?.type).toBe(libraryRoute?.type);
+  });
+
+  it('keeps attention-pin Dashboard-only and preserves Library collection routes', () => {
+    expect(destination('dashboard').renderScreen?.('attention-pin')).not.toBeNull();
+    expect(destination('library').renderScreen?.('attention-pin')).toBeNull();
+
+    for (const route of ['goals', 'tasks', 'ideas', 'notes', 'projects']) {
+      expect(destination('library').renderScreen?.(route)).not.toBeNull();
+      expect(destination('dashboard').renderScreen?.(route)).toBeNull();
+    }
+  });
+
+  it('renders no pushed content and does not crash for an unknown route', () => {
+    const dashboard = destination('dashboard');
+    render(
+      <NavigationShell destinations={[{ ...dashboard, renderList: () => <UnknownRouteLauncher /> }]} />,
+    );
+
+    fireEvent.press(screen.getByTestId('open-unknown'));
+
+    expect(screen.queryByTestId('open-unknown')).toBeNull();
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
   });
 });

@@ -61,7 +61,7 @@ function LibraryNotesScreen() {
   return <NotesPage overview={services.notesOverview} capture={services.captureNote} />;
 }
 
-function LibraryNoteDetailScreen({ noteId }: { noteId: string }) {
+function EntityNoteDetailScreen({ noteId }: { noteId: string }) {
   const services = useAppServices();
   return (
     <NoteDetailPage
@@ -77,7 +77,7 @@ function LibraryNoteDetailScreen({ noteId }: { noteId: string }) {
   );
 }
 
-function LibraryIdeaDetailScreen({ ideaId }: { ideaId: string }) {
+function EntityIdeaDetailScreen({ ideaId }: { ideaId: string }) {
   const services = useAppServices();
   return (
     <IdeaDetailPage
@@ -93,13 +93,13 @@ function LibraryIdeaDetailScreen({ ideaId }: { ideaId: string }) {
   );
 }
 
-function LibraryTaskDetailScreen({ taskId }: { taskId: string }) {
+function EntityTaskDetailScreen({ taskId }: { taskId: string }) {
   const services = useAppServices();
   return <TaskDetailPage taskId={taskId} detail={services.taskDetail} lifecycle={services.taskLifecycle} />;
 }
 
-/** Library detail: a single goal, pushed via the shell's renderDetail. */
-function LibraryGoalDetailPage({ goalId }: { goalId: string }) {
+/** Goal detail shared by every destination that can open a Goal entity. */
+function EntityGoalDetailPage({ goalId }: { goalId: string }) {
   const services = useAppServices();
   return <GoalDetailPage goalId={goalId} detail={services.goalDetail} />;
 }
@@ -110,7 +110,7 @@ function LibraryGoalDetailPage({ goalId }: { goalId: string }) {
  * `project:<id>:allocate-resource` screens (the projectId and the optional
  * add-plan-item params are parsed from the screenId).
  */
-function LibraryProjectScreen({ screenId }: { screenId: string }) {
+function EntityProjectScreen({ screenId }: { screenId: string }) {
   const services = useAppServices();
   const rest = screenId.slice('project:'.length);
   if (rest.includes(':add-plan-item')) {
@@ -150,13 +150,28 @@ function LibraryProjectScreen({ screenId }: { screenId: string }) {
   return <ProjectDetailPage projectId={rest} detail={services.projectDetail} />;
 }
 
+/** Entity-detail routes shared by Dashboard and Library destination stacks. */
+function renderEntityScreen(screenId: string): React.ReactElement | null {
+  return screenId.startsWith('project:') ? (
+    <EntityProjectScreen screenId={screenId} />
+  ) : screenId.startsWith('task:') ? (
+    <EntityTaskDetailScreen taskId={screenId.slice('task:'.length)} />
+  ) : screenId.startsWith('idea:') ? (
+    <EntityIdeaDetailScreen ideaId={screenId.slice('idea:'.length)} />
+  ) : screenId.startsWith('note:') ? (
+    <EntityNoteDetailScreen noteId={screenId.slice('note:'.length)} />
+  ) : null;
+}
+
+function renderGoalDetail(entityId: string): React.ReactElement {
+  return <EntityGoalDetailPage goalId={entityId} />;
+}
+
 /**
  * Top-level destinations of the app shell. The dashboard renders its real
- * page and the "Pin to attention" pushed screen; Library renders its hub,
- * pushes the goals and projects screens from their rows, project detail as
- * the `project:<id>` screen (with the add-plan-item and allocate-resource
- * screens behind it), and goal detail on top; Setting still renders
- * PlaceholderPage until its task lands.
+ * page, the "Pin to attention" pushed screen, and shared entity details;
+ * Library renders its hub and collection screens plus the same entity-detail
+ * routes. Setting still renders PlaceholderPage until its task lands.
  */
 export function appDestinations(): ShellDestination[] {
   return [
@@ -165,7 +180,9 @@ export function appDestinations(): ShellDestination[] {
       title: 'Dashboard',
       icon: 'grid',
       renderList: () => <DashboardPage />,
-      renderScreen: (screenId) => (screenId === 'attention-pin' ? <AttentionPinPage /> : null),
+      renderScreen: (screenId) =>
+        screenId === 'attention-pin' ? <AttentionPinPage /> : renderEntityScreen(screenId),
+      renderDetail: renderGoalDetail,
     },
     {
       id: 'library',
@@ -183,16 +200,8 @@ export function appDestinations(): ShellDestination[] {
           <LibraryNotesScreen />
         ) : screenId === 'projects' ? (
           <LibraryProjectsScreen />
-        ) : screenId.startsWith('project:') ? (
-          <LibraryProjectScreen screenId={screenId} />
-        ) : screenId.startsWith('task:') ? (
-          <LibraryTaskDetailScreen taskId={screenId.slice('task:'.length)} />
-        ) : screenId.startsWith('idea:') ? (
-          <LibraryIdeaDetailScreen ideaId={screenId.slice('idea:'.length)} />
-        ) : screenId.startsWith('note:') ? (
-          <LibraryNoteDetailScreen noteId={screenId.slice('note:'.length)} />
-        ) : null,
-      renderDetail: (entityId) => <LibraryGoalDetailPage goalId={entityId} />,
+        ) : renderEntityScreen(screenId),
+      renderDetail: renderGoalDetail,
     },
     {
       id: 'setting',
