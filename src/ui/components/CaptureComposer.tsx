@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -139,114 +140,121 @@ export function CaptureComposer({
         pointerEvents="box-none"
         style={styles.keyboardLayer}
       >
-        <View
-          testID="capture-composer"
-          accessibilityViewIsModal
-          style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 14) }]}
+        <ScrollView
+          testID="capture-composer-scroll"
+          contentContainerStyle={styles.composerScroll}
+          keyboardShouldPersistTaps="handled"
+          style={styles.composerScrollView}
         >
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.title}>Capture</Text>
-              <Text style={styles.hint}>{COPY[intent].hint}</Text>
+          <View
+            testID="capture-composer"
+            accessibilityViewIsModal
+            style={[styles.composer, { paddingBottom: Math.max(insets.bottom, 14) }]}
+          >
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.title}>Capture</Text>
+                <Text style={styles.hint}>{COPY[intent].hint}</Text>
+              </View>
+              <Pressable
+                testID="capture-close"
+                accessibilityRole="button"
+                accessibilityLabel="Close capture"
+                disabled={submitting}
+                onPress={dismiss}
+                hitSlop={10}
+                style={({ pressed }) => [styles.close, pressed && styles.pressed]}
+              >
+                <Text style={styles.closeText}>×</Text>
+              </Pressable>
             </View>
+
+            <View accessibilityRole="radiogroup" style={styles.chips}>
+              {INTENTS.map((choice) => {
+                const selected = choice.intent === intent;
+                return (
+                  <Pressable
+                    key={choice.intent}
+                    testID={`capture-intent-${choice.intent}`}
+                    accessibilityRole="radio"
+                    accessibilityLabel={choice.label}
+                    accessibilityState={{ selected, disabled: submitting }}
+                    disabled={submitting}
+                    onPress={() => {
+                      setIntent(choice.intent);
+                      setError(null);
+                    }}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      selected && styles.chipSelected,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                      {choice.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <TextInput
+              ref={inputRef}
+              testID="capture-content-input"
+              accessibilityLabel="Capture content"
+              value={content}
+              editable={!submitting}
+              onChangeText={setContent}
+              placeholder={COPY[intent].placeholder}
+              placeholderTextColor={colors.faint}
+              multiline={intent === 'inbox' || intent === 'idea' || intent === 'note'}
+              returnKeyType={intent === 'task' || intent === 'goal' ? 'done' : 'default'}
+              style={styles.input}
+            />
+
+            {intent === 'task' ? (
+              <View style={styles.projectBlock}>
+                <Text style={styles.fieldLabel}>PROJECT · REQUIRED</Text>
+                {optionsLoading ? (
+                  <Text testID="capture-project-loading" style={styles.projectMessage}>Loading projects…</Text>
+                ) : optionsError !== null ? (
+                  <Text testID="capture-project-error" style={styles.error}>{optionsError}</Text>
+                ) : selectedProject === undefined ? (
+                  <Text testID="capture-project-empty" style={styles.projectMessage}>Create a project first.</Text>
+                ) : (
+                  <Pressable
+                    testID="capture-project-picker"
+                    accessibilityRole="button"
+                    accessibilityLabel={`Project, ${selectedProject.name}`}
+                    onPress={() => onRequestProjectPicker?.(projectId, setProjectId)}
+                    style={({ pressed }) => [styles.projectPicker, pressed && styles.pressed]}
+                  >
+                    <Text style={styles.projectName}>{selectedProject.name}</Text>
+                    <Text style={styles.projectStatus}>{selectedProject.status} · Change</Text>
+                  </Pressable>
+                )}
+              </View>
+            ) : null}
+
+            {error === null ? null : <Text testID="capture-submit-error" accessibilityRole="alert" style={styles.error}>{error}</Text>}
+
             <Pressable
-              testID="capture-close"
+              testID="capture-submit"
               accessibilityRole="button"
-              accessibilityLabel="Close capture"
-              disabled={submitting}
-              onPress={dismiss}
-              hitSlop={10}
-              style={({ pressed }) => [styles.close, pressed && styles.pressed]}
+              accessibilityLabel={COPY[intent].submit}
+              accessibilityState={{ disabled, busy: submitting }}
+              disabled={disabled}
+              onPress={() => { void submit(); }}
+              style={({ pressed }) => [
+                styles.submit,
+                disabled && styles.submitDisabled,
+                pressed && styles.pressed,
+              ]}
             >
-              <Text style={styles.closeText}>×</Text>
+              <Text style={styles.submitText}>{submitting ? 'Saving…' : COPY[intent].submit}</Text>
             </Pressable>
           </View>
-
-          <View accessibilityRole="radiogroup" style={styles.chips}>
-            {INTENTS.map((choice) => {
-              const selected = choice.intent === intent;
-              return (
-                <Pressable
-                  key={choice.intent}
-                  testID={`capture-intent-${choice.intent}`}
-                  accessibilityRole="radio"
-                  accessibilityLabel={choice.label}
-                  accessibilityState={{ selected, disabled: submitting }}
-                  disabled={submitting}
-                  onPress={() => {
-                    setIntent(choice.intent);
-                    setError(null);
-                  }}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    selected && styles.chipSelected,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                    {choice.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <TextInput
-            ref={inputRef}
-            testID="capture-content-input"
-            accessibilityLabel="Capture content"
-            value={content}
-            editable={!submitting}
-            onChangeText={setContent}
-            placeholder={COPY[intent].placeholder}
-            placeholderTextColor={colors.faint}
-            multiline={intent === 'inbox' || intent === 'idea' || intent === 'note'}
-            returnKeyType={intent === 'task' || intent === 'goal' ? 'done' : 'default'}
-            style={styles.input}
-          />
-
-          {intent === 'task' ? (
-            <View style={styles.projectBlock}>
-              <Text style={styles.fieldLabel}>PROJECT · REQUIRED</Text>
-              {optionsLoading ? (
-                <Text testID="capture-project-loading" style={styles.projectMessage}>Loading projects…</Text>
-              ) : optionsError !== null ? (
-                <Text testID="capture-project-error" style={styles.error}>{optionsError}</Text>
-              ) : selectedProject === undefined ? (
-                <Text testID="capture-project-empty" style={styles.projectMessage}>Create a project first.</Text>
-              ) : (
-                <Pressable
-                  testID="capture-project-picker"
-                  accessibilityRole="button"
-                  accessibilityLabel={`Project, ${selectedProject.name}`}
-                  onPress={() => onRequestProjectPicker?.(projectId, setProjectId)}
-                  style={({ pressed }) => [styles.projectPicker, pressed && styles.pressed]}
-                >
-                  <Text style={styles.projectName}>{selectedProject.name}</Text>
-                  <Text style={styles.projectStatus}>{selectedProject.status} · Change</Text>
-                </Pressable>
-              )}
-            </View>
-          ) : null}
-
-          {error === null ? null : <Text testID="capture-submit-error" accessibilityRole="alert" style={styles.error}>{error}</Text>}
-
-          <Pressable
-            testID="capture-submit"
-            accessibilityRole="button"
-            accessibilityLabel={COPY[intent].submit}
-            accessibilityState={{ disabled, busy: submitting }}
-            disabled={disabled}
-            onPress={() => { void submit(); }}
-            style={({ pressed }) => [
-              styles.submit,
-              disabled && styles.submitDisabled,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.submitText}>{submitting ? 'Saving…' : COPY[intent].submit}</Text>
-          </Pressable>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -256,6 +264,8 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, zIndex: 40 },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,30,24,0.38)' },
   keyboardLayer: { flex: 1, justifyContent: 'flex-end' },
+  composerScrollView: { flex: 1 },
+  composerScroll: { flexGrow: 1, justifyContent: 'flex-end' },
   composer: {
     backgroundColor: colors.panel,
     borderTopLeftRadius: 24,

@@ -66,7 +66,9 @@
 - [x] `universal-capture` §1–§2。
 - [x] `universal-capture` §3–§4。
 - [x] `universal-capture` §5–§6。
-- [ ] `universal-capture` §7 与原文“实施顺序”9。
+- [x] `universal-capture` §7 与原文“实施顺序”9。
+
+验收记录：独立逐项核查了冻结 §7 的自动与手工验收路径。Shell 测试覆盖 Dashboard / Library / Setting、Goal / Project / Task / Idea / Note pushed detail route、root/pushed safe-area offset、固定 FAB、普通 sheet 抑制、原 destination/stack 保留、正确 toast 与成功后的 revision 递增；Dashboard、Ideas、Goals、Tasks、Notes 均验证不 remount 刷新。Composer 覆盖自动 focus 所需结构、键盘缩小时可滚动到 input/chips/submit、safe-area padding、intent/input 保留、空白 disabled、重复提交/提交中关闭拦截、失败保留输入、成功/显式关闭 reset 与可访问状态；Task 覆盖 required Project picker、默认项、加载/失败/空列表禁用，以及无 Project 时切回 Decide later 继续保存。应用与 SQLite 测试覆盖 inbox/Idea、Goal、Task、Note 的 trim/创建映射、record + logs relation、Task unknown/archived Project 零写入、第二/第三次写入失败回滚及详情 activity 查询。为补齐键盘手工验收风险，composer 增加可滚动键盘容器。`npm run typecheck` 通过；`npm test -- --runInBand` 通过（87 suites / 534 tests）。
 
 ### 7. 全周期回归与交付
 

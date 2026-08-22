@@ -44,6 +44,17 @@ describe('CaptureFloatingButton', () => {
 });
 
 describe('CaptureComposer', () => {
+  it('keeps all controls reachable when the keyboard reduces the viewport', () => {
+    composer();
+
+    const scroll = screen.getByTestId('capture-composer-scroll');
+    expect(scroll.props.keyboardShouldPersistTaps).toBe('handled');
+    expect(scroll).toHaveStyle({ flex: 1 });
+    expect(screen.getByTestId('capture-content-input')).toBeTruthy();
+    expect(screen.getByTestId('capture-intent-inbox')).toBeTruthy();
+    expect(screen.getByTestId('capture-submit')).toBeTruthy();
+  });
+
   it('switches intents without losing text and reports selected/disabled accessibility state', () => {
     composer();
     const submit = screen.getByTestId('capture-submit');
@@ -110,6 +121,22 @@ describe('CaptureComposer', () => {
       />,
     );
     expect(screen.getByTestId('capture-project-empty')).toBeTruthy();
+  });
+
+  it('keeps the draft usable as Decide later when no Task Project exists', async () => {
+    const props = composer({ options: [] });
+    fireEvent.changeText(screen.getByTestId('capture-content-input'), 'Capture without a project');
+    fireEvent.press(screen.getByTestId('capture-intent-task'));
+    expect(screen.getByTestId('capture-submit').props.accessibilityState.disabled).toBe(true);
+
+    fireEvent.press(screen.getByTestId('capture-intent-inbox'));
+    expect(screen.getByTestId('capture-content-input').props.value).toBe('Capture without a project');
+    expect(screen.getByTestId('capture-submit').props.accessibilityState.disabled).toBe(false);
+    fireEvent.press(screen.getByTestId('capture-submit'));
+
+    await waitFor(() => expect(props.onSubmit).toHaveBeenCalledWith({
+      intent: 'inbox', content: 'Capture without a project',
+    }));
   });
 
   it('blocks duplicate submit and dismiss while saving, then resets after success', async () => {

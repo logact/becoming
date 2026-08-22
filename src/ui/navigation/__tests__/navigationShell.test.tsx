@@ -1,17 +1,21 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { AppServices } from '../../composition/AppServicesProvider';
 import { AppServicesProvider } from '../../composition/AppServicesProvider';
 import { ToastProvider } from '../../shared/Toast';
+import { useCaptureRevision } from '../CaptureRevision';
 import { NavigationShell, useShellNavigation, type ShellDestination } from '../NavigationShell';
 
 function FakeList({ id }: { id: string }) {
   const navigation = useShellNavigation();
+  const captureRevision = useCaptureRevision();
   return (
     <View>
       <Text testID={`${id}-list`}>{`${id} list`}</Text>
+      <Text testID={`${id}-revision`}>{captureRevision}</Text>
       <Pressable testID={`${id}-push`} onPress={() => navigation.pushScreen('x')} />
       <Pressable testID={`${id}-sheet`} onPress={() => navigation.presentSheet(<Text>Ordinary sheet</Text>)} />
     </View>
@@ -20,9 +24,11 @@ function FakeList({ id }: { id: string }) {
 
 function FakeScreen({ id }: { id: string }) {
   const navigation = useShellNavigation();
+  const captureRevision = useCaptureRevision();
   return (
     <View>
       <Text testID={`${id}-screen-x`}>{`${id} screen x`}</Text>
+      <Text testID={`${id}-screen-revision`}>{captureRevision}</Text>
       <Pressable testID={`${id}-back`} onPress={() => navigation.goBack()} />
     </View>
   );
@@ -38,6 +44,27 @@ function fakeDestinations(): ShellDestination[] {
   }));
 }
 
+function DetailRouteLaunchers() {
+  const navigation = useShellNavigation();
+  return (
+    <View>
+      <Pressable testID="open-goal-detail" onPress={() => navigation.openDetail('goal-1')} />
+      {(['project:project-1', 'task:task-1', 'idea:idea-1', 'note:note-1'] as const).map((route) => (
+        <Pressable key={route} testID={`open-${route}`} onPress={() => navigation.pushScreen(route)} />
+      ))}
+    </View>
+  );
+}
+
+function detailDestinations(): ShellDestination[] {
+  return [{
+    id: 'library', title: 'Library', icon: 'folder',
+    renderList: () => <DetailRouteLaunchers />,
+    renderDetail: (entityId) => <Text testID={`detail-goal-${entityId}`} />,
+    renderScreen: (screenId) => <Text testID={`detail-${screenId}`} />,
+  }];
+}
+
 function captureServices(overrides: Record<string, unknown> = {}): AppServices {
   return {
     quickCapture: { capture: jest.fn(async () => ({ entityType: 'idea', entityId: 'new' })) },
@@ -51,13 +78,22 @@ function captureServices(overrides: Record<string, unknown> = {}): AppServices {
   } as unknown as AppServices;
 }
 
-function renderCaptureShell(services = captureServices()) {
+function renderCaptureShell(
+  services = captureServices(),
+  bottomInset = 0,
+  destinations: ShellDestination[] = fakeDestinations(),
+) {
   render(
-    <ToastProvider>
-      <AppServicesProvider services={services}>
-        <NavigationShell destinations={fakeDestinations()} />
-      </AppServicesProvider>
-    </ToastProvider>,
+    <SafeAreaProvider initialMetrics={{
+      frame: { x: 0, y: 0, width: 390, height: 844 },
+      insets: { top: 47, right: 0, bottom: bottomInset, left: 0 },
+    }}>
+      <ToastProvider>
+        <AppServicesProvider services={services}>
+          <NavigationShell destinations={destinations} />
+        </AppServicesProvider>
+      </ToastProvider>
+    </SafeAreaProvider>,
   );
   return services;
 }
@@ -121,6 +157,29 @@ describe('NavigationShell', () => {
     expect(screen.getByTestId('capture-floating-button')).toHaveStyle({ bottom: 16 });
   });
 
+  it('adds the device bottom safe area to list and pushed-screen offsets', () => {
+    renderCaptureShell(captureServices(), 34);
+    expect(screen.getByTestId('capture-floating-button')).toHaveStyle({ bottom: 110 });
+
+    fireEvent.press(screen.getByTestId('dash-push'));
+    expect(screen.getByTestId('capture-floating-button')).toHaveStyle({ bottom: 50 });
+  });
+
+  it.each([
+    ['goal', 'open-goal-detail', 'detail-goal-goal-1'],
+    ['project', 'open-project:project-1', 'detail-project:project-1'],
+    ['task', 'open-task:task-1', 'detail-task:task-1'],
+    ['idea', 'open-idea:idea-1', 'detail-idea:idea-1'],
+    ['note', 'open-note:note-1', 'detail-note:note-1'],
+  ])('shows Capture on the pushed %s detail route', (_type, launcherId, detailId) => {
+    renderCaptureShell(captureServices(), 0, detailDestinations());
+    fireEvent.press(screen.getByTestId(launcherId));
+
+    expect(screen.getByTestId(detailId)).toBeTruthy();
+    expect(screen.getByTestId('capture-floating-button')).toHaveStyle({ bottom: 16 });
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
+  });
+
   it('hides Capture while an ordinary sheet is presented', () => {
     renderCaptureShell();
     fireEvent.press(screen.getByTestId('dash-sheet'));
@@ -134,6 +193,7 @@ describe('NavigationShell', () => {
     fireEvent.press(screen.getByText('Library'));
     fireEvent.press(screen.getByTestId('lib-push'));
     expect(screen.getByTestId('lib-screen-x')).toBeTruthy();
+    expect(screen.getByTestId('lib-screen-revision')).toHaveTextContent('0');
 
     fireEvent.press(screen.getByTestId('capture-floating-button'));
     expect(screen.queryByTestId('capture-floating-button')).toBeNull();
@@ -151,8 +211,29 @@ describe('NavigationShell', () => {
     }));
     expect(await screen.findByText('Note saved')).toBeTruthy();
     expect(screen.getByTestId('lib-screen-x')).toBeTruthy();
+    expect(screen.getByTestId('lib-screen-revision')).toHaveTextContent('1');
     expect(screen.queryByTestId('tab-bar')).toBeNull();
     expect(screen.getByTestId('capture-floating-button')).toHaveStyle({ bottom: 16 });
+  });
+
+  it.each([
+    ['inbox', 'Saved to inbox'],
+    ['idea', 'Idea captured'],
+    ['task', 'Task created'],
+    ['goal', 'Goal created'],
+    ['note', 'Note saved'],
+  ] as const)('submits the %s intent and shows its success toast', async (intent, message) => {
+    const services = renderCaptureShell();
+    fireEvent.press(screen.getByTestId('capture-floating-button'));
+    if (intent !== 'inbox') fireEvent.press(screen.getByTestId(`capture-intent-${intent}`));
+    fireEvent.changeText(screen.getByTestId('capture-content-input'), `${intent} content`);
+    if (intent === 'task') await screen.findByText('Current project');
+    fireEvent.press(screen.getByTestId('capture-submit'));
+
+    await waitFor(() => expect(services.quickCapture.capture).toHaveBeenCalledWith(
+      expect.objectContaining({ intent, content: `${intent} content` }),
+    ));
+    expect(await screen.findByText(message)).toBeTruthy();
   });
 
   it('keeps an unfinished draft when the underlying stack changes', async () => {
