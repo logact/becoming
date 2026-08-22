@@ -45,7 +45,7 @@
 
 ### 3. Ideas 应用层
 
-- [ ] `ideas-workflow` §3.3–§3.7。
+- [x] `ideas-workflow` §3.3–§3.7。
 - [ ] `ideas-workflow` §3.8–§3.9。
 
 ### 4. Notes 应用层
