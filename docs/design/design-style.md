@@ -113,6 +113,14 @@ Tabs: Dashboard, Library, Setting.
 
 Outlined chip: 1px `line` border, `muted` 11.5px / 600 text, fully rounded, `panel` background.
 
+### Native date picker row
+
+- Use the reusable `DatePickerRow` for every date or date-time form value. The row is a minimum 64px-high `panel` surface with a 1px `line` border and 10px radius; its 12px / 600 `muted` label sits above a locale-formatted value. Empty values read **Select date** or **Select date and time**. Do not expose a keyboard field, placeholder, prompt, parser, or `YYYY-MM-DD` / `YYYY-MM-DD HH:mm` format instruction.
+- Treat date mode as a local calendar day and datetime mode as local day, hour, and minute. Display and return local `Date` values without ISO/UTC conversion that can shift the selected day. Respect minimum and maximum bounds supplied by the form.
+- On iOS, open the native spinner in the app's modal panel with an explicit title and **Cancel** / **Done** actions. Changes remain draft-only until Done; Cancel, the backdrop, and system dismissal leave the controlled value untouched.
+- On Android, open the native date dialog directly. Datetime mode chains date then time and publishes only the final combined value; cancelling either dialog publishes nothing.
+- Optional rows show a separate **Clear** action only when set and report an absent value when cleared. Required rows show `*` and never offer Clear. Opening an empty row seeds the picker with today (clamped to bounds) without committing it. Disabled or submitting rows suppress selection and Clear.
+
 ## Layout
 
 - Screen side margins: 18px for containers, 22–24px for text headers and borderless rows

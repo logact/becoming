@@ -25,7 +25,13 @@ Task: Todo Doing Done Paused Failed
 Idea: Captured Exploring Paused Handled
 Project: Planning Active Paused Done Failed
 
-Goal/Task/Project have a optional due date. fail(): Goal/Task doing|paused -> failed, Project active|paused -> failed; Goal/Task reopen(): done|failed -> todo.
+Goal and Task each have an optional date-only `startAt` and `due`; Project has an optional `due`. A Goal/Task `startAt` is planning metadata for the local calendar day on which the item becomes actionable. It is separate from the lifecycle `start(now)` operation: reaching `startAt` never changes `todo` to `doing`, and the explicit Start action does not rewrite `startAt`.
+
+`Goal.setSchedule(startAt, due, now)` and `Task.setSchedule(startAt, due, now)` atomically replace both optional values. Passing either value as absent clears it while preserving the other when the resulting range is valid. When both dates exist, their local calendar days must satisfy `startAt <= due`; hours, minutes, and UTC conversion do not participate in this date-only invariant, and the same day is valid.
+
+`Goal.isReadyToStart(now)` / `Task.isReadyToStart(now)` is true only for a non-archived `todo` item whose `startAt` local calendar day has arrived. Ready-to-start is derived attention, not persisted lifecycle state. Each target appears at most once: failed wins first, then overdue/due-soon, resource exhaustion, ready-to-start, and finally a user pin. Ready items with no higher-priority reason sort by oldest `startAt` first. Doing lists remain based on actual lifecycle status.
+
+fail(): Goal/Task doing|paused -> failed, Project active|paused -> failed; Goal/Task reopen(): done|failed -> todo.
 Dashboard due-warning windows: goal/project 1 day ahead, task 2 hours ahead (already-overdue counts), implemented via isDueImminent(windowMs, now).
 
 ## Archive
@@ -43,3 +49,4 @@ Archive is a indepent filed so that when archieve a item we won't cover its stat
 7. Goal-scoped activity: `RecordRepository.listByTarget` matches relations where the record is either the source or the target end.
 8. Idea derivation is represented only by a directed Relation: the new model is the source and the preserved Idea is the target (`goal|task|note --derivedFrom--> idea`). The Idea does not store derived IDs, and derived models do not store an Idea ID.
 9. Note links use directed Relations: extraction from an Idea is `note --derivedFrom--> idea`, while Goal and Project references are `note --relatesTo--> goal|project`.
+10. Goal/Task schedule changes are application commands over the domain's atomic schedule behavior. A successful change writes an immutable `goalScheduleChanged` / `taskScheduleChanged` Record linked to the entity; the entity, Record, and Relation commit or roll back together.

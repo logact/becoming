@@ -154,7 +154,7 @@
 ### 9. 文档、组合回归与全周期验收
 
 - [x] `goal-project-management` §8。
-- [ ] `start-time-and-date-input` §9。
+- [x] `start-time-and-date-input` §9。
 - [ ] 按 `goal-project-management` §9、`start-time-and-date-input` §10 完成独立验收。
 - [ ] 对三份冻结计划执行跨计划集成回归，运行 `npm run typecheck` 与 `npm test -- --runInBand`。
 - [ ] 生成 `docs/cycles/cycle-3/cycle-report.md`，按 domain、application、infrastructure、UI 分层记录产出、验证、偏差、遗留项及任务 commit。
@@ -164,6 +164,12 @@
 - `docs/design/design.md` 记录 Project 作为 Goal 的备选方案、新建默认为 `planning` 且不自动成为 current plan，并准确描述 non-archived `planning` / `paused` eligibility、首次激活、替换确认及旧 active Project 暂停。
 - 文档同步 shared native optional Project Due picker 与 Goal Due 之前的边界，并明确 creation activity 只关联 Goal / 新 Project、selection activity 只关联 Goal / 所选 Project，未声称 replaced Project timeline 有该记录。
 - 实现核对：`Project` / `Goal.activateProject`、`CreateGoalProjectService`、`SelectCurrentPlanService`、`GoalDetailService` 与 `GoalDetailPage`；`npm run typecheck` 与 `git diff --check` 通过。
+
+`start-time-and-date-input` §9 验证证据（2026-08-22）：
+
+- composition 审核确认 `AppServices` 声明、`composeServices` 构造及 Dashboard / Library 共用 Goal / Task detail route 已完整注册并注入 `ScheduleGoalService` / `ScheduleTaskService`；二者复用 production SQLite repositories 与同一个 `SqliteTransactionRunner`。现有 composition regression 已从两条共享 route 执行真实 schedule 写入、detail 刷新与 linked activity 查询，fixture 来自 `NodeSqliteDatabase(':memory:')` + migration + SQLite repository implementations，因此未新增重复 test double 或 composition code。
+- `docs/domain/domain.md` 记录 date-only `startAt`、与 lifecycle `start(now)` 的分离、本地日历日 `startAt <= due`（同日有效）、原子 optional set / clear、`isReadyToStart` 边界及 attention 优先级 / 去重 / 排序；`docs/design/design.md` 记录 detail schedule editor、ready copy、structured creation scheduling 与不变的 Quick Capture；`docs/design/design-style.md` 固化 reusable native `DatePickerRow` 的外观、local date/datetime、iOS Done / Cancel、Android date→time、optional Clear / required 规则及移除键盘格式输入。
+- production audit 未发现 `YYYY-MM-DD` / `YYYY-MM-DD HH:mm` 提示、`parseDateText` / `parseDateTimeText` caller 或手工 prompt；focused composition：1 suite / 2 tests 通过；`npm run typecheck` 通过；full suite：95 suites / 657 tests 通过，0 snapshots；`git diff --check` 通过。
 
 ## 执行与提交规则
 
