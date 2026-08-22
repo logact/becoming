@@ -33,7 +33,14 @@
 - [x] `dashboard-item-navigation` §2。
 - [x] `dashboard-item-navigation` §3。
 - [x] `dashboard-item-navigation` §4–§5。
-- [ ] 按 `dashboard-item-navigation` §6 完成独立验收。
+- [x] 按 `dashboard-item-navigation` §6 完成独立验收。
+
+独立验收证据（2026-08-22）：
+
+- 逐项审核 §6 与 §4 矩阵：Doing now 的 Goal / Task / Idea、Needs attention 的 Goal / Task / Project / Idea 均按类型进入 Dashboard 详情栈；Back 回到 Dashboard 并恢复 tab bar；Remove 阻止冒泡、只持久化 dismiss；Recent activity 无交互语义；Dashboard / Library 共用 Goal、Project、Task、Idea、Note 详情解析，Project 嵌套路由保持在发起 destination 栈；`attention-pin`、Library collection 与 unknown-route 边界未变。
+- 验收发现并修复 1 个过时测试：将 Library Projects “行仍不可点击”断言替换为真实 `project:<id>` 行导航 / route contract 回归，保留全局 `ListRow` 的 button 可访问性语义。未发现其他实现缺口。
+- 集中回归：Dashboard / navigation / composition / Projects，12 suites / 81 tests 通过，0 snapshots。
+- 最终验证：`npm run typecheck` 通过；`npm test -- --runInBand` 88 suites / 549 tests 通过，0 snapshots。
 
 ### 2. Shared native date picker
 

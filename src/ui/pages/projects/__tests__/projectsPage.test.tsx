@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import React from 'react';
+import { Text } from 'react-native';
 
 import type { ProjectsOverviewView } from '../../../../application/project/ProjectsOverviewService';
 import type { LibraryCounts } from '../../../../application/library/LibraryOverviewService';
@@ -30,7 +31,12 @@ function projectsDestinations(stubs: ReturnType<typeof makeStubs>): ShellDestina
       title: 'Library',
       icon: 'folder',
       renderList: () => <LibraryPage overview={stubs.library} />,
-      renderScreen: (id) => (id === 'projects' ? <ProjectsPage overview={stubs.overview} /> : null),
+      renderScreen: (id) =>
+        id === 'projects' ? (
+          <ProjectsPage overview={stubs.overview} />
+        ) : id.startsWith('project:') ? (
+          <Text testID={`route-${id}`}>{id}</Text>
+        ) : null,
     },
   ];
 }
@@ -146,7 +152,7 @@ describe('ProjectsPage', () => {
     expect(all.getAllByText(/Run a half marathon/).length).toBeGreaterThan(0);
   });
 
-  it('keeps project rows inert until the project-detail page lands', async () => {
+  it('opens a Library Project row through the project:<id> route contract', async () => {
     const now = new Date();
     const stubs = makeStubs(overviewFixture(now));
 
@@ -154,8 +160,11 @@ describe('ProjectsPage', () => {
     await openProjectsFromHub();
 
     const row = await screen.findByTestId('project-row-p-run');
-    // Inert rows render as plain views (no accessibility role button).
-    expect(row.props.accessibilityRole).not.toBe('button');
+    expect(row.props.accessibilityRole).toBe('button');
+    fireEvent.press(row);
+
+    expect(await screen.findByTestId('route-project:p-run')).toBeTruthy();
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
   });
 
   it('returns to the hub via the nav-bar back button', async () => {
