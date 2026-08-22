@@ -6,6 +6,7 @@ import { SqliteTaskRepository } from '../SqliteTaskRepository';
 const t0 = new Date('2026-02-01T00:00:00Z');
 const t1 = new Date('2026-02-02T00:00:00Z');
 const t2 = new Date('2026-02-03T00:00:00Z');
+const startAt = new Date('2026-02-15T00:00:00Z');
 const due = new Date('2026-03-01T00:00:00Z');
 
 async function makeRepo(): Promise<{ repo: SqliteTaskRepository; db: NodeSqliteDatabase }> {
@@ -19,6 +20,7 @@ function makeTask(): Task {
     id: 't1',
     title: 'Write tests',
     description: 'Cover the repositories',
+    startAt,
     due,
     projectId: 'p1',
     goalId: 'g1',
@@ -35,7 +37,7 @@ const ids = (tasks: Task[]): string[] => tasks.map((task) => task.id).sort();
 
 describe('SqliteTaskRepository', () => {
   it('save then findById round-trips every field', async () => {
-    const { repo } = await makeRepo();
+    const { repo, db } = await makeRepo();
 
     await repo.save(makeTask());
     const loaded = await repo.findById('t1');
@@ -44,6 +46,7 @@ describe('SqliteTaskRepository', () => {
     expect(loaded!.id).toBe('t1');
     expect(loaded!.title).toBe('Write tests');
     expect(loaded!.description).toBe('Cover the repositories');
+    expect(loaded!.startAt).toEqual(startAt);
     expect(loaded!.due).toEqual(due);
     expect(loaded!.status).toBe('doing');
     expect(loaded!.archived).toBe(true);
@@ -53,6 +56,10 @@ describe('SqliteTaskRepository', () => {
     expect(loaded!.milestoneId).toBe('m1');
     expect(loaded!.createdAt).toEqual(t0);
     expect(loaded!.updatedAt).toEqual(t2);
+    expect(await db.first<{ start_at: number }>(
+      'SELECT start_at FROM tasks WHERE id = ?',
+      ['t1'],
+    )).toEqual({ start_at: startAt.getTime() });
   });
 
   it('findById returns null for an unknown id', async () => {
@@ -118,6 +125,7 @@ describe('SqliteTaskRepository', () => {
     const loaded = await repo.findById('t1');
 
     expect(loaded!.description).toBeUndefined();
+    expect(loaded!.startAt).toBeUndefined();
     expect(loaded!.due).toBeUndefined();
     expect(loaded!.projectId).toBe('p1');
     expect(loaded!.goalId).toBeUndefined();

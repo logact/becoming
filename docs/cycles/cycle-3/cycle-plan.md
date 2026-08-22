@@ -54,12 +54,18 @@
 ### 3. Goal / Task schedule 领域与持久化
 
 - [x] `start-time-and-date-input` §3。
-- [ ] `start-time-and-date-input` §4。
+- [x] `start-time-and-date-input` §4。
 
 §3 验证证据（2026-08-22）：
 
 - Goal / Task 增加可选 `startAt`、原子 `setSchedule`、日期顺序不变量与 `isReadyToStart`；`startAt` / `due` 均按本地日历日比较，同日时分差不影响顺序或当日就绪语义；保留生命周期语义，并让旧 due API 复用同一不变量。
 - focused：2 suites / 58 tests 通过；`npm run typecheck` 通过；full suite：90 suites / 580 tests 通过，0 snapshots。
+
+§4 验证证据（2026-08-22）：
+
+- SQLite v4 为 Goal / Task 条件式增加 nullable `start_at INTEGER`，fresh DDL 与 `EXPECTED_COLUMNS` 同步；fresh、v1、v2、v3 及只迁移一列的开发数据库均收敛且保留已有行，旧行以 `NULL` 恢复为 `undefined`。
+- Goal / Task repository 的 insert、upsert 与 hydration 均以 epoch milliseconds 往返 `startAt`；覆盖 populated / undefined 及原始整数存储。
+- focused：3 suites / 23 tests 通过；`npm run typecheck` 通过；full suite：90 suites / 582 tests 通过，0 snapshots。
 
 ### 4. Goal / Task schedule 应用层与读模型
 

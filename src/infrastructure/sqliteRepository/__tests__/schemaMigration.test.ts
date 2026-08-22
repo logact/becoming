@@ -79,6 +79,9 @@ describe('migrate upgrade paths', () => {
     const tables = await tableNames(db);
     expect(tables).toEqual(expect.arrayContaining(['goals', 'ideas', 'notes', 'tasks']));
     expect(tables).not.toContain('captures');
+    expect(await userVersion(db)).toBe(4);
+    expect(await columnNames(db, 'goals')).toContain('start_at');
+    expect(await columnNames(db, 'tasks')).toContain('start_at');
   });
 
   it('upgrades an original-v1 database, keeping its data readable', async () => {
@@ -101,14 +104,14 @@ describe('migrate upgrade paths', () => {
 
     await migrate(db);
 
-    expect(await userVersion(db)).toBe(3);
+    expect(await userVersion(db)).toBe(4);
     expect(await columnNames(db, 'goals')).toEqual(
-      expect.arrayContaining(['project_id', 'parent_goal_id', 'milestone_id']),
+      expect.arrayContaining(['start_at', 'project_id', 'parent_goal_id', 'milestone_id']),
     );
     // v2 dropped the original tasks.goal_id; v3 adds it back as an optional
     // sub-goal link, alongside milestone_id.
     expect(await columnNames(db, 'tasks')).toEqual(
-      expect.arrayContaining(['goal_id', 'milestone_id']),
+      expect.arrayContaining(['start_at', 'goal_id', 'milestone_id']),
     );
     expect(await columnNames(db, 'milestones')).toEqual(
       expect.arrayContaining(['id', 'project_id', 'title', 'date', 'created_at', 'updated_at']),
@@ -153,7 +156,7 @@ describe('migrate upgrade paths', () => {
     await db.exec('PRAGMA user_version = 1');
 
     await expect(migrate(db)).resolves.toBeUndefined();
-    expect(await userVersion(db)).toBe(3);
+    expect(await userVersion(db)).toBe(4);
   });
 
   it('upgrades a v2 database, adding goal/milestone links and the milestones table', async () => {
@@ -181,7 +184,7 @@ describe('migrate upgrade paths', () => {
 
     await migrate(db);
 
-    expect(await userVersion(db)).toBe(3);
+    expect(await userVersion(db)).toBe(4);
     expect(await columnNames(db, 'goals')).toContain('milestone_id');
     expect(await columnNames(db, 'tasks')).toEqual(
       expect.arrayContaining(['goal_id', 'milestone_id']),
@@ -193,6 +196,90 @@ describe('migrate upgrade paths', () => {
     const goal = await new SqliteGoalRepository(db).findById('g1');
     expect(goal?.title).toBe('Goal');
     expect(goal?.milestoneId).toBeUndefined();
+    expect(goal?.startAt).toBeUndefined();
+  });
+
+  it('upgrades v3 Goal and Task rows to v4 with null planned start dates', async () => {
+    const db = new NodeSqliteDatabase(':memory:');
+    await db.exec(
+      `CREATE TABLE goals (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, due INTEGER,
+        status TEXT NOT NULL, archived INTEGER NOT NULL,
+        project_id TEXT, parent_goal_id TEXT, milestone_id TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    );
+    await db.exec(
+      `CREATE TABLE tasks (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, due INTEGER,
+        status TEXT NOT NULL, archived INTEGER NOT NULL, project_id TEXT NOT NULL,
+        goal_id TEXT, milestone_id TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    );
+    const now = Date.now();
+    await db.run(
+      `INSERT INTO goals (id, title, status, archived, created_at, updated_at)
+       VALUES ('g1', 'Existing goal', 'todo', 0, ?, ?)`,
+      [now, now],
+    );
+    await db.run(
+      `INSERT INTO tasks (id, title, status, archived, project_id, created_at, updated_at)
+       VALUES ('t1', 'Existing task', 'todo', 0, 'p1', ?, ?)`,
+      [now, now],
+    );
+    await db.exec('PRAGMA user_version = 3');
+
+    await migrate(db);
+
+    expect(await userVersion(db)).toBe(4);
+    expect(await columnNames(db, 'goals')).toContain('start_at');
+    expect(await columnNames(db, 'tasks')).toContain('start_at');
+    expect(await db.first<{ start_at: number | null }>(
+      "SELECT start_at FROM goals WHERE id = 'g1'",
+    )).toEqual({ start_at: null });
+    expect(await db.first<{ start_at: number | null }>(
+      "SELECT start_at FROM tasks WHERE id = 't1'",
+    )).toEqual({ start_at: null });
+    expect((await new SqliteGoalRepository(db).findById('g1'))?.title).toBe('Existing goal');
+    expect((await new SqliteTaskRepository(db).findById('t1'))?.title).toBe('Existing task');
+  });
+
+  it('heals a partially migrated v3 schedule schema without rebuilding rows', async () => {
+    const db = new NodeSqliteDatabase(':memory:');
+    await db.exec(
+      `CREATE TABLE goals (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, start_at INTEGER, due INTEGER,
+        status TEXT NOT NULL, archived INTEGER NOT NULL,
+        project_id TEXT, parent_goal_id TEXT, milestone_id TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    );
+    await db.exec(
+      `CREATE TABLE tasks (
+        id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT, due INTEGER,
+        status TEXT NOT NULL, archived INTEGER NOT NULL, project_id TEXT NOT NULL,
+        goal_id TEXT, milestone_id TEXT,
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
+    );
+    const now = Date.now();
+    const plannedStart = now + 86_400_000;
+    await db.run(
+      `INSERT INTO goals (id, title, start_at, status, archived, created_at, updated_at)
+       VALUES ('g1', 'Partially migrated goal', ?, 'todo', 0, ?, ?)`,
+      [plannedStart, now, now],
+    );
+    await db.run(
+      `INSERT INTO tasks (id, title, status, archived, project_id, created_at, updated_at)
+       VALUES ('t1', 'Partially migrated task', 'todo', 0, 'p1', ?, ?)`,
+      [now, now],
+    );
+    await db.exec('PRAGMA user_version = 3');
+
+    await migrate(db);
+
+    expect(await userVersion(db)).toBe(4);
+    expect((await new SqliteGoalRepository(db).findById('g1'))?.startAt).toEqual(
+      new Date(plannedStart),
+    );
+    expect((await new SqliteTaskRepository(db).findById('t1'))?.startAt).toBeUndefined();
   });
 
   it('rebuilds a legacy table whose shape no migration covers', async () => {
@@ -209,7 +296,7 @@ describe('migrate upgrade paths', () => {
 
     await migrate(db);
 
-    expect(await userVersion(db)).toBe(3);
+    expect(await userVersion(db)).toBe(4);
     expect(await columnNames(db, 'goals')).toEqual(
       expect.arrayContaining(['status', 'project_id', 'parent_goal_id']),
     );

@@ -7,6 +7,7 @@ const t0 = new Date('2026-02-01T00:00:00Z');
 const t1 = new Date('2026-02-02T00:00:00Z');
 const t2 = new Date('2026-02-03T00:00:00Z');
 const t3 = new Date('2026-02-04T00:00:00Z');
+const startAt = new Date('2026-02-15T00:00:00Z');
 const due = new Date('2026-03-01T00:00:00Z');
 
 async function makeRepo(): Promise<{ repo: SqliteGoalRepository; db: NodeSqliteDatabase }> {
@@ -20,6 +21,7 @@ function makeGoal(): Goal {
     id: 'g1',
     title: 'Ship the app',
     description: 'Get v1 into the store',
+    startAt,
     due,
     milestoneId: 'm1',
     now: t0,
@@ -52,7 +54,7 @@ describe('SqliteGoalRepository', () => {
   });
 
   it('save then findById round-trips every field', async () => {
-    const { repo } = await makeRepo();
+    const { repo, db } = await makeRepo();
 
     await repo.save(makeGoal());
     const loaded = await repo.findById('g1');
@@ -61,6 +63,7 @@ describe('SqliteGoalRepository', () => {
     expect(loaded!.id).toBe('g1');
     expect(loaded!.title).toBe('Ship the app');
     expect(loaded!.description).toBe('Get v1 into the store');
+    expect(loaded!.startAt).toEqual(startAt);
     expect(loaded!.due).toEqual(due);
     expect(loaded!.status).toBe('doing');
     expect(loaded!.archived).toBe(true);
@@ -68,6 +71,10 @@ describe('SqliteGoalRepository', () => {
     expect(loaded!.milestoneId).toBe('m1');
     expect(loaded!.createdAt).toEqual(t0);
     expect(loaded!.updatedAt).toEqual(t2);
+    expect(await db.first<{ start_at: number }>(
+      'SELECT start_at FROM goals WHERE id = ?',
+      ['g1'],
+    )).toEqual({ start_at: startAt.getTime() });
   });
 
   it('findById returns null for an unknown id', async () => {
@@ -156,6 +163,7 @@ describe('SqliteGoalRepository', () => {
     const loaded = await repo.findById('g1');
 
     expect(loaded!.description).toBeUndefined();
+    expect(loaded!.startAt).toBeUndefined();
     expect(loaded!.due).toBeUndefined();
     expect(loaded!.milestoneId).toBeUndefined();
     expect(loaded!.labelIds).toEqual([]);

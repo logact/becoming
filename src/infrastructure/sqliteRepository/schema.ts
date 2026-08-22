@@ -10,6 +10,7 @@ const MIGRATION_V1: string[] = [
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
+    start_at INTEGER,
     due INTEGER,
     status TEXT NOT NULL,
     archived INTEGER NOT NULL,
@@ -23,6 +24,7 @@ const MIGRATION_V1: string[] = [
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
+    start_at INTEGER,
     due INTEGER,
     status TEXT NOT NULL,
     archived INTEGER NOT NULL,
@@ -194,6 +196,26 @@ const MIGRATION_V3: ColumnStep[] = [
   },
 ];
 
+/**
+ * v4 adds the optional planned start date to goals and tasks. These steps are
+ * also applied to version-0 development databases so a partially-created
+ * schema heals before ensureTables validates the current shape.
+ */
+const MIGRATION_V4: ColumnStep[] = [
+  {
+    table: 'goals',
+    column: 'start_at',
+    action: 'add',
+    statement: 'ALTER TABLE goals ADD COLUMN start_at INTEGER',
+  },
+  {
+    table: 'tasks',
+    column: 'start_at',
+    action: 'add',
+    statement: 'ALTER TABLE tasks ADD COLUMN start_at INTEGER',
+  },
+];
+
 /** Live column names of a table, used to apply column steps conditionally. */
 async function tableColumns(db: SqliteDatabase, table: string): Promise<Set<string>> {
   const rows = await db.all<{ name: string }>(`PRAGMA table_info(${table})`);
@@ -215,16 +237,16 @@ async function applyColumnStep(db: SqliteDatabase, step: ColumnStep): Promise<vo
 }
 
 /**
- * Columns every table must have in the current schema (post-v3 shape). Keep
- * in sync with MIGRATION_V1, MIGRATION_V2 and MIGRATION_V3.
+ * Columns every table must have in the current schema (post-v4 shape). Keep
+ * in sync with MIGRATION_V1 through MIGRATION_V4.
  */
 const EXPECTED_COLUMNS: Record<string, string[]> = {
   goals: [
-    'id', 'title', 'description', 'due', 'status', 'archived',
+    'id', 'title', 'description', 'start_at', 'due', 'status', 'archived',
     'project_id', 'parent_goal_id', 'milestone_id', 'created_at', 'updated_at',
   ],
   tasks: [
-    'id', 'title', 'description', 'due', 'status', 'archived',
+    'id', 'title', 'description', 'start_at', 'due', 'status', 'archived',
     'project_id', 'goal_id', 'milestone_id', 'created_at', 'updated_at',
   ],
   ideas: ['id', 'content', 'status', 'archived', 'created_at', 'updated_at'],
@@ -283,8 +305,8 @@ async function ensureTables(db: SqliteDatabase): Promise<void> {
  * Brings the database schema up to date. Migrations are keyed on
  * `PRAGMA user_version`; v2 reshapes the goal/project/task hierarchy of
  * original-v1 databases, v3 adds the goal/milestone links and the milestones
- * table, and ensureTables creates or rebuilds whatever is still not in the
- * current shape.
+ * table, v4 adds goal/task planned start dates, and ensureTables creates or
+ * rebuilds whatever is still not in the current shape.
  */
 export async function migrate(db: SqliteDatabase): Promise<void> {
   const row = await db.first<{ user_version: number }>('PRAGMA user_version');
@@ -304,6 +326,11 @@ export async function migrate(db: SqliteDatabase): Promise<void> {
     }
     await db.exec(CREATE_MILESTONES);
   }
+  if (version < 4) {
+    for (const step of MIGRATION_V4) {
+      await applyColumnStep(db, step);
+    }
+  }
   await ensureTables(db);
-  await db.exec('PRAGMA user_version = 3');
+  await db.exec('PRAGMA user_version = 4');
 }
