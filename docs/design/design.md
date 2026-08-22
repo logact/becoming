@@ -34,6 +34,8 @@ the bottom navigation has the buttons (Dashboard,Library,Setting)
 
    the attention section combines built-in rules (failed items, approaching overdue — goal/project 1 day, task 2 h — and projects whose quantity resource is >=90% consumed) with user control: the user can pin any item into the section and remove (dismiss) items from it.
 
+   Entity rows in Doing now and Needs attention open their corresponding detail on the Dashboard navigation stack. Recent activity is informational and remains non-interactive.
+
 2. goals page is a dashboard for all goals, not only a goal list:
    1. Overview stats (active goals, avg. progress, done)
    2. Needs attention (failed goals, goals due within 1 day)

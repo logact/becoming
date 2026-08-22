@@ -32,7 +32,7 @@
 
 - [x] `dashboard-item-navigation` §2。
 - [x] `dashboard-item-navigation` §3。
-- [ ] `dashboard-item-navigation` §4–§5。
+- [x] `dashboard-item-navigation` §4–§5。
 - [ ] 按 `dashboard-item-navigation` §6 完成独立验收。
 
 ### 2. Shared native date picker

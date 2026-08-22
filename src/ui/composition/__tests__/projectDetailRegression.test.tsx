@@ -205,5 +205,13 @@ describe('Project detail regression composition', () => {
 
     expect(await screen.findByTestId('add-plan-item-page')).toBeTruthy();
     expect(screen.queryByTestId('dashboard-open-project')).toBeNull();
+
+    fireEvent.press(screen.getByLabelText('Back'));
+    expect(await screen.findByTestId('project-detail-page')).toBeTruthy();
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
+
+    fireEvent.press(screen.getByLabelText('Back'));
+    expect(await screen.findByTestId('dashboard-open-project')).toBeTruthy();
+    expect(screen.getByTestId('tab-bar')).toBeTruthy();
   });
 });

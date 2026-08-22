@@ -230,6 +230,7 @@ describe('DashboardPage', () => {
       expect(screen.queryByTestId('tab-bar')).toBeNull();
       fireEvent.press(probe);
       await screen.findByTestId(rowId);
+      expect(screen.getByTestId('tab-bar')).toBeTruthy();
     }
   });
 
@@ -256,10 +257,57 @@ describe('DashboardPage', () => {
     const row = await screen.findByTestId('dashboard-attention-project-p-attention');
     expect(row.props.accessibilityRole).toBe('button');
     fireEvent.press(row);
-    expect(await screen.findByTestId('route-project:p-attention')).toBeTruthy();
+    const probe = await screen.findByTestId('route-project:p-attention');
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
+    fireEvent.press(probe);
+    expect(await screen.findByTestId('dashboard-attention-project-p-attention')).toBeTruthy();
+    expect(screen.getByTestId('tab-bar')).toBeTruthy();
   });
 
-  it('removes an attention item and persists the dismissal', async () => {
+  it('opens the remaining Needs attention entity types through their typed Dashboard routes', async () => {
+    const now = new Date();
+    const ctx = await makeServices();
+    await ctx.goals.save(Goal.create({ id: 'g-attention', title: 'Attention goal', now }));
+    await ctx.tasks.save(Task.create({
+      id: 't-attention',
+      title: 'Attention task',
+      projectId: 'p-parent',
+      now,
+    }));
+    await ctx.ideas.save(Idea.create({ id: 'i-attention', content: 'Attention idea', now }));
+    for (const [entryId, targetType, targetId] of [
+      ['a-goal', 'goal', 'g-attention'],
+      ['a-task', 'task', 't-attention'],
+      ['a-idea', 'idea', 'i-attention'],
+    ] as const) {
+      await ctx.attentionEntries.save(AttentionEntry.create({
+        id: entryId,
+        targetType,
+        targetId,
+        kind: 'pin',
+        now,
+      }));
+    }
+
+    renderShell(ctx.services, dashboardDestinations());
+
+    for (const [rowId, route] of [
+      ['dashboard-attention-goal-g-attention', 'goal:g-attention'],
+      ['dashboard-attention-task-t-attention', 'task:t-attention'],
+      ['dashboard-attention-idea-i-attention', 'idea:i-attention'],
+    ] as const) {
+      const row = await screen.findByTestId(rowId);
+      expect(row.props.accessibilityRole).toBe('button');
+      fireEvent.press(row);
+      const probe = await screen.findByTestId(`route-${route}`);
+      expect(screen.queryByTestId('tab-bar')).toBeNull();
+      fireEvent.press(probe);
+      expect(await screen.findByTestId(rowId)).toBeTruthy();
+      expect(screen.getByTestId('tab-bar')).toBeTruthy();
+    }
+  });
+
+  it('removes an attention item without opening detail and persists the dismissal', async () => {
     const now = new Date();
     const ctx = await makeServices();
     await ctx.goals.save(failedGoal('g-failed', 'Ship v2', now));
@@ -279,6 +327,7 @@ describe('DashboardPage', () => {
     expect(stopPropagation).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('dashboard-page')).toBeTruthy();
     expect(screen.getByTestId('tab-bar')).toBeTruthy();
+    expect(screen.queryByTestId('route-goal:g-failed')).toBeNull();
     expect(
       (await ctx.attentionEntries.list()).some(
         (entry) =>
