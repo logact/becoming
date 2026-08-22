@@ -44,6 +44,31 @@ the bottom navigation has the buttons (Dashboard,Library,Setting)
    5. All goals: compact panel list grouped by status
    6. Recent activity
 
+   Goal detail treats Projects as alternative plans for reaching the Goal. Its Projects
+   section always offers **New project — another way to reach this goal**, including
+   when no Projects exist. A new Project is permanently associated with that Goal and
+   starts in `planning`; creating it does not make it the current plan. The creation
+   sheet requires a name and provides an optional native **Due** picker. When the Goal
+   has a Due date, the picker allows only dates before the Goal's local calendar date,
+   and the Project model also rejects a Due that is not strictly earlier than the Goal
+   Due.
+
+   The Goal's current plan is the single non-archived Project shown with `active`
+   status. **Choose current plan** is available when the Goal has an eligible Project:
+   only its non-archived `planning` and `paused` Projects can be chosen. The picker
+   shows the current active Project as selected and disabled, omits `done` and `failed`
+   Projects, and uses the eligibility supplied by the Goal-detail read model. Choosing
+   the first plan activates it immediately. Replacing a visible current plan first
+   asks for confirmation that the former active Project will be paused; confirmation
+   atomically pauses the former plan and activates the selected one.
+
+   Successful creation or selection closes the sheet and refreshes Goal detail so the
+   Project list and **Current plan** marker are current. Both operations append
+   immutable activity: creation is visible in the Goal and new Project timelines,
+   while selection is visible in the Goal and selected Project timelines. Failed
+   operations keep the sheet values available for correction and do not partially
+   persist Project state or activity.
+
 3. tasks page is the dashboard for all tasks:
    1. Overview stats for doing, todo, done, and overdue
    2. Needs attention ordered by failed, overdue, then due soon
