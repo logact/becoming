@@ -5,7 +5,16 @@ import type { PinCandidatesService } from '../../application/attention/PinCandid
 import type { DashboardService } from '../../application/dashboard/DashboardService';
 import type { GoalDetailService } from '../../application/goal/GoalDetailService';
 import type { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
+import type { CaptureIdeaService } from '../../application/idea/CaptureIdeaService';
+import type { ChangeIdeaStatusService } from '../../application/idea/ChangeIdeaStatusService';
+import type { CreateGoalFromIdeaService } from '../../application/idea/CreateGoalFromIdeaService';
+import type { CreateTaskFromIdeaService } from '../../application/idea/CreateTaskFromIdeaService';
+import type { EditIdeaService } from '../../application/idea/EditIdeaService';
+import type { IdeaDerivationOptionsService } from '../../application/idea/IdeaDerivationOptionsService';
+import type { IdeaDetailService } from '../../application/idea/IdeaDetailService';
+import type { IdeasOverviewService } from '../../application/idea/IdeasOverviewService';
 import type { LibraryOverviewService } from '../../application/library/LibraryOverviewService';
+import type { ExtractNoteFromIdeaService } from '../../application/note/ExtractNoteFromIdeaService';
 import type { AddMilestoneService } from '../../application/project/AddMilestoneService';
 import type { AddSubGoalService } from '../../application/project/AddSubGoalService';
 import type { AddTaskService } from '../../application/project/AddTaskService';
@@ -40,6 +49,15 @@ export interface AppServices {
   tasksOverview: TasksOverviewService;
   taskDetail: TaskDetailService;
   taskLifecycle: TaskLifecycleService;
+  ideasOverview: IdeasOverviewService;
+  ideaDetail: IdeaDetailService;
+  ideaDerivationOptions: IdeaDerivationOptionsService;
+  captureIdea: CaptureIdeaService;
+  editIdea: EditIdeaService;
+  changeIdeaStatus: ChangeIdeaStatusService;
+  createGoalFromIdea: CreateGoalFromIdeaService;
+  createTaskFromIdea: CreateTaskFromIdeaService;
+  extractNoteFromIdea: ExtractNoteFromIdeaService;
 }
 
 const AppServicesContext = createContext<AppServices | null>(null);

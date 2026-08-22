@@ -27,6 +27,8 @@ function libraryDestinations(stub: ReturnType<typeof makeStub>): ShellDestinatio
           <Text testID="tasks-screen" />
         ) : id === 'projects' ? (
           <Text testID="projects-screen" />
+        ) : id === 'ideas' ? (
+          <Text testID="ideas-screen" />
         ) : null,
     },
   ];
@@ -88,6 +90,13 @@ describe('LibraryPage', () => {
 
     fireEvent.press(await screen.findByTestId('library-row-tasks'));
     expect(await screen.findByTestId('tasks-screen')).toBeTruthy();
+    expect(screen.queryByTestId('tab-bar')).toBeNull();
+  });
+
+  it('pushes the ideas screen when the Ideas row is pressed', async () => {
+    render(<NavigationShell destinations={libraryDestinations(makeStub())} />);
+    fireEvent.press(await screen.findByTestId('library-row-ideas'));
+    expect(await screen.findByTestId('ideas-screen')).toBeTruthy();
     expect(screen.queryByTestId('tab-bar')).toBeNull();
   });
 });

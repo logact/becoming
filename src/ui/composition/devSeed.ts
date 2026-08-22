@@ -7,6 +7,8 @@ import { Idea } from '../../domain/idea/Idea';
 import type { IdeaRepository } from '../../domain/idea/repository/IdeaRepository';
 import { Milestone } from '../../domain/milestone/Milestone';
 import type { MilestoneRepository } from '../../domain/milestone/repository/MilestoneRepository';
+import { Note } from '../../domain/note/Note';
+import type { NoteRepository } from '../../domain/note/repository/NoteRepository';
 import { Project } from '../../domain/project/Project';
 import type { ProjectRepository } from '../../domain/project/repository/ProjectRepository';
 import { Record } from '../../domain/record/Record';
@@ -31,12 +33,13 @@ export interface DevSeedDeps {
   records: RecordRepository;
   relations: RelationRepository;
   milestones: MilestoneRepository;
+  notes: NoteRepository;
   consumeResource: ConsumeResourceService;
 }
 
 /**
  * Inserts the prototype-like dataset: doing goals/tasks (one task overdue),
- * a failed goal, a captured idea, and an active project with a due, three
+ * a failed goal, Ideas in each workflow status with derived examples, and an active project with a due, three
  * milestones, a nested sub-goal tree whose tasks carry goalId/milestoneId,
  * a quantity resource allocated in full and consumed past the exhaustion
  * threshold, and a time resource allocated as a span. Ids are deterministic;
@@ -237,14 +240,45 @@ export async function seedDevData(deps: DevSeedDeps): Promise<void> {
     }),
   );
 
-  // One captured idea.
-  await deps.ideas.save(
-    Idea.create({
-      id: 'seed-idea-trail',
-      content: 'Try a trail race this autumn',
-      now: ago(3 * DAY_MS),
-    }),
-  );
+  // Ideas cover all four workflow classifications. The handled Idea keeps
+  // its Goal, Task and Note derivations so both list and detail are alive.
+  const trailIdea = Idea.create({
+    id: 'seed-idea-trail', content: 'Try a trail race this autumn', now: ago(3 * DAY_MS),
+  });
+  await deps.ideas.save(trailIdea);
+  const exploringIdea = Idea.create({
+    id: 'seed-idea-exploring', content: 'A weekly review ritual might reduce context switching', now: ago(4 * DAY_MS),
+  });
+  exploringIdea.explore(ago(2 * DAY_MS));
+  await deps.ideas.save(exploringIdea);
+  const pausedIdea = Idea.create({
+    id: 'seed-idea-paused', content: 'Build a small reading notes garden', now: ago(5 * DAY_MS),
+  });
+  pausedIdea.pause(ago(DAY_MS));
+  await deps.ideas.save(pausedIdea);
+  const handledIdea = Idea.create({
+    id: 'seed-idea-handled', content: 'Make running preparation concrete', now: ago(7 * DAY_MS),
+  });
+  handledIdea.handle(ago(3 * DAY_MS));
+  await deps.ideas.save(handledIdea);
+  const runningNote = Note.create({
+    id: 'seed-note-running', content: 'Preparation works best when the next action is visible.', now: ago(2 * DAY_MS),
+  });
+  await deps.notes.save(runningNote);
+  await Promise.all([
+    deps.relations.save(Relation.derivedFromIdea({
+      id: 'seed-derived-goal-idea', sourceType: 'goal', sourceId: runGoal.id,
+      ideaId: handledIdea.id, now: ago(3 * DAY_MS),
+    })),
+    deps.relations.save(Relation.derivedFromIdea({
+      id: 'seed-derived-task-idea', sourceType: 'task', sourceId: shoesTask.id,
+      ideaId: handledIdea.id, now: ago(2 * DAY_MS),
+    })),
+    deps.relations.save(Relation.derivedFromIdea({
+      id: 'seed-derived-note-idea', sourceType: 'note', sourceId: runningNote.id,
+      ideaId: handledIdea.id, now: ago(DAY_MS),
+    })),
+  ]);
 
   // The gear budget is fully allocated to the training project and consumed
   // past the 90% exhaustion threshold.
@@ -299,6 +333,9 @@ export async function seedDevData(deps: DevSeedDeps): Promise<void> {
     ['seed-record-goal-failed', 'goalFailed', 'Failed "Ship Becoming MVP"', ago(DAY_MS)],
     ['seed-record-task-started', 'taskStarted', 'Started "Buy new running shoes"', ago(2 * DAY_MS)],
     ['seed-record-idea-captured', 'ideaCaptured', 'Captured "Try a trail race this autumn"', ago(3 * DAY_MS)],
+    ['seed-record-idea-derived-goal', 'ideaDerivedGoal', 'Created Goal "Run a half marathon" from Idea', ago(3 * DAY_MS)],
+    ['seed-record-idea-derived-task', 'ideaDerivedTask', 'Created Task "Buy new running shoes" from Idea', ago(2 * DAY_MS)],
+    ['seed-record-idea-derived-note', 'noteDerivedFromIdea', 'Extracted Note from Idea', ago(DAY_MS)],
     ['seed-record-goal-created', 'goalCreated', 'Created "Run a half marathon"', ago(5 * DAY_MS)],
   ];
   for (const [id, kind, detail, occurredAt] of records) {
@@ -318,6 +355,26 @@ export async function seedDevData(deps: DevSeedDeps): Promise<void> {
       targetId: taskId,
       kind: 'logs',
       now,
+    }));
+  }
+  for (const recordId of [
+    'seed-record-idea-derived-goal',
+    'seed-record-idea-derived-task',
+    'seed-record-idea-derived-note',
+  ]) {
+    await deps.relations.save(Relation.create({
+      id: `seed-relation-${recordId}-idea-log`, sourceType: 'record',
+      sourceId: recordId, targetType: 'idea', targetId: handledIdea.id, kind: 'logs', now,
+    }));
+  }
+  for (const [recordId, targetType, targetId] of [
+    ['seed-record-idea-derived-goal', 'goal', runGoal.id],
+    ['seed-record-idea-derived-task', 'task', shoesTask.id],
+    ['seed-record-idea-derived-note', 'note', runningNote.id],
+  ] as const) {
+    await deps.relations.save(Relation.create({
+      id: `seed-relation-${recordId}-source-log`, sourceType: 'record',
+      sourceId: recordId, targetType, targetId, kind: 'logs', now,
     }));
   }
 }

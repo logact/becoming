@@ -1,6 +1,7 @@
 import { Goal } from '../../../domain/goal/Goal';
 import { Idea } from '../../../domain/idea/Idea';
 import { Label } from '../../../domain/label/Label';
+import { Note } from '../../../domain/note/Note';
 import { Project } from '../../../domain/project/Project';
 import { Record } from '../../../domain/record/Record';
 import { Relation } from '../../../domain/relation/Relation';
@@ -14,14 +15,14 @@ describe('IdeaDetailService', () => {
   it('returns an explicit empty detail for an unknown Idea', async () => {
     const repos = await makeFakeRepos();
     const detail = await new IdeaDetailService(
-      repos.ideaRepo, repos.goalRepo, repos.taskRepo, repos.projectRepo,
+      repos.ideaRepo, repos.goalRepo, repos.taskRepo, repos.noteRepo, repos.projectRepo,
       repos.labelRepo, repos.relationRepo, repos.recordRepo,
     ).getDetail('missing');
 
     expect(detail).toEqual({ idea: null, labels: [], derivedItems: [], recentActivity: [] });
   });
 
-  it('resolves labels, Goal and Task derivations, task project names, and scoped activity', async () => {
+  it('resolves labels, Goal, Task and Note derivations, task project names, and scoped activity', async () => {
     const repos = await makeFakeRepos();
     await repos.labelRepo.save(Label.create({ id: 'label-a', name: 'Adventure', color: '#00ff00' }));
     await repos.labelRepo.save(Label.create({ id: 'label-b', name: 'Someday' }));
@@ -40,6 +41,8 @@ describe('IdeaDetailService', () => {
     });
     task.start(new Date('2026-08-02T00:00:00Z'));
     await repos.taskRepo.save(task);
+    const note = Note.create({ id: 'note-1', content: 'Trail race checklist', now: t0 });
+    await repos.noteRepo.save(note);
 
     await Promise.all([
       repos.relationRepo.save(Relation.derivedFromIdea({
@@ -49,6 +52,10 @@ describe('IdeaDetailService', () => {
       repos.relationRepo.save(Relation.derivedFromIdea({
         id: 'derived-task', sourceType: 'task', sourceId: task.id,
         ideaId: idea.id, now: new Date('2026-08-04T00:00:00Z'),
+      })),
+      repos.relationRepo.save(Relation.derivedFromIdea({
+        id: 'derived-note', sourceType: 'note', sourceId: note.id,
+        ideaId: idea.id, now: new Date('2026-08-04T12:00:00Z'),
       })),
       repos.relationRepo.save(Relation.derivedFromIdea({
         id: 'dangling-goal', sourceType: 'goal', sourceId: 'missing-goal',
@@ -91,7 +98,7 @@ describe('IdeaDetailService', () => {
     ]);
 
     const detail = await new IdeaDetailService(
-      repos.ideaRepo, repos.goalRepo, repos.taskRepo, repos.projectRepo,
+      repos.ideaRepo, repos.goalRepo, repos.taskRepo, repos.noteRepo, repos.projectRepo,
       repos.labelRepo, repos.relationRepo, repos.recordRepo,
     ).getDetail(idea.id);
 
@@ -101,6 +108,7 @@ describe('IdeaDetailService', () => {
       { id: 'label-b', name: 'Someday' },
     ]);
     expect(detail.derivedItems).toEqual([
+      { type: 'note', id: 'note-1', title: 'Trail race checklist' },
       {
         type: 'task', id: 'task-1', title: 'Choose a race', status: 'doing',
         projectId: 'project-1', projectName: 'Autumn training', context: 'Autumn training',
@@ -125,7 +133,7 @@ describe('IdeaDetailService', () => {
     }));
 
     const detail = await new IdeaDetailService(
-      repos.ideaRepo, repos.goalRepo, repos.taskRepo, repos.projectRepo,
+      repos.ideaRepo, repos.goalRepo, repos.taskRepo, repos.noteRepo, repos.projectRepo,
       repos.labelRepo, repos.relationRepo, repos.recordRepo,
     ).getDetail(idea.id);
 

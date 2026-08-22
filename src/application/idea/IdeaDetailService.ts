@@ -3,10 +3,11 @@ import type { GoalRepository } from '../../domain/goal/repository/GoalRepository
 import type { Idea } from '../../domain/idea/Idea';
 import type { IdeaRepository } from '../../domain/idea/repository/IdeaRepository';
 import type { LabelRepository } from '../../domain/label/repository/LabelRepository';
+import type { NoteRepository } from '../../domain/note/repository/NoteRepository';
 import type { ProjectRepository } from '../../domain/project/repository/ProjectRepository';
 import type { RecordRepository } from '../../domain/record/repository/RecordRepository';
 import type { RelationRepository } from '../../domain/relation/repository/RelationRepository';
-import type { GoalId, IdeaId, LabelId, ProjectId, TaskId } from '../../domain/shared/ids';
+import type { GoalId, IdeaId, LabelId, NoteId, ProjectId, TaskId } from '../../domain/shared/ids';
 import type { TaskStatus } from '../../domain/task/Task';
 import type { TaskRepository } from '../../domain/task/repository/TaskRepository';
 import { RECENT_ACTIVITY_LIMIT, type ActivityItem } from '../dashboard/DashboardService';
@@ -36,7 +37,13 @@ export interface IdeaDerivedTaskItem {
   context: string;
 }
 
-export type IdeaDerivedItem = IdeaDerivedGoalItem | IdeaDerivedTaskItem;
+export interface IdeaDerivedNoteItem {
+  type: 'note';
+  id: NoteId;
+  title: string;
+}
+
+export type IdeaDerivedItem = IdeaDerivedGoalItem | IdeaDerivedTaskItem | IdeaDerivedNoteItem;
 
 export interface IdeaDetailView {
   idea: Idea | null;
@@ -51,6 +58,7 @@ export class IdeaDetailService {
     private readonly ideas: IdeaRepository,
     private readonly goals: GoalRepository,
     private readonly tasks: TaskRepository,
+    private readonly notes: NoteRepository,
     private readonly projects: ProjectRepository,
     private readonly labels: LabelRepository,
     private readonly relations: RelationRepository,
@@ -127,6 +135,13 @@ export class IdeaDetailService {
             projectName,
             context: projectName,
           } as IdeaDerivedTaskItem,
+          createdAt: relation.createdAt,
+        };
+      }
+      if (relation.sourceType === 'note') {
+        const note = await this.notes.findById(relation.sourceId);
+        return note === null ? null : {
+          item: { type: 'note', id: note.id, title: note.content } as IdeaDerivedNoteItem,
           createdAt: relation.createdAt,
         };
       }

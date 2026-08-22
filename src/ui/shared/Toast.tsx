@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
 export interface ToastApi {
@@ -38,6 +38,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 
   const api = useMemo<ToastApi>(() => ({ show }), [show]);
+
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+  }, []);
 
   return (
     <ToastContext.Provider value={api}>

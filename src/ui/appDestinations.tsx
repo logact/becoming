@@ -7,6 +7,8 @@ import { AttentionPinPage } from './pages/dashboard/AttentionPinPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { GoalDetailPage } from './pages/goals/GoalDetailPage';
 import { GoalsPage } from './pages/goals/GoalsPage';
+import { IdeaDetailPage } from './pages/ideas/IdeaDetailPage';
+import { IdeasPage } from './pages/ideas/IdeasPage';
 import { LibraryPage } from './pages/library/LibraryPage';
 import { AddPlanItemPage } from './pages/projects/AddPlanItemPage';
 import { AllocateResourcePage } from './pages/projects/AllocateResourcePage';
@@ -36,6 +38,36 @@ function LibraryProjectsScreen() {
 function LibraryTasksScreen() {
   const services = useAppServices();
   return <TasksPage overview={services.tasksOverview} />;
+}
+
+function LibraryIdeasScreen() {
+  const services = useAppServices();
+  return (
+    <IdeasPage
+      overview={services.ideasOverview}
+      capture={services.captureIdea}
+      derivationOptions={services.ideaDerivationOptions}
+      createGoal={services.createGoalFromIdea}
+      createTask={services.createTaskFromIdea}
+      extractNote={services.extractNoteFromIdea}
+    />
+  );
+}
+
+function LibraryIdeaDetailScreen({ ideaId }: { ideaId: string }) {
+  const services = useAppServices();
+  return (
+    <IdeaDetailPage
+      ideaId={ideaId}
+      detail={services.ideaDetail}
+      edit={services.editIdea}
+      changeStatus={services.changeIdeaStatus}
+      derivationOptions={services.ideaDerivationOptions}
+      createGoal={services.createGoalFromIdea}
+      createTask={services.createTaskFromIdea}
+      extractNote={services.extractNoteFromIdea}
+    />
+  );
 }
 
 function LibraryTaskDetailScreen({ taskId }: { taskId: string }) {
@@ -122,12 +154,16 @@ export function appDestinations(): ShellDestination[] {
           <LibraryGoalsScreen />
         ) : screenId === 'tasks' ? (
           <LibraryTasksScreen />
+        ) : screenId === 'ideas' ? (
+          <LibraryIdeasScreen />
         ) : screenId === 'projects' ? (
           <LibraryProjectsScreen />
         ) : screenId.startsWith('project:') ? (
           <LibraryProjectScreen screenId={screenId} />
         ) : screenId.startsWith('task:') ? (
           <LibraryTaskDetailScreen taskId={screenId.slice('task:'.length)} />
+        ) : screenId.startsWith('idea:') ? (
+          <LibraryIdeaDetailScreen ideaId={screenId.slice('idea:'.length)} />
         ) : null,
       renderDetail: (entityId) => <LibraryGoalDetailPage goalId={entityId} />,
     },

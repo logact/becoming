@@ -25,6 +25,7 @@ export interface CreateTaskFromIdeaCommand {
   projectId: ProjectId;
   goalId?: GoalId;
   title: string;
+  description?: string;
   derivedRelationId: RelationId;
   recordId: RecordId;
   ideaRecordRelationId: RelationId;
@@ -73,7 +74,7 @@ export class CreateTaskFromIdeaService {
       const task = Task.create({
         id: command.taskId,
         title: command.title,
-        description: idea.content,
+        description: command.description ?? idea.content,
         projectId: command.projectId,
         ...(command.goalId === undefined ? {} : { goalId: command.goalId }),
         now: command.now,

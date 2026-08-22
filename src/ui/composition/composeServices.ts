@@ -3,7 +3,16 @@ import { PinCandidatesService } from '../../application/attention/PinCandidatesS
 import { DashboardService } from '../../application/dashboard/DashboardService';
 import { GoalDetailService } from '../../application/goal/GoalDetailService';
 import { GoalsOverviewService } from '../../application/goal/GoalsOverviewService';
+import { CaptureIdeaService } from '../../application/idea/CaptureIdeaService';
+import { ChangeIdeaStatusService } from '../../application/idea/ChangeIdeaStatusService';
+import { CreateGoalFromIdeaService } from '../../application/idea/CreateGoalFromIdeaService';
+import { CreateTaskFromIdeaService } from '../../application/idea/CreateTaskFromIdeaService';
+import { EditIdeaService } from '../../application/idea/EditIdeaService';
+import { IdeaDerivationOptionsService } from '../../application/idea/IdeaDerivationOptionsService';
+import { IdeaDetailService } from '../../application/idea/IdeaDetailService';
+import { IdeasOverviewService } from '../../application/idea/IdeasOverviewService';
 import { LibraryOverviewService } from '../../application/library/LibraryOverviewService';
+import { ExtractNoteFromIdeaService } from '../../application/note/ExtractNoteFromIdeaService';
 import { AddMilestoneService } from '../../application/project/AddMilestoneService';
 import { AddSubGoalService } from '../../application/project/AddSubGoalService';
 import { AddTaskService } from '../../application/project/AddTaskService';
@@ -22,11 +31,13 @@ import { SqliteGoalRepository } from '../../infrastructure/sqliteRepository/Sqli
 import { SqliteIdeaRepository } from '../../infrastructure/sqliteRepository/SqliteIdeaRepository';
 import { SqliteLabelRepository } from '../../infrastructure/sqliteRepository/SqliteLabelRepository';
 import { SqliteMilestoneRepository } from '../../infrastructure/sqliteRepository/SqliteMilestoneRepository';
+import { SqliteNoteRepository } from '../../infrastructure/sqliteRepository/SqliteNoteRepository';
 import { SqliteProjectRepository } from '../../infrastructure/sqliteRepository/SqliteProjectRepository';
 import { SqliteRecordRepository } from '../../infrastructure/sqliteRepository/SqliteRecordRepository';
 import { SqliteRelationRepository } from '../../infrastructure/sqliteRepository/SqliteRelationRepository';
 import { SqliteResourceRepository } from '../../infrastructure/sqliteRepository/SqliteResourceRepository';
 import { SqliteTaskRepository } from '../../infrastructure/sqliteRepository/SqliteTaskRepository';
+import { SqliteTransactionRunner } from '../../infrastructure/sqliteRepository/SqliteTransactionRunner';
 import type { AppServices } from './AppServicesProvider';
 import { seedDevData } from './devSeed';
 
@@ -59,6 +70,8 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
   const attentionEntries = new SqliteAttentionEntryRepository(db);
   const labels = new SqliteLabelRepository(db);
   const milestones = new SqliteMilestoneRepository(db);
+  const notes = new SqliteNoteRepository(db);
+  const transactionRunner = new SqliteTransactionRunner(db);
 
   if (options.seed === true && (await goals.list()).length === 0) {
     await seedDevData({
@@ -70,6 +83,7 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
       records,
       relations,
       milestones,
+      notes,
       consumeResource: new ConsumeResourceService(resources, relations, records),
     });
   }
@@ -100,5 +114,22 @@ export async function composeServices(options: ComposeServicesOptions = {}): Pro
     tasksOverview: new TasksOverviewService(tasks, projects, labels, records),
     taskDetail: new TaskDetailService(tasks, projects, goals, records),
     taskLifecycle: new TaskLifecycleService(tasks, records, relations),
+    ideasOverview: new IdeasOverviewService(ideas, records),
+    ideaDetail: new IdeaDetailService(
+      ideas, goals, tasks, notes, projects, labels, relations, records,
+    ),
+    ideaDerivationOptions: new IdeaDerivationOptionsService(projects, goals),
+    captureIdea: new CaptureIdeaService(ideas, records, relations, transactionRunner),
+    editIdea: new EditIdeaService(ideas, records, relations, transactionRunner),
+    changeIdeaStatus: new ChangeIdeaStatusService(ideas, records, relations, transactionRunner),
+    createGoalFromIdea: new CreateGoalFromIdeaService(
+      ideas, goals, records, relations, transactionRunner,
+    ),
+    createTaskFromIdea: new CreateTaskFromIdeaService(
+      ideas, projects, goals, tasks, records, relations, transactionRunner,
+    ),
+    extractNoteFromIdea: new ExtractNoteFromIdeaService(
+      ideas, notes, records, relations, transactionRunner,
+    ),
   };
 }

@@ -101,6 +101,7 @@ export function LibraryPage({ overview }: LibraryPageProps) {
       title: 'Ideas',
       subtitle: 'Casual captures, transform later',
       count: counts.ideas,
+      onPress: () => navigation.pushScreen('ideas'),
     },
     {
       key: 'notes',

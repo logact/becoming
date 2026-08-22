@@ -7,7 +7,16 @@ import { PinCandidatesService } from '../../../../application/attention/PinCandi
 import { DashboardService } from '../../../../application/dashboard/DashboardService';
 import { GoalDetailService } from '../../../../application/goal/GoalDetailService';
 import { GoalsOverviewService } from '../../../../application/goal/GoalsOverviewService';
+import { CaptureIdeaService } from '../../../../application/idea/CaptureIdeaService';
+import { ChangeIdeaStatusService } from '../../../../application/idea/ChangeIdeaStatusService';
+import { CreateGoalFromIdeaService } from '../../../../application/idea/CreateGoalFromIdeaService';
+import { CreateTaskFromIdeaService } from '../../../../application/idea/CreateTaskFromIdeaService';
+import { EditIdeaService } from '../../../../application/idea/EditIdeaService';
+import { IdeaDerivationOptionsService } from '../../../../application/idea/IdeaDerivationOptionsService';
+import { IdeaDetailService } from '../../../../application/idea/IdeaDetailService';
+import { IdeasOverviewService } from '../../../../application/idea/IdeasOverviewService';
 import { LibraryOverviewService } from '../../../../application/library/LibraryOverviewService';
+import { ExtractNoteFromIdeaService } from '../../../../application/note/ExtractNoteFromIdeaService';
 import { AddMilestoneService } from '../../../../application/project/AddMilestoneService';
 import { AddSubGoalService } from '../../../../application/project/AddSubGoalService';
 import { AddTaskService } from '../../../../application/project/AddTaskService';
@@ -45,6 +54,8 @@ async function makeServices() {
     attentionEntryRepo: attentionEntries,
     labelRepo: labels,
     milestoneRepo: milestones,
+    noteRepo: notes,
+    transactionRunner,
   } = await makeFakeRepos();
   const services: AppServices = {
     dashboard: new DashboardService(
@@ -72,6 +83,15 @@ async function makeServices() {
     tasksOverview: new TasksOverviewService(tasks, projects, labels, records),
     taskDetail: new TaskDetailService(tasks, projects, goals, records),
     taskLifecycle: new TaskLifecycleService(tasks, records, relations),
+    ideasOverview: new IdeasOverviewService(ideas, records),
+    ideaDetail: new IdeaDetailService(ideas, goals, tasks, notes, projects, labels, relations, records),
+    ideaDerivationOptions: new IdeaDerivationOptionsService(projects, goals),
+    captureIdea: new CaptureIdeaService(ideas, records, relations, transactionRunner),
+    editIdea: new EditIdeaService(ideas, records, relations, transactionRunner),
+    changeIdeaStatus: new ChangeIdeaStatusService(ideas, records, relations, transactionRunner),
+    createGoalFromIdea: new CreateGoalFromIdeaService(ideas, goals, records, relations, transactionRunner),
+    createTaskFromIdea: new CreateTaskFromIdeaService(ideas, projects, goals, tasks, records, relations, transactionRunner),
+    extractNoteFromIdea: new ExtractNoteFromIdeaService(ideas, notes, records, relations, transactionRunner),
   };
   return { services, goals, tasks, ideas, records, attentionEntries };
 }
