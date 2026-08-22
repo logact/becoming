@@ -51,7 +51,7 @@
 ### 4. Notes 应用层
 
 - [x] `notes` §3.1–§3.7。
-- [ ] `notes` §3.8–§3.9。
+- [x] `notes` §3.8–§3.9。
 
 ### 5. Ideas / Notes UI 与接线
 
