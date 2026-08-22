@@ -18,6 +18,22 @@ function task(id: string, status: TaskStatus, due?: Date, archived = false): Tas
   return value;
 }
 
+function scheduledTask(
+  id: string,
+  startAt: Date,
+  due?: Date,
+  status: TaskStatus = 'todo',
+  archived = false,
+): Task {
+  const value = Task.create({ id, title: id, projectId: 'p1', startAt, due, now });
+  if (status === 'doing') value.start(now);
+  if (status === 'paused') { value.start(now); value.pause(now); }
+  if (status === 'done') { value.start(now); value.complete(now); }
+  if (status === 'failed') { value.start(now); value.fail(now); }
+  if (archived) value.archive(now);
+  return value;
+}
+
 describe('TasksOverviewService', () => {
   it('builds non-archived stats, groups, labels, attention ordering and activity', async () => {
     const repos = await makeFakeRepos();
@@ -83,5 +99,57 @@ describe('TasksOverviewService', () => {
     ).getOverview(now);
     expect(view.allTasks.todo[0].projectName).toBe('missing-project');
     expect(view.byLabel[0].name).toBe('missing-label');
+  });
+
+  it('exposes startAt in flattened lists while scheduled todo stays out of Doing now', async () => {
+    const repos = await makeFakeRepos();
+    const startAt = new Date('2026-08-20T12:00:00Z');
+    await repos.taskRepo.save(scheduledTask('ready-todo', startAt));
+    await repos.taskRepo.save(scheduledTask('doing', startAt, undefined, 'doing'));
+
+    const view = await new TasksOverviewService(
+      repos.taskRepo, repos.projectRepo, repos.labelRepo, repos.recordRepo,
+    ).getOverview(now);
+
+    expect(view.allTasks.todo[0]).toMatchObject({ id: 'ready-todo', startAt });
+    expect(view.doingNow).toEqual([
+      expect.objectContaining({ id: 'doing', startAt, status: 'doing' }),
+    ]);
+  });
+
+  it('prioritizes due warnings over ready, deduplicates, and sorts ready tasks oldest first', async () => {
+    const repos = await makeFakeRepos();
+    await repos.taskRepo.save(scheduledTask(
+      'due-ready', new Date('2026-08-18T12:00:00Z'), new Date('2026-08-21T13:00:00Z'),
+    ));
+    await repos.taskRepo.save(scheduledTask('ready-newer', new Date('2026-08-21T08:00:00Z')));
+    await repos.taskRepo.save(scheduledTask('ready-older', new Date('2026-08-19T12:00:00Z')));
+
+    const view = await new TasksOverviewService(
+      repos.taskRepo, repos.projectRepo, repos.labelRepo, repos.recordRepo,
+    ).getOverview(now);
+
+    expect(view.attention).toEqual([
+      expect.objectContaining({ id: 'due-ready', reason: 'dueSoon' }),
+      expect.objectContaining({ id: 'ready-older', reason: 'readyToStart' }),
+      expect.objectContaining({ id: 'ready-newer', reason: 'readyToStart' }),
+    ]);
+  });
+
+  it('does not mark future, doing, paused, done, or archived scheduled tasks ready', async () => {
+    const repos = await makeFakeRepos();
+    const ready = new Date('2026-08-20T12:00:00Z');
+    await repos.taskRepo.save(scheduledTask('future', new Date('2026-08-22T12:00:00Z')));
+    await repos.taskRepo.save(scheduledTask('doing', ready, undefined, 'doing'));
+    await repos.taskRepo.save(scheduledTask('paused', ready, undefined, 'paused'));
+    await repos.taskRepo.save(scheduledTask('done', ready, undefined, 'done'));
+    await repos.taskRepo.save(scheduledTask('archived', ready, undefined, 'todo', true));
+
+    const view = await new TasksOverviewService(
+      repos.taskRepo, repos.projectRepo, repos.labelRepo, repos.recordRepo,
+    ).getOverview(now);
+
+    expect(view.attention).toEqual([]);
+    expect(view.doingNow.map((item) => item.id)).toEqual(['doing', 'paused']);
   });
 });

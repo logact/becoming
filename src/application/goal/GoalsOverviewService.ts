@@ -9,6 +9,7 @@ export interface GoalListItem {
   title: string;
   status: GoalStatus;
   labelIds: LabelId[];
+  startAt?: Date;
   due?: Date;
 }
 
@@ -16,7 +17,8 @@ export interface GoalListItem {
 export interface GoalAttentionItem {
   id: GoalId;
   title: string;
-  reason: 'failed' | 'overdue';
+  reason: 'failed' | 'overdue' | 'readyToStart';
+  startAt?: Date;
   due?: Date;
 }
 
@@ -57,6 +59,7 @@ function toListItem(goal: Goal): GoalListItem {
     title: goal.title,
     status: goal.status,
     labelIds: [...goal.labelIds],
+    ...(goal.startAt === undefined ? {} : { startAt: goal.startAt }),
     ...(goal.due === undefined ? {} : { due: goal.due }),
   };
 }
@@ -85,30 +88,46 @@ export class GoalsOverviewService {
     };
   }
 
-  /** Failed goals first, then due-imminent ones ordered by soonest due. */
+  /** Failed, due-imminent, then ready goals; one highest-priority item per goal. */
   private listAttention(goals: Goal[], now: Date): GoalAttentionItem[] {
-    const attention: GoalAttentionItem[] = [];
+    const failed: GoalAttentionItem[] = [];
+    const represented = new Set<GoalId>();
     for (const goal of goals) {
       if (goal.status === 'failed') {
-        attention.push({
+        failed.push({
           id: goal.id,
           title: goal.title,
           reason: 'failed',
+          ...(goal.startAt === undefined ? {} : { startAt: goal.startAt }),
           ...(goal.due === undefined ? {} : { due: goal.due }),
         });
+        represented.add(goal.id);
       }
     }
     const overdue = goals
-      .filter((goal) => goal.isDueImminent(GOAL_DUE_WINDOW_MS, now))
+      .filter((goal) => !represented.has(goal.id) && goal.isDueImminent(GOAL_DUE_WINDOW_MS, now))
       .map((goal) => ({
         id: goal.id,
         title: goal.title,
         reason: 'overdue' as const,
+        ...(goal.startAt === undefined ? {} : { startAt: goal.startAt }),
         // `isDueImminent` guarantees a due.
         due: goal.due as Date,
       }))
       .sort((a, b) => a.due.getTime() - b.due.getTime());
-    return [...attention, ...overdue];
+    for (const item of overdue) represented.add(item.id);
+    const ready = goals
+      .filter((goal) => !represented.has(goal.id) && goal.isReadyToStart(now))
+      .map((goal) => ({
+        id: goal.id,
+        title: goal.title,
+        reason: 'readyToStart' as const,
+        // `isReadyToStart` guarantees a startAt.
+        startAt: goal.startAt as Date,
+        ...(goal.due === undefined ? {} : { due: goal.due }),
+      }))
+      .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+    return [...failed, ...overdue, ...ready];
   }
 
   private groupByStatus(goals: Goal[]): GoalsByStatus {

@@ -54,6 +54,16 @@ describe('GoalDetailService.getDetail', () => {
     expect(view.activeProjectId).toBe('p2');
   });
 
+  it('returns the goal entity with its startAt schedule metadata', async () => {
+    const { service, goals } = await makeService();
+    const startAt = after(24);
+    await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', startAt, now: t0 }));
+
+    const view = await service.getDetail('g1');
+
+    expect(view.goal?.startAt).toEqual(startAt);
+  });
+
   it('excludes archived projects and reports no active project when none is active', async () => {
     const { service, goals, projects } = await makeService();
     await goals.save(Goal.create({ id: 'g1', title: 'Goal g1', now: t0 }));

@@ -18,6 +18,7 @@ export interface ProjectGoalNode {
   id: GoalId;
   title: string;
   status: GoalStatus;
+  startAt?: Date;
   due?: Date;
   milestoneId?: MilestoneId;
   /**
@@ -32,6 +33,7 @@ export interface ProjectTaskItem {
   id: TaskId;
   title: string;
   status: TaskStatus;
+  startAt?: Date;
   due?: Date;
   /** Title of the goal the task targets; undefined for root-level tasks. */
   goalTitle?: string;
@@ -159,6 +161,7 @@ export class ProjectDetailService {
         id: task.id,
         title: task.title,
         status: task.status,
+        ...(task.startAt === undefined ? {} : { startAt: task.startAt }),
         ...(task.due === undefined ? {} : { due: task.due }),
         ...(goalTitle === undefined ? {} : { goalTitle }),
       };
@@ -225,6 +228,7 @@ export class ProjectDetailService {
       id: goal.id,
       title: goal.title,
       status: goal.status,
+      ...(goal.startAt === undefined ? {} : { startAt: goal.startAt }),
       ...(goal.due === undefined ? {} : { due: goal.due }),
       ...(goal.milestoneId === undefined ? {} : { milestoneId: goal.milestoneId }),
       tasks: (tasksByGoal.get(goal.id) ?? []).map(toTaskItem),

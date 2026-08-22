@@ -54,4 +54,18 @@ describe('TaskDetailService', () => {
     expect(view.goalTitle).toBeUndefined();
     expect(view.goalParentTitle).toBeUndefined();
   });
+
+  it('returns the task entity with its startAt schedule metadata', async () => {
+    const repos = await makeFakeRepos();
+    const startAt = new Date('2026-08-22T12:00:00Z');
+    await repos.taskRepo.save(Task.create({
+      id: 't1', title: 'Task', projectId: 'p1', startAt, now,
+    }));
+
+    const view = await new TaskDetailService(
+      repos.taskRepo, repos.projectRepo, repos.goalRepo, repos.recordRepo,
+    ).getDetail('t1');
+
+    expect(view.task?.startAt).toEqual(startAt);
+  });
 });

@@ -64,6 +64,7 @@ describe('ProjectDetailService.getDetail', () => {
         title: '10 km under 50:00',
         projectId: 'p1',
         parentGoalId: 'g1',
+        startAt: after(24),
         due: after(48),
         milestoneId: 'm1',
         now: t0,
@@ -79,7 +80,10 @@ describe('ProjectDetailService.getDetail', () => {
     await goals.save(Goal.create({ id: 'g5', title: 'Other', projectId: 'p2', now: t0 }));
     // A task targeting a sub-goal attaches to that node.
     await tasks.save(
-      Task.create({ id: 't1', title: 'Intervals 6 × 800 m', projectId: 'p1', goalId: 'g2', now: t0 }),
+      Task.create({
+        id: 't1', title: 'Intervals 6 × 800 m', projectId: 'p1', goalId: 'g2',
+        startAt: after(12), now: t0,
+      }),
     );
     // Tasks without a goal (or with an unknown goal) attach to the root.
     await tasks.save(Task.create({ id: 't2', title: 'Long run 16 km', projectId: 'p1', now: t0 }));
@@ -101,10 +105,14 @@ describe('ProjectDetailService.getDetail', () => {
           id: 'g2',
           title: '10 km under 50:00',
           status: 'todo',
+          startAt: after(24),
           due: after(48),
           milestoneId: 'm1',
           tasks: [
-            { id: 't1', title: 'Intervals 6 × 800 m', status: 'todo', goalTitle: '10 km under 50:00' },
+            {
+              id: 't1', title: 'Intervals 6 × 800 m', status: 'todo',
+              startAt: after(12), goalTitle: '10 km under 50:00',
+            },
           ],
           children: [{ id: 'g3', title: 'Threshold endurance', status: 'todo', tasks: [], children: [] }],
         },
@@ -112,7 +120,10 @@ describe('ProjectDetailService.getDetail', () => {
     });
     // The flat task list carries the goal context for the List view.
     expect(view.tasks).toEqual([
-      { id: 't1', title: 'Intervals 6 × 800 m', status: 'todo', goalTitle: '10 km under 50:00' },
+      {
+        id: 't1', title: 'Intervals 6 × 800 m', status: 'todo',
+        startAt: after(12), goalTitle: '10 km under 50:00',
+      },
       { id: 't2', title: 'Long run 16 km', status: 'todo' },
       { id: 't3', title: 'Orphan', status: 'todo' },
     ]);

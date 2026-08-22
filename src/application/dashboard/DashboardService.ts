@@ -27,10 +27,16 @@ export interface DoingItem {
   /** Idea content is mapped to title. */
   title: string;
   status: string;
+  startAt?: Date;
   due?: Date;
 }
 
-export type AttentionReason = 'failed' | 'overdue' | 'resourceExhausted' | 'pinned';
+export type AttentionReason =
+  | 'failed'
+  | 'overdue'
+  | 'resourceExhausted'
+  | 'readyToStart'
+  | 'pinned';
 
 export interface AttentionItem {
   /** Rule-derived items are goals/tasks/projects; pins may also target ideas. */
@@ -39,6 +45,7 @@ export interface AttentionItem {
   /** Idea content is mapped to title. */
   title: string;
   reason: AttentionReason;
+  startAt?: Date;
   due?: Date;
 }
 
@@ -78,7 +85,8 @@ const REASON_ORDER: Record<AttentionReason, number> = {
   failed: 0,
   overdue: 1,
   resourceExhausted: 2,
-  pinned: 3,
+  readyToStart: 3,
+  pinned: 4,
 };
 
 function attentionKey(type: string, id: string): string {
@@ -87,6 +95,16 @@ function attentionKey(type: string, id: string): string {
 
 function withDue(due: Date | undefined): { due?: Date } {
   return due === undefined ? {} : { due };
+}
+
+function withSchedule(startAt: Date | undefined, due: Date | undefined): {
+  startAt?: Date;
+  due?: Date;
+} {
+  return {
+    ...(startAt === undefined ? {} : { startAt }),
+    ...withDue(due),
+  };
 }
 
 /**
@@ -162,7 +180,7 @@ export class DashboardService {
           id: goal.id,
           title: goal.title,
           status: goal.status,
-          ...withDue(goal.due),
+          ...withSchedule(goal.startAt, goal.due),
         },
         updatedAt: goal.updatedAt,
       })),
@@ -172,7 +190,7 @@ export class DashboardService {
           id: task.id,
           title: task.title,
           status: task.status,
-          ...withDue(task.due),
+          ...withSchedule(task.startAt, task.due),
         },
         updatedAt: task.updatedAt,
       })),
@@ -192,8 +210,8 @@ export class DashboardService {
 
   private async listAttention(now: Date): Promise<AttentionItem[]> {
     // Candidates are added in priority order (failed, overdue, exhausted,
-    // pinned); the first entry for a target wins, so an item qualifying for
-    // several reasons appears once with the highest-priority one.
+    // ready-to-start, pinned); the first entry for a target wins, so an item
+    // qualifying for several reasons appears once with the highest-priority one.
     const candidates = new Map<string, AttentionItem>();
     const add = (item: AttentionItem): void => {
       const key = attentionKey(item.type, item.id);
@@ -224,6 +242,12 @@ export class DashboardService {
             (b.due?.getTime() ?? Number.POSITIVE_INFINITY)
           );
         }
+        if (a.reason === 'readyToStart') {
+          return (
+            (a.startAt?.getTime() ?? Number.POSITIVE_INFINITY) -
+            (b.startAt?.getTime() ?? Number.POSITIVE_INFINITY)
+          );
+        }
         return 0;
       });
   }
@@ -241,20 +265,32 @@ export class DashboardService {
     ]);
 
     for (const goal of failedGoals) {
-      add({ type: 'goal', id: goal.id, title: goal.title, reason: 'failed', ...withDue(goal.due) });
+      add({
+        type: 'goal', id: goal.id, title: goal.title, reason: 'failed',
+        ...withSchedule(goal.startAt, goal.due),
+      });
     }
     for (const task of failedTasks) {
-      add({ type: 'task', id: task.id, title: task.title, reason: 'failed', ...withDue(task.due) });
+      add({
+        type: 'task', id: task.id, title: task.title, reason: 'failed',
+        ...withSchedule(task.startAt, task.due),
+      });
     }
 
     for (const goal of goals) {
       if (goal.isDueImminent(GOAL_DUE_WINDOW_MS, now)) {
-        add({ type: 'goal', id: goal.id, title: goal.title, reason: 'overdue', ...withDue(goal.due) });
+        add({
+          type: 'goal', id: goal.id, title: goal.title, reason: 'overdue',
+          ...withSchedule(goal.startAt, goal.due),
+        });
       }
     }
     for (const task of tasks) {
       if (task.isDueImminent(TASK_DUE_WINDOW_MS, now)) {
-        add({ type: 'task', id: task.id, title: task.title, reason: 'overdue', ...withDue(task.due) });
+        add({
+          type: 'task', id: task.id, title: task.title, reason: 'overdue',
+          ...withSchedule(task.startAt, task.due),
+        });
       }
     }
     for (const project of projects) {
@@ -280,6 +316,23 @@ export class DashboardService {
           title: project.name,
           reason: 'resourceExhausted',
           ...withDue(project.due),
+        });
+      }
+    }
+
+    for (const goal of goals) {
+      if (goal.isReadyToStart(now)) {
+        add({
+          type: 'goal', id: goal.id, title: goal.title, reason: 'readyToStart',
+          ...withSchedule(goal.startAt, goal.due),
+        });
+      }
+    }
+    for (const task of tasks) {
+      if (task.isReadyToStart(now)) {
+        add({
+          type: 'task', id: task.id, title: task.title, reason: 'readyToStart',
+          ...withSchedule(task.startAt, task.due),
         });
       }
     }
@@ -325,14 +378,20 @@ export class DashboardService {
         if (goal === null || goal.archived) {
           return null;
         }
-        return { type: 'goal', id: goal.id, title: goal.title, reason: 'pinned', ...withDue(goal.due) };
+        return {
+          type: 'goal', id: goal.id, title: goal.title, reason: 'pinned',
+          ...withSchedule(goal.startAt, goal.due),
+        };
       }
       case 'task': {
         const task = await this.tasks.findById(pin.targetId);
         if (task === null || task.archived) {
           return null;
         }
-        return { type: 'task', id: task.id, title: task.title, reason: 'pinned', ...withDue(task.due) };
+        return {
+          type: 'task', id: task.id, title: task.title, reason: 'pinned',
+          ...withSchedule(task.startAt, task.due),
+        };
       }
       case 'project': {
         const project = await this.projects.findById(pin.targetId);

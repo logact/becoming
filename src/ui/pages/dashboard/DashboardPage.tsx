@@ -29,7 +29,8 @@ const DOING_ICON: Record<DoingItem['type'], IconName> = {
   idea: 'bulb',
 };
 
-const ATTENTION_ICON: Record<AttentionItem['reason'], IconName> = {
+// Scheduling attention receives its presentation in the scheduling UI slice.
+const ATTENTION_ICON: Record<string, IconName> = {
   failed: 'alert',
   overdue: 'clock',
   resourceExhausted: 'banknote',

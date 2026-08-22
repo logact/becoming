@@ -61,6 +61,14 @@ function taskWithDue(id: string, due?: Date): Task {
   return Task.create({ id, title: `Task ${id}`, due, projectId: 'p1', now: t0 });
 }
 
+function scheduledGoal(id: string, startAt: Date, due?: Date): Goal {
+  return Goal.create({ id, title: `Goal ${id}`, startAt, due, now: t0 });
+}
+
+function scheduledTask(id: string, startAt: Date, due?: Date): Task {
+  return Task.create({ id, title: `Task ${id}`, startAt, due, projectId: 'p1', now: t0 });
+}
+
 function doingGoal(id: string, at: Date): Goal {
   const goal = goalWithDue(id);
   goal.start(at);
@@ -172,6 +180,29 @@ describe('DashboardService doing', () => {
     const view = await ctx.service.getDashboard(t0);
 
     expect(view.doing[0].due).toEqual(due);
+  });
+
+  it('exposes startAt for doing goals and tasks without treating scheduled todo work as doing', async () => {
+    const ctx = await makeService();
+    const startAt = after(-24);
+    const goal = scheduledGoal('g-doing', startAt);
+    goal.start(t0);
+    await ctx.goals.save(goal);
+    const task = scheduledTask('t-doing', startAt);
+    task.start(t0);
+    await ctx.tasks.save(task);
+    await ctx.goals.save(scheduledGoal('g-todo', startAt));
+    await ctx.tasks.save(scheduledTask('t-todo', startAt));
+
+    const view = await ctx.service.getDashboard(t0);
+
+    expect(view.doing).toEqual([
+      expect.objectContaining({ id: 'g-doing', status: 'doing', startAt }),
+      expect.objectContaining({ id: 't-doing', status: 'doing', startAt }),
+    ]);
+    expect(view.doing.map((item) => item.id)).not.toEqual(
+      expect.arrayContaining(['g-todo', 't-todo']),
+    );
   });
 });
 
@@ -308,6 +339,77 @@ describe('DashboardService attention: pinned', () => {
   });
 });
 
+describe('DashboardService attention: ready-to-start', () => {
+  it('derives ready goals and tasks through their domain rule and orders oldest start first', async () => {
+    const ctx = await makeService();
+    await ctx.goals.save(scheduledGoal('g-newer', after(-24)));
+    await ctx.tasks.save(scheduledTask('t-oldest', after(-72)));
+    await ctx.tasks.save(scheduledTask('t-middle', after(-48)));
+
+    const view = await ctx.service.getDashboard(t0);
+
+    expect(view.attention).toEqual([
+      expect.objectContaining({ id: 't-oldest', reason: 'readyToStart', startAt: after(-72) }),
+      expect.objectContaining({ id: 't-middle', reason: 'readyToStart', startAt: after(-48) }),
+      expect.objectContaining({ id: 'g-newer', reason: 'readyToStart', startAt: after(-24) }),
+    ]);
+  });
+
+  it('honors status, archive, and future-start boundaries', async () => {
+    const ctx = await makeService();
+    const ready = after(-24);
+    await ctx.goals.save(scheduledGoal('g-ready', ready));
+    await ctx.tasks.save(scheduledTask('t-future', after(24)));
+    const doing = scheduledTask('t-doing', ready);
+    doing.start(t0);
+    await ctx.tasks.save(doing);
+    const paused = scheduledGoal('g-paused', ready);
+    paused.start(t0);
+    paused.pause(t0);
+    await ctx.goals.save(paused);
+    const done = scheduledTask('t-done', ready);
+    done.start(t0);
+    done.complete(t0);
+    await ctx.tasks.save(done);
+    const archived = scheduledGoal('g-archived', ready);
+    archived.archive(t0);
+    await ctx.goals.save(archived);
+
+    const view = await ctx.service.getDashboard(t0);
+
+    expect(view.attention).toEqual([
+      expect.objectContaining({ id: 'g-ready', reason: 'readyToStart' }),
+    ]);
+  });
+
+  it('keeps due attention above ready and pin, with one entry per target', async () => {
+    const ctx = await makeService();
+    const dueAndReady = scheduledGoal('g-overlap', after(-48), after(1));
+    await ctx.goals.save(dueAndReady);
+    await ctx.attentionEntries.save(pin('a1', 'goal', 'g-overlap'));
+    const readyAndPinned = scheduledTask('t-overlap', after(-24), after(4));
+    await ctx.tasks.save(readyAndPinned);
+    await ctx.attentionEntries.save(pin('a2', 'task', 't-overlap'));
+
+    const view = await ctx.service.getDashboard(t0);
+
+    expect(view.attention).toEqual([
+      expect.objectContaining({ id: 'g-overlap', reason: 'overdue' }),
+      expect.objectContaining({ id: 't-overlap', reason: 'readyToStart' }),
+    ]);
+  });
+
+  it('uses existing dismissal persistence for a ready item', async () => {
+    const ctx = await makeService();
+    await ctx.tasks.save(scheduledTask('t-ready', after(-24)));
+    await ctx.attentionEntries.save(dismiss('a1', 'task', 't-ready'));
+
+    const view = await ctx.service.getDashboard(t0);
+
+    expect(view.attention).toEqual([]);
+  });
+});
+
 describe('DashboardService attention: dismissed', () => {
   it('hides a dismissed rule-derived item', async () => {
     const ctx = await makeService();
@@ -356,13 +458,14 @@ describe('DashboardService attention: priority and ordering', () => {
     ]);
   });
 
-  it('orders failed, overdue by due asc, resourceExhausted, then pinned', async () => {
+  it('orders failed, overdue by due asc, resourceExhausted, ready, then pinned', async () => {
     const ctx = await makeService();
     await ctx.goals.save(failedGoal('g-failed'));
     await ctx.goals.save(goalWithDue('g-late', after(10)));
     await ctx.goals.save(goalWithDue('g-soon', after(5)));
     await ctx.projects.save(activeProject('p-exhausted'));
     await allocatedResource(ctx, 'r1', 'p-exhausted', 100, 100);
+    await ctx.goals.save(scheduledGoal('g-ready', after(-24)));
     await ctx.tasks.save(taskWithDue('t-pinned'));
     await ctx.attentionEntries.save(pin('a1', 'task', 't-pinned'));
 
@@ -373,6 +476,7 @@ describe('DashboardService attention: priority and ordering', () => {
       'g-soon',
       'g-late',
       'p-exhausted',
+      'g-ready',
       't-pinned',
     ]);
   });

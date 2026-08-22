@@ -30,6 +30,10 @@ function failedGoal(id: string, due?: Date): Goal {
   return g;
 }
 
+function scheduledGoal(id: string, startAt: Date, due?: Date): Goal {
+  return Goal.create({ id, title: `Goal ${id}`, startAt, due, now: t0 });
+}
+
 describe('GoalsOverviewService.getOverview', () => {
   it('counts active and total non-archived goals in stats', async () => {
     const { service, goals } = await makeService();
@@ -92,6 +96,59 @@ describe('GoalsOverviewService.getOverview', () => {
     expect(view.focus).toEqual([
       { id: 'g1', title: 'Goal g1', status: 'doing', labelIds: ['l1'], due: after(48) },
     ]);
+  });
+
+  it('exposes startAt in flattened focus and all-goal items', async () => {
+    const { service, goals } = await makeService();
+    const startAt = after(48);
+    const doing = scheduledGoal('g1', startAt, after(72));
+    doing.start(t0);
+    await goals.save(doing);
+    await goals.save(scheduledGoal('g2', startAt));
+
+    const view = await service.getOverview(t0);
+
+    expect(view.focus[0]).toMatchObject({ id: 'g1', startAt, due: after(72) });
+    expect(view.allGoals.todo[0]).toMatchObject({ id: 'g2', startAt });
+  });
+
+  it('adds ready goals after due warnings, deduplicates overlaps, and sorts oldest start first', async () => {
+    const { service, goals } = await makeService();
+    await goals.save(scheduledGoal('g-due-ready', after(-72), after(2)));
+    await goals.save(scheduledGoal('g-ready-newer', after(-24), after(48)));
+    await goals.save(scheduledGoal('g-ready-older', after(-48)));
+
+    const view = await service.getOverview(t0);
+
+    expect(view.attention).toEqual([
+      expect.objectContaining({ id: 'g-due-ready', reason: 'overdue', startAt: after(-72) }),
+      expect.objectContaining({ id: 'g-ready-older', reason: 'readyToStart', startAt: after(-48) }),
+      expect.objectContaining({ id: 'g-ready-newer', reason: 'readyToStart', startAt: after(-24) }),
+    ]);
+  });
+
+  it('does not present future, doing, paused, done, or archived scheduled goals as ready', async () => {
+    const { service, goals } = await makeService();
+    await goals.save(scheduledGoal('future', after(24)));
+    const doing = scheduledGoal('doing', after(-24));
+    doing.start(t0);
+    await goals.save(doing);
+    const paused = scheduledGoal('paused', after(-24));
+    paused.start(t0);
+    paused.pause(t0);
+    await goals.save(paused);
+    const done = scheduledGoal('done', after(-24));
+    done.start(t0);
+    done.complete(t0);
+    await goals.save(done);
+    const archived = scheduledGoal('archived', after(-24));
+    archived.archive(t0);
+    await goals.save(archived);
+
+    const view = await service.getOverview(t0);
+
+    expect(view.attention).toEqual([]);
+    expect(view.focus.map((item) => item.id)).toEqual(['doing']);
   });
 
   it('counts non-archived goals per status', async () => {

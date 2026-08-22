@@ -15,6 +15,7 @@ export interface TaskListItem {
   title: string;
   status: TaskStatus;
   projectName: string;
+  startAt?: Date;
   due?: Date;
   labelIds: LabelId[];
 }
@@ -23,7 +24,8 @@ export interface TaskAttentionItem {
   id: TaskId;
   title: string;
   projectName: string;
-  reason: 'failed' | 'overdue' | 'dueSoon';
+  reason: 'failed' | 'overdue' | 'dueSoon' | 'readyToStart';
+  startAt?: Date;
   due?: Date;
 }
 
@@ -49,6 +51,10 @@ const TASK_STATUSES: TaskStatus[] = ['todo', 'doing', 'paused', 'failed', 'done'
 
 function dueTime(item: { due?: Date }): number {
   return item.due?.getTime() ?? Number.POSITIVE_INFINITY;
+}
+
+function startTime(item: { startAt?: Date }): number {
+  return item.startAt?.getTime() ?? Number.POSITIVE_INFINITY;
 }
 
 /** Read model for the all-tasks dashboard and its recent activity. */
@@ -102,6 +108,7 @@ export class TasksOverviewService {
       status: task.status,
       projectName: projectName ?? task.projectId,
       labelIds: [...task.labelIds],
+      ...(task.startAt === undefined ? {} : { startAt: task.startAt }),
       ...(task.due === undefined ? {} : { due: task.due }),
     };
   }
@@ -136,24 +143,29 @@ export class TasksOverviewService {
     now: Date,
   ): TaskAttentionItem[] {
     const groups: Record<TaskAttentionItem['reason'], TaskAttentionItem[]> = {
-      failed: [], overdue: [], dueSoon: [],
+      failed: [], overdue: [], dueSoon: [], readyToStart: [],
     };
     for (const task of tasks) {
       let reason: TaskAttentionItem['reason'] | null = null;
       if (task.status === 'failed') reason = 'failed';
       else if (task.isOverdue(now)) reason = 'overdue';
       else if (task.isDueImminent(TASK_DUE_WINDOW_MS, now)) reason = 'dueSoon';
+      else if (task.isReadyToStart(now)) reason = 'readyToStart';
       if (reason !== null) {
         groups[reason].push({
           id: task.id,
           title: task.title,
           projectName: projectNames.get(task.projectId) ?? task.projectId,
           reason,
+          ...(task.startAt === undefined ? {} : { startAt: task.startAt }),
           ...(task.due === undefined ? {} : { due: task.due }),
         });
       }
     }
-    for (const group of Object.values(groups)) group.sort((a, b) => dueTime(a) - dueTime(b));
-    return [...groups.failed, ...groups.overdue, ...groups.dueSoon];
+    for (const group of [groups.failed, groups.overdue, groups.dueSoon]) {
+      group.sort((a, b) => dueTime(a) - dueTime(b));
+    }
+    groups.readyToStart.sort((a, b) => startTime(a) - startTime(b));
+    return [...groups.failed, ...groups.overdue, ...groups.dueSoon, ...groups.readyToStart];
   }
 }

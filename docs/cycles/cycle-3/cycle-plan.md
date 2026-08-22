@@ -70,13 +70,20 @@
 ### 4. Goal / Task schedule 应用层与读模型
 
 - [x] `start-time-and-date-input` §5。
-- [ ] `start-time-and-date-input` §6。
+- [x] `start-time-and-date-input` §6。
 
 §5 验证证据（2026-08-22）：
 
 - 新增独立 `ScheduleGoalService` / `ScheduleTaskService`，在同一 SQLite transaction 中原子替换可选 Start / Due、保存实体、追加 `goalScheduleChanged` / `taskScheduleChanged` immutable Record，并以 `logs` Relation 关联目标；unknown / archived 在 mutation 前拒绝，末段 Relation 写入失败时实体与 Record 均回滚。
 - 四种 optional 组合、跨本地日历日非法顺序、同日本地日期（即使 Start 时刻晚于 Due 时刻）、Record / Relation 持久化和 rollback 均有 SQLite-backed application tests；`AddSubGoalService`、`AddTaskService`、`CreateGoalFromIdeaService`、`CreateTaskFromIdeaService` 一致传递可选 `startAt` / `due`，保留原有 labels、derivation 与 creation records，未修改 Quick Capture / CaptureComposer。
 - focused：6 suites / 45 tests 通过；`npm run typecheck` 通过；full suite：92 suites / 598 tests 通过，0 snapshots。
+
+§6 验证证据（2026-08-22）：
+
+- Dashboard、Goals、Tasks 的 attention reason 增加 `readyToStart`，严格调用 Goal / Task 的 `isReadyToStart(now)` 领域规则；既有 failed、overdue / dueSoon、resource exhaustion、ready-to-start、pinned 优先级保持，每个 target 只出现一次，ready 项按最早 `startAt` 排序。
+- Goal / Task 的 Dashboard、overview 与 Project detail 扁平读项透传 `startAt`；Goal / Task detail 继续返回携带完整 schedule 的领域实体。Doing 仍由既有 status 规则决定，已到 Start 日期的 `todo` 不会进入 Doing。
+- 既有 pin / dismiss 状态直接覆盖 ready 项，无新增持久化；测试覆盖 schedule 暴露、优先级重叠与去重、ready 排序、status / archive 边界、pin / dismiss 及 Doing 行为。
+- focused：6 suites / 59 tests 通过；`npm run typecheck` 通过；full suite：92 suites / 611 tests 通过，0 snapshots。
 
 ### 5. Goal Project Management 领域、应用与读模型
 
