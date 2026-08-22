@@ -64,7 +64,7 @@
 ### 6. Universal Capture
 
 - [x] `universal-capture` §1–§2。
-- [ ] `universal-capture` §3–§4。
+- [x] `universal-capture` §3–§4。
 - [ ] `universal-capture` §5–§6。
 - [ ] `universal-capture` §7 与原文“实施顺序”9。
 
