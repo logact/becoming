@@ -232,7 +232,7 @@ export class Task {
       !this._archived &&
       this._status === 'todo' &&
       this._startAt !== undefined &&
-      this._startAt.getTime() <= now.getTime()
+      Task.localCalendarDate(this._startAt) <= Task.localCalendarDate(now)
     );
   }
 
@@ -273,8 +273,16 @@ export class Task {
   }
 
   private static validateSchedule(startAt: Date | undefined, due: Date | undefined): void {
-    if (startAt !== undefined && due !== undefined && startAt.getTime() > due.getTime()) {
+    if (
+      startAt !== undefined &&
+      due !== undefined &&
+      Task.localCalendarDate(startAt) > Task.localCalendarDate(due)
+    ) {
       throw new DomainError('Task start date must not be after its due date');
     }
+  }
+
+  private static localCalendarDate(date: Date): number {
+    return date.getFullYear() * 10_000 + (date.getMonth() + 1) * 100 + date.getDate();
   }
 }

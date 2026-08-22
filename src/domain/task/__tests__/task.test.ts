@@ -4,6 +4,9 @@ import { DomainError } from '../../shared/errors';
 const t0 = new Date('2026-01-01T00:00:00Z');
 const t1 = new Date('2026-01-01T01:00:00Z');
 const t2 = new Date('2026-01-01T02:00:00Z');
+const localDayBefore = new Date(2026, 0, 14, 12, 0);
+const localDayStart = new Date(2026, 0, 15, 12, 0);
+const localDayAfter = new Date(2026, 0, 16, 12, 0);
 const HOUR_MS = 60 * 60 * 1000;
 
 describe('Task', () => {
@@ -138,9 +141,35 @@ describe('Task', () => {
     expect(sameDate.due).toBe(t1);
   });
 
+  it('accepts a start later than the due clock time on the same local calendar date', () => {
+    const due = new Date(2026, 0, 15, 8, 0);
+    const startAt = new Date(2026, 0, 15, 18, 0);
+
+    const task = Task.create({ id: 't1', title: 'Train', startAt, due, projectId: 'p1', now: t0 });
+
+    expect(task.startAt).toBe(startAt);
+    expect(task.due).toBe(due);
+  });
+
   it('rejects an invalid schedule at creation', () => {
     expect(() =>
-      Task.create({ id: 't1', title: 'Train', startAt: t2, due: t1, projectId: 'p1', now: t0 }),
+      Task.create({
+        id: 't1',
+        title: 'Train',
+        startAt: localDayAfter,
+        due: localDayStart,
+        projectId: 'p1',
+        now: t0,
+      }),
+    ).toThrow(DomainError);
+  });
+
+  it('rejects a start on the next local calendar date', () => {
+    const due = new Date(2026, 0, 15, 18, 0);
+    const startAt = new Date(2026, 0, 16, 8, 0);
+
+    expect(() =>
+      Task.create({ id: 't1', title: 'Train', startAt, due, projectId: 'p1', now: t0 }),
     ).toThrow(DomainError);
   });
 
@@ -174,15 +203,15 @@ describe('Task', () => {
     const task = Task.create({
       id: 't1',
       title: 'Train',
-      startAt: t0,
-      due: t2,
+      startAt: localDayBefore,
+      due: localDayAfter,
       projectId: 'p1',
       now: t0,
     });
 
-    expect(() => task.setSchedule(t2, t1, t1)).toThrow(DomainError);
-    expect(task.startAt).toBe(t0);
-    expect(task.due).toBe(t2);
+    expect(() => task.setSchedule(localDayAfter, localDayStart, t1)).toThrow(DomainError);
+    expect(task.startAt).toBe(localDayBefore);
+    expect(task.due).toBe(localDayAfter);
     expect(task.updatedAt).toBe(t0);
 
     task.setSchedule(t1, t1, t1);
@@ -194,31 +223,47 @@ describe('Task', () => {
     const task = Task.create({
       id: 't1',
       title: 'Train',
-      startAt: t1,
-      due: t2,
+      startAt: localDayStart,
+      due: localDayAfter,
       projectId: 'p1',
       now: t0,
     });
 
-    expect(() => task.setDue(t0, t1)).toThrow(DomainError);
-    expect(task.startAt).toBe(t1);
-    expect(task.due).toBe(t2);
+    expect(() => task.setDue(localDayBefore, t1)).toThrow(DomainError);
+    expect(task.startAt).toBe(localDayStart);
+    expect(task.due).toBe(localDayAfter);
     expect(task.updatedAt).toBe(t0);
 
     task.clearDue(t2);
-    expect(task.startAt).toBe(t1);
+    expect(task.startAt).toBe(localDayStart);
     expect(task.due).toBeUndefined();
     expect(task.updatedAt).toBe(t2);
   });
 
   it('is ready only when a todo schedule has reached its start boundary', () => {
-    const task = Task.create({ id: 't1', title: 'Train', startAt: t1, projectId: 'p1', now: t0 });
-    expect(task.isReadyToStart(t0)).toBe(false);
-    expect(task.isReadyToStart(t1)).toBe(true);
-    expect(task.isReadyToStart(t2)).toBe(true);
+    const task = Task.create({
+      id: 't1',
+      title: 'Train',
+      startAt: localDayStart,
+      projectId: 'p1',
+      now: t0,
+    });
+    expect(task.isReadyToStart(localDayBefore)).toBe(false);
+    expect(task.isReadyToStart(localDayStart)).toBe(true);
+    expect(task.isReadyToStart(localDayAfter)).toBe(true);
     expect(
-      Task.create({ id: 't2', title: 'Stretch', projectId: 'p1', now: t0 }).isReadyToStart(t2),
+      Task.create({ id: 't2', title: 'Stretch', projectId: 'p1', now: t0 }).isReadyToStart(
+        localDayAfter,
+      ),
     ).toBe(false);
+  });
+
+  it('becomes ready at the beginning of its local start calendar date', () => {
+    const startAt = new Date(2026, 0, 15, 18, 0);
+    const task = Task.create({ id: 't1', title: 'Train', startAt, projectId: 'p1', now: t0 });
+
+    expect(task.isReadyToStart(new Date(2026, 0, 14, 23, 59))).toBe(false);
+    expect(task.isReadyToStart(new Date(2026, 0, 15, 8, 0))).toBe(true);
   });
 
   it('is not ready while doing, paused, done, failed, or archived', () => {
@@ -416,8 +461,8 @@ describe('Task', () => {
       Task.restore({
         id: 't2',
         title: 'Invalid',
-        startAt: t2,
-        due: t1,
+        startAt: localDayAfter,
+        due: localDayStart,
         status: 'todo',
         archived: false,
         labelIds: [],

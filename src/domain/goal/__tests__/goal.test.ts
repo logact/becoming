@@ -5,6 +5,9 @@ import { DomainError } from '../../shared/errors';
 const t0 = new Date('2026-01-01T00:00:00Z');
 const t1 = new Date('2026-01-01T01:00:00Z');
 const t2 = new Date('2026-01-01T02:00:00Z');
+const localDayBefore = new Date(2026, 0, 14, 12, 0);
+const localDayStart = new Date(2026, 0, 15, 12, 0);
+const localDayAfter = new Date(2026, 0, 16, 12, 0);
 const HOUR_MS = 60 * 60 * 1000;
 
 describe('Goal', () => {
@@ -146,8 +149,33 @@ describe('Goal', () => {
     expect(sameDate.due).toBe(t1);
   });
 
+  it('accepts a start later than the due clock time on the same local calendar date', () => {
+    const due = new Date(2026, 0, 15, 8, 0);
+    const startAt = new Date(2026, 0, 15, 18, 0);
+
+    const goal = Goal.create({ id: 'g1', title: 'Run', startAt, due, now: t0 });
+
+    expect(goal.startAt).toBe(startAt);
+    expect(goal.due).toBe(due);
+  });
+
   it('rejects an invalid schedule at creation', () => {
-    expect(() => Goal.create({ id: 'g1', title: 'Run', startAt: t2, due: t1, now: t0 })).toThrow(
+    expect(() =>
+      Goal.create({
+        id: 'g1',
+        title: 'Run',
+        startAt: localDayAfter,
+        due: localDayStart,
+        now: t0,
+      }),
+    ).toThrow(DomainError);
+  });
+
+  it('rejects a start on the next local calendar date', () => {
+    const due = new Date(2026, 0, 15, 18, 0);
+    const startAt = new Date(2026, 0, 16, 8, 0);
+
+    expect(() => Goal.create({ id: 'g1', title: 'Run', startAt, due, now: t0 })).toThrow(
       DomainError,
     );
   });
@@ -179,11 +207,17 @@ describe('Goal', () => {
   });
 
   it('rejects invalid schedule updates without partially changing state', () => {
-    const goal = Goal.create({ id: 'g1', title: 'Run', startAt: t0, due: t2, now: t0 });
+    const goal = Goal.create({
+      id: 'g1',
+      title: 'Run',
+      startAt: localDayBefore,
+      due: localDayAfter,
+      now: t0,
+    });
 
-    expect(() => goal.setSchedule(t2, t1, t1)).toThrow(DomainError);
-    expect(goal.startAt).toBe(t0);
-    expect(goal.due).toBe(t2);
+    expect(() => goal.setSchedule(localDayAfter, localDayStart, t1)).toThrow(DomainError);
+    expect(goal.startAt).toBe(localDayBefore);
+    expect(goal.due).toBe(localDayAfter);
     expect(goal.updatedAt).toBe(t0);
 
     goal.setSchedule(t1, t1, t1);
@@ -192,25 +226,41 @@ describe('Goal', () => {
   });
 
   it('keeps legacy due updates inside the schedule invariant', () => {
-    const goal = Goal.create({ id: 'g1', title: 'Run', startAt: t1, due: t2, now: t0 });
+    const goal = Goal.create({
+      id: 'g1',
+      title: 'Run',
+      startAt: localDayStart,
+      due: localDayAfter,
+      now: t0,
+    });
 
-    expect(() => goal.setDue(t0, t1)).toThrow(DomainError);
-    expect(goal.startAt).toBe(t1);
-    expect(goal.due).toBe(t2);
+    expect(() => goal.setDue(localDayBefore, t1)).toThrow(DomainError);
+    expect(goal.startAt).toBe(localDayStart);
+    expect(goal.due).toBe(localDayAfter);
     expect(goal.updatedAt).toBe(t0);
 
     goal.clearDue(t2);
-    expect(goal.startAt).toBe(t1);
+    expect(goal.startAt).toBe(localDayStart);
     expect(goal.due).toBeUndefined();
     expect(goal.updatedAt).toBe(t2);
   });
 
   it('is ready only when a todo schedule has reached its start boundary', () => {
-    const goal = Goal.create({ id: 'g1', title: 'Run', startAt: t1, now: t0 });
-    expect(goal.isReadyToStart(t0)).toBe(false);
-    expect(goal.isReadyToStart(t1)).toBe(true);
-    expect(goal.isReadyToStart(t2)).toBe(true);
-    expect(Goal.create({ id: 'g2', title: 'Swim', now: t0 }).isReadyToStart(t2)).toBe(false);
+    const goal = Goal.create({ id: 'g1', title: 'Run', startAt: localDayStart, now: t0 });
+    expect(goal.isReadyToStart(localDayBefore)).toBe(false);
+    expect(goal.isReadyToStart(localDayStart)).toBe(true);
+    expect(goal.isReadyToStart(localDayAfter)).toBe(true);
+    expect(Goal.create({ id: 'g2', title: 'Swim', now: t0 }).isReadyToStart(localDayAfter)).toBe(
+      false,
+    );
+  });
+
+  it('becomes ready at the beginning of its local start calendar date', () => {
+    const startAt = new Date(2026, 0, 15, 18, 0);
+    const goal = Goal.create({ id: 'g1', title: 'Run', startAt, now: t0 });
+
+    expect(goal.isReadyToStart(new Date(2026, 0, 14, 23, 59))).toBe(false);
+    expect(goal.isReadyToStart(new Date(2026, 0, 15, 8, 0))).toBe(true);
   });
 
   it('is not ready while doing, paused, done, failed, or archived', () => {
@@ -342,8 +392,8 @@ describe('Goal', () => {
       Goal.restore({
         id: 'g2',
         title: 'Invalid',
-        startAt: t2,
-        due: t1,
+        startAt: localDayAfter,
+        due: localDayStart,
         status: 'todo',
         archived: false,
         labelIds: [],

@@ -236,7 +236,7 @@ export class Goal {
       !this._archived &&
       this._status === 'todo' &&
       this._startAt !== undefined &&
-      this._startAt.getTime() <= now.getTime()
+      Goal.localCalendarDate(this._startAt) <= Goal.localCalendarDate(now)
     );
   }
 
@@ -273,8 +273,16 @@ export class Goal {
   }
 
   private static validateSchedule(startAt: Date | undefined, due: Date | undefined): void {
-    if (startAt !== undefined && due !== undefined && startAt.getTime() > due.getTime()) {
+    if (
+      startAt !== undefined &&
+      due !== undefined &&
+      Goal.localCalendarDate(startAt) > Goal.localCalendarDate(due)
+    ) {
       throw new DomainError('Goal start date must not be after its due date');
     }
+  }
+
+  private static localCalendarDate(date: Date): number {
+    return date.getFullYear() * 10_000 + (date.getMonth() + 1) * 100 + date.getDate();
   }
 }
