@@ -29,6 +29,17 @@ docs/cycles/cycle-{idx}/cycle-report.md: the report after finish the plan.
 4. prefer create new application service not modify the exsiting application service
 
 
+## Architecture Boundaries
+
+UI behavior must invoke application services; it must not access repository interfaces or infrastructure implementations directly.
+
+- Files under `src/ui/**` must not import from `src/domain/{domain-name}/repository/**` or `src/infrastructure/**`.
+- When the UI needs a new read or mutation, add an application service and inject that service into the UI.
+- `src/ui/composition/**` is the only exception. It is the composition root, so it may construct SQLite repositories and application services, but it must not contain screen behavior or business rules.
+- Run `npm run architecture` to validate the boundary. The dependency-cruiser rule `ui-must-not-use-repositories` fails when the boundary is violated. It also runs automatically before `npm test`.
+- Run `npm run check` before handing off a change to execute typechecking, architecture validation, and the test suite.
+
+
  ## Git
 
 The project has been fully refactored,don't refer the git history before 7513dbc2c3a573562f1bcb56c4bb04e1e0568ba6.
