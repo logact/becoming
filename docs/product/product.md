@@ -7,3 +7,5 @@ what did I do?
 why  do I do this?
 
 slogan: Record what you do. Shape what you become.
+
+The APP is your google map navagiate you to the goal, And also record the path what have you gone.

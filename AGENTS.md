@@ -83,3 +83,19 @@ export async function makeFakeRepos(): Promise<{
   };
 }
 ```
+
+
+
+
+
+## TODO 
+
+we should expose all of the concepts to the user ,between the domain and the user there should be a transform process.
+make the concepts is easy to use and connect fluently (at most time ,we need to reduce here )
+and support semantic zoom, Large scope->fewer details ,Smaller scope -> more details  
+
+In the map ,we set 3 color (green/yellow/red) colors to the path ,to represent the semantics (happy-path/warn/failed)
+
+
+
+We need to invest gaint effor to define the semantic zoom.

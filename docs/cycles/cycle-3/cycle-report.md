@@ -113,7 +113,7 @@
 | Start-Date §7：Goal / Task scheduling UI、composition、ready copy | `7fb643f` |
 | Start-Date §8：迁移其余 manual date/date-time forms | `339c3f5` |
 | Goal Project §8：设计文档与实现核对 | `5dec5f5` |
-| Start-Date §9：domain/design docs 与 composition audit | `52d62d7` |
+| Start-Date §9：domain/designπ docs 与 composition audit | `52d62d7` |
 | Goal Project §9 / Start-Date §10：联合独立验收与 glossary correction | `b7f51de` |
 | 三计划跨计划集成回归 | `7d4e1b4` |
 | 本报告与周期完成状态 | 本报告提交 |
